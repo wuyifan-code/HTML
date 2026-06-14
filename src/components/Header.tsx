@@ -3,8 +3,13 @@ import { Toolbar } from "./Toolbar";
 interface HeaderProps {
   canUndo: boolean;
   canRedo: boolean;
+  hasModal: boolean;
+  isModalOpen: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onToggleHistory: () => void;
+  onOpenModal: () => void;
+  onCloseModal: () => void;
   onImport: (file: File) => void;
   onCopy: () => void;
   onExport: () => void;
@@ -13,8 +18,13 @@ interface HeaderProps {
 export function Header({
   canUndo,
   canRedo,
+  hasModal,
+  isModalOpen,
   onUndo,
   onRedo,
+  onToggleHistory,
+  onOpenModal,
+  onCloseModal,
   onImport,
   onCopy,
   onExport,
@@ -33,8 +43,13 @@ export function Header({
       <Toolbar
         canUndo={canUndo}
         canRedo={canRedo}
+        hasModal={hasModal}
+        isModalOpen={isModalOpen}
         onUndo={onUndo}
         onRedo={onRedo}
+        onToggleHistory={onToggleHistory}
+        onOpenModal={onOpenModal}
+        onCloseModal={onCloseModal}
         onImport={onImport}
         onCopy={onCopy}
         onExport={onExport}

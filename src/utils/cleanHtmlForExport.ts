@@ -13,12 +13,16 @@ const INTERNAL_ATTRIBUTES = [
   HFT_HOVER_ATTRIBUTE,
   HFT_SELECTED_ATTRIBUTE,
   "data-html-finetune-clickable",
+  "data-html-finetune-modal-open",
 ];
 
 const INTERNAL_NODE_SELECTORS = ["#html-finetune-bridge-style"];
+const HOVER_STYLE_SELECTOR = "style[data-html-finetune-hover-rules]";
 
 export function cleanHtmlForExport(html: string): string {
   const documentRef = parseHtmlDocument(html);
+
+  convertHoverRulesForExport(documentRef);
 
   INTERNAL_NODE_SELECTORS.forEach((selector) => {
     documentRef.querySelectorAll(selector).forEach((node) => node.remove());
@@ -29,4 +33,56 @@ export function cleanHtmlForExport(html: string): string {
   });
 
   return serializeDocument(documentRef);
+}
+
+function convertHoverRulesForExport(documentRef: Document): void {
+  const styleElement = documentRef.querySelector(HOVER_STYLE_SELECTOR);
+  if (!(styleElement instanceof HTMLStyleElement) || !styleElement.textContent) return;
+
+  const rules = parseHoverRules(styleElement.textContent);
+  if (rules.length === 0) {
+    styleElement.remove();
+    return;
+  }
+
+  const exportedRules: string[] = [];
+
+  rules.forEach((rule) => {
+    const element = documentRef.querySelector(`[${HFT_ID_ATTRIBUTE}="${cssEscape(rule.hftId)}"]`);
+    if (!(element instanceof HTMLElement)) return;
+
+    const className = `hft-hover-${rule.hftId}`;
+    element.classList.add(className);
+    exportedRules.push(`.${className}:hover { background-color: ${rule.color}; }`);
+  });
+
+  if (exportedRules.length === 0) {
+    styleElement.remove();
+    return;
+  }
+
+  styleElement.removeAttribute("data-html-finetune-hover-rules");
+  styleElement.textContent = `\n${exportedRules.join("\n")}\n`;
+}
+
+function parseHoverRules(cssText: string): Array<{ hftId: string; color: string }> {
+  const rules: Array<{ hftId: string; color: string }> = [];
+  const pattern = new RegExp(
+    `\\[${HFT_ID_ATTRIBUTE}="([^"]+)"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}`,
+    "gi"
+  );
+
+  for (const match of cssText.matchAll(pattern)) {
+    rules.push({ hftId: match[1], color: match[2].trim() });
+  }
+
+  return rules;
+}
+
+function cssEscape(value: string): string {
+  if (typeof CSS !== "undefined" && CSS.escape) {
+    return CSS.escape(value);
+  }
+
+  return value.replace(/"/g, '\\"');
 }

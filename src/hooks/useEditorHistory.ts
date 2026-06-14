@@ -49,8 +49,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       if (nextState.html === current.html && nextState.selectedId === current.selectedId) return;
 
       if (!record) {
-        clearDebounce();
-        pendingBaseRef.current = null;
+        flushDebouncedHistory();
         setPresent(nextState);
         presentRef.current = nextState;
         return;
@@ -119,12 +118,33 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     });
   }, [flushDebouncedHistory, present]);
 
+  const jumpToHistoryIndex = useCallback(
+    (targetIndex: number) => {
+      flushDebouncedHistory();
+      const timeline = [...past, presentRef.current, ...future];
+      if (targetIndex < 0 || targetIndex >= timeline.length) return;
+
+      const target = timeline[targetIndex];
+      setPast(timeline.slice(0, targetIndex));
+      setPresent(target);
+      presentRef.current = target;
+      setFuture(timeline.slice(targetIndex + 1));
+    },
+    [flushDebouncedHistory, future, past]
+  );
+
+  const timeline = [...past, present, ...future];
+  const currentIndex = past.length;
+
   return {
     state: present,
     commit,
     reset,
     undo,
     redo,
+    jumpToHistoryIndex,
+    timeline,
+    currentIndex,
     canUndo: past.length > 0 || pendingBaseRef.current !== null,
     canRedo: future.length > 0,
     flushDebouncedHistory,

@@ -105,6 +105,18 @@ export const sampleHtml = `<!doctype html>
         font-weight: 600;
       }
 
+      .hero-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .quiet-button {
+        border: 1px solid #e3d7c8;
+        background: #fffdf8;
+        color: #6a5f55;
+      }
+
       .note-card {
         align-self: stretch;
         min-height: 360px;
@@ -133,6 +145,16 @@ export const sampleHtml = `<!doctype html>
         font-size: 36px;
         font-weight: 500;
         line-height: 1.08;
+      }
+
+      .note-image {
+        width: 100%;
+        height: 138px;
+        object-fit: cover;
+        display: block;
+        margin: 22px 0;
+        border: 1px solid #e8dccd;
+        border-radius: 0;
       }
 
       .features {
@@ -180,6 +202,51 @@ export const sampleHtml = `<!doctype html>
         color: #7a7368;
         font-family: Inter, ui-sans-serif, system-ui, sans-serif;
         font-size: 13px;
+      }
+
+      dialog.modal-card {
+        width: min(520px, calc(100% - 40px));
+        border: 1px solid #dfd3c3;
+        border-radius: 0;
+        padding: 0;
+        background: #fffdf8;
+        color: #2f2a25;
+        box-shadow: 0 24px 80px rgba(55, 43, 31, 0.22);
+      }
+
+      dialog.modal-card::backdrop {
+        background: rgba(47, 42, 37, 0.24);
+      }
+
+      .modal-inner {
+        padding: 30px;
+      }
+
+      .modal-kicker {
+        margin: 0 0 12px;
+        color: #9a7b66;
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .modal-card h2 {
+        margin: 0 0 14px;
+        font-family: Georgia, "Times New Roman", serif;
+        font-size: 30px;
+        font-weight: 500;
+        line-height: 1.15;
+      }
+
+      .modal-card p {
+        color: #665d53;
+        line-height: 1.62;
+      }
+
+      .modal-actions {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: 22px;
       }
 
       @media (max-width: 760px) {
@@ -233,7 +300,10 @@ export const sampleHtml = `<!doctype html>
           <h1>让生成的页面更像精心完成的作品</h1>
           <p class="subtitle">这是一个用于微调语言、节奏和视觉层级的小型页面系统，适合在第一版 HTML 已经生成之后继续打磨。</p>
           <p class="body-copy">你可以用这个示例测试标题修改、段落间距、按钮文字、小卡片列表和引用区块。每一处内容都故意保持克制，方便你直接调整而不必和设计对抗。</p>
-          <button>查看方法</button>
+          <div class="hero-actions">
+            <button>查看方法</button>
+            <button class="quiet-button" data-hft-open-modal>打开说明弹窗</button>
+          </div>
         </div>
 
         <aside class="note-card">
@@ -241,6 +311,11 @@ export const sampleHtml = `<!doctype html>
             <span>实时编辑界面</span>
             <strong>小改动，也应该立刻被看见</strong>
           </div>
+          <img
+            class="note-image"
+            src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80"
+            alt="安静的工作桌面与笔记本电脑"
+          />
           <p>点击预览中的文字，再用右侧安静的检查器调整细节。</p>
         </aside>
       </section>
@@ -264,6 +339,17 @@ export const sampleHtml = `<!doctype html>
         “最后一公里通常不是重写，而是一连串谨慎的小决定。”
         <small>静态系统工作室札记</small>
       </blockquote>
+
+      <dialog class="modal-card" aria-labelledby="modal-title" data-hft-modal>
+        <div class="modal-inner">
+          <p class="modal-kicker">发布前微调</p>
+          <h2 id="modal-title">先把页面调到你愿意发布的语气</h2>
+          <p>这个弹窗用来测试 HTML FineTune 对模态内容的处理。打开它以后，你可以点击标题或正文，并在右侧检查器中调整内容、字号、颜色和间距。</p>
+          <div class="modal-actions">
+            <button class="quiet-button" data-hft-close-modal>关闭</button>
+          </div>
+        </div>
+      </dialog>
     </main>
   </body>
 </html>`;

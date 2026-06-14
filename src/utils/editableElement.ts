@@ -21,6 +21,9 @@ export const EDITABLE_TEXT_TAGS = [
   "em",
 ] as const;
 
+export const EDITABLE_BLOCK_TAGS = ["section", "article", "aside", "div", "blockquote"] as const;
+export const EDITABLE_MEDIA_TAGS = ["img"] as const;
+
 export const NON_EDITABLE_TAGS = [
   "html",
   "body",
@@ -32,7 +35,6 @@ export const NON_EDITABLE_TAGS = [
   "title",
   "svg",
   "path",
-  "img",
   "video",
   "canvas",
   "audio",
@@ -46,6 +48,8 @@ export const NON_EDITABLE_TAGS = [
 ] as const;
 
 const editableTagSet = new Set<string>(EDITABLE_TEXT_TAGS);
+const editableBlockTagSet = new Set<string>(EDITABLE_BLOCK_TAGS);
+const editableMediaTagSet = new Set<string>(EDITABLE_MEDIA_TAGS);
 const nonEditableTagSet = new Set<string>(NON_EDITABLE_TAGS);
 
 export function isEditableElement(element: Element | null): element is HTMLElement {
@@ -53,10 +57,12 @@ export function isEditableElement(element: Element | null): element is HTMLEleme
 
   const tagName = element.tagName.toLowerCase();
   if (nonEditableTagSet.has(tagName)) return false;
+  if (editableMediaTagSet.has(tagName)) return true;
   if (!getElementText(element).trim()) return false;
   if (editableTagSet.has(tagName)) return true;
+  if (editableBlockTagSet.has(tagName)) return true;
 
-  return tagName === "div" && hasDirectText(element);
+  return false;
 }
 
 export function findEditableElement(start: Element | null): HTMLElement | null {
@@ -83,6 +89,8 @@ export function hasDirectText(element: HTMLElement): boolean {
 export function createEditableElementScriptConfig() {
   return {
     editableTags: EDITABLE_TEXT_TAGS,
+    editableBlockTags: EDITABLE_BLOCK_TAGS,
+    editableMediaTags: EDITABLE_MEDIA_TAGS,
     nonEditableTags: NON_EDITABLE_TAGS,
     hftIdAttribute: HFT_ID_ATTRIBUTE,
     editableAttribute: HFT_EDITABLE_ATTRIBUTE,

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { PreviewMessage, SelectedElementSnapshot } from "../types/editor";
+import type { ElementQuickAction, ModalState, PreviewMessage, SelectedElementSnapshot } from "../types/editor";
 
 export function useIframeSelection(
-  onElementSelected: (element: SelectedElementSnapshot) => void
+  onElementSelected: (element: SelectedElementSnapshot) => void,
+  onModalStateChange?: (state: ModalState) => void,
+  onElementAction?: (hftId: string, action: ElementQuickAction) => void
 ) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [isReady, setIsReady] = useState(false);
@@ -19,14 +21,22 @@ export function useIframeSelection(
         onElementSelected(event.data.payload);
       }
 
+      if (event.data?.type === "HTML_FINETUNE_ELEMENT_ACTION") {
+        onElementAction?.(event.data.payload.hftId, event.data.payload.action);
+      }
+
       if (event.data?.type === "HTML_FINETUNE_PREVIEW_READY") {
         setIsReady(true);
+      }
+
+      if (event.data?.type === "HTML_FINETUNE_MODAL_STATE") {
+        onModalStateChange?.(event.data.payload);
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [onElementSelected]);
+  }, [onElementAction, onElementSelected, onModalStateChange]);
 
   return {
     iframeRef,

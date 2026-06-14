@@ -1,10 +1,15 @@
-import { Clipboard, Download, FileUp, Redo2, Undo2 } from "lucide-react";
+import { Clipboard, Download, FileUp, History, MessageSquare, Redo2, Undo2, X } from "lucide-react";
 
 interface ToolbarProps {
   canUndo: boolean;
   canRedo: boolean;
+  hasModal: boolean;
+  isModalOpen: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  onToggleHistory: () => void;
+  onOpenModal: () => void;
+  onCloseModal: () => void;
   onImport: (file: File) => void;
   onCopy: () => void;
   onExport: () => void;
@@ -13,8 +18,13 @@ interface ToolbarProps {
 export function Toolbar({
   canUndo,
   canRedo,
+  hasModal,
+  isModalOpen,
   onUndo,
   onRedo,
+  onToggleHistory,
+  onOpenModal,
+  onCloseModal,
   onImport,
   onCopy,
   onExport,
@@ -28,6 +38,28 @@ export function Toolbar({
       <button className="ghost-button toolbar-button" type="button" onClick={onRedo} disabled={!canRedo}>
         <Redo2 size={16} strokeWidth={1.9} />
         重做
+      </button>
+      <button className="ghost-button toolbar-button" type="button" onClick={onToggleHistory}>
+        <History size={16} strokeWidth={1.9} />
+        历史
+      </button>
+      <button
+        className="ghost-button toolbar-button"
+        type="button"
+        onClick={onOpenModal}
+        disabled={!hasModal || isModalOpen}
+      >
+        <MessageSquare size={16} strokeWidth={1.9} />
+        打开弹窗
+      </button>
+      <button
+        className="ghost-button toolbar-button"
+        type="button"
+        onClick={onCloseModal}
+        disabled={!hasModal || !isModalOpen}
+      >
+        <X size={16} strokeWidth={1.9} />
+        关闭弹窗
       </button>
       <label className="ghost-button toolbar-button file-button">
         <FileUp size={16} strokeWidth={1.9} />

@@ -1,6 +1,8 @@
 import type { ElementUpdate } from "../types/editor";
 import { HFT_ID_ATTRIBUTE } from "./editableElement";
 
+const HOVER_STYLE_ATTRIBUTE = "data-html-finetune-hover-rules";
+
 export function getDomPath(element: Element): string {
   const segments: string[] = [];
   let current: Element | null = element;
@@ -43,6 +45,10 @@ export function updateHtmlElement(html: string, path: string, update: ElementUpd
     element.textContent = update.text;
   }
 
+  if (update.attributes) {
+    applyAttributeUpdates(element, update.attributes);
+  }
+
   if (update.styles) {
     Object.entries(update.styles).forEach(([property, value]) => {
       if (typeof value === "string") {
@@ -82,6 +88,10 @@ export function updateHtmlElementByHftId(
     element.textContent = update.text;
   }
 
+  if (update.attributes) {
+    applyAttributeUpdates(element, update.attributes);
+  }
+
   if (update.styles) {
     Object.entries(update.styles).forEach(([property, value]) => {
       if (typeof value === "string") {
@@ -94,7 +104,58 @@ export function updateHtmlElementByHftId(
     });
   }
 
+  if (update.effects?.hoverBackgroundColor !== undefined) {
+    updateHoverBackgroundRule(documentRef, hftId, update.effects.hoverBackgroundColor);
+  }
+
   return serializeDocument(documentRef);
+}
+
+export function duplicateHtmlElementByHftId(html: string, hftId: string): string {
+  const parser = new DOMParser();
+  const documentRef = parser.parseFromString(html, "text/html");
+  const element = queryElementByHftId(documentRef, hftId);
+
+  if (!element || !element.parentElement) {
+    return html;
+  }
+
+  const clone = element.cloneNode(true);
+  if (clone instanceof HTMLElement) {
+    clone.removeAttribute(HFT_ID_ATTRIBUTE);
+    clone.querySelectorAll(`[${HFT_ID_ATTRIBUTE}]`).forEach((child) => child.removeAttribute(HFT_ID_ATTRIBUTE));
+  }
+
+  element.insertAdjacentElement("afterend", clone as Element);
+  return serializeDocument(documentRef);
+}
+
+export function deleteHtmlElementByHftId(html: string, hftId: string): string {
+  const parser = new DOMParser();
+  const documentRef = parser.parseFromString(html, "text/html");
+  const element = queryElementByHftId(documentRef, hftId);
+
+  if (!element) {
+    return html;
+  }
+
+  element.remove();
+  return serializeDocument(documentRef);
+}
+
+export function getHoverBackgroundColor(html: string, hftId: string): string {
+  const parser = new DOMParser();
+  const documentRef = parser.parseFromString(html, "text/html");
+  const styleElement = getHoverStyleElement(documentRef, false);
+  if (!styleElement?.textContent) return "";
+
+  const escapedId = escapeRegExp(hftId);
+  const pattern = new RegExp(
+    `\\[${HFT_ID_ATTRIBUTE}="${escapedId}"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}`,
+    "i"
+  );
+  const match = styleElement.textContent.match(pattern);
+  return match?.[1]?.trim() ?? "";
 }
 
 export function serializeDocument(documentRef: Document): string {
@@ -117,6 +178,73 @@ function getElementIndex(element: Element): number {
 
 function toKebabCase(value: string): string {
   return value.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+function applyAttributeUpdates(element: HTMLElement, attributes: NonNullable<ElementUpdate["attributes"]>): void {
+  Object.entries(attributes).forEach(([attribute, value]) => {
+    if (typeof value !== "string") return;
+
+    if (attribute === "alt") {
+      element.setAttribute(attribute, value);
+      return;
+    }
+
+    if (value.trim()) {
+      element.setAttribute(attribute, value);
+    } else {
+      element.removeAttribute(attribute);
+    }
+  });
+}
+
+function updateHoverBackgroundRule(documentRef: Document, hftId: string, color: string): void {
+  const styleElement = getHoverStyleElement(documentRef, color.trim().length > 0);
+  if (!styleElement) return;
+
+  const rules = parseHoverRules(styleElement.textContent ?? "");
+  const filteredRules = rules.filter((rule) => rule.hftId !== hftId);
+
+  if (color.trim()) {
+    filteredRules.push({ hftId, color: color.trim() });
+  }
+
+  if (filteredRules.length === 0) {
+    styleElement.remove();
+    return;
+  }
+
+  styleElement.textContent = `\n${filteredRules
+    .map((rule) => `[${HFT_ID_ATTRIBUTE}="${rule.hftId}"]:hover { background-color: ${rule.color}; }`)
+    .join("\n")}\n`;
+}
+
+function getHoverStyleElement(documentRef: Document, shouldCreate: boolean): HTMLStyleElement | null {
+  const existing = documentRef.querySelector(`style[${HOVER_STYLE_ATTRIBUTE}]`);
+  if (existing instanceof HTMLStyleElement) return existing;
+  if (!shouldCreate) return null;
+
+  const styleElement = documentRef.createElement("style");
+  styleElement.setAttribute(HOVER_STYLE_ATTRIBUTE, "true");
+  documentRef.head.appendChild(styleElement);
+  return styleElement;
+}
+
+function parseHoverRules(cssText: string): Array<{ hftId: string; color: string }> {
+  const rules: Array<{ hftId: string; color: string }> = [];
+  const pattern = new RegExp(
+    `\\[${HFT_ID_ATTRIBUTE}="([^"]+)"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}`,
+    "gi"
+  );
+
+  for (const match of cssText.matchAll(pattern)) {
+    rules.push({ hftId: match[1], color: match[2].trim() });
+  }
+
+  return rules;
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function cssEscape(value: string): string {
