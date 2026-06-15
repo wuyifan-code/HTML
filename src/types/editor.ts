@@ -109,6 +109,8 @@ export interface SelectElementCommand {
 
 export type PreviewViewportMode = "desktop" | "tablet" | "mobile";
 
+export type SourcePanelPlacement = "side" | "bottom";
+
 export type PreviewMessage =
   | PreviewElementMessage
   | PreviewElementActionMessage

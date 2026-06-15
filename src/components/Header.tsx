@@ -37,7 +37,7 @@ export function Header({
         </div>
         <div>
           <h1>HTML FineTune</h1>
-          <p>一个用于微调 AI 生成 HTML 的安静可视化编辑器</p>
+          <p className="brand-subtitle">一个用于微调 AI 生成 HTML 的安静可视化编辑器</p>
         </div>
       </div>
       <Toolbar

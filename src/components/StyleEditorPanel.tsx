@@ -1,4 +1,4 @@
-import { PanelRightClose, PanelRightOpen, SlidersHorizontal } from "lucide-react";
+import { MousePointerClick, PanelRightClose, PanelRightOpen, SlidersHorizontal, Type } from "lucide-react";
 import type { EditableAttributes, EditableEffects, EditableStyleKey, SelectedElementSnapshot } from "../types/editor";
 
 interface StyleEditorPanelProps {
@@ -69,9 +69,25 @@ export function StyleEditorPanel({
 
       {!selectedElement ? (
         <div className="empty-state">
-          <div className="empty-state-mark">Aa</div>
+          <div className="empty-state-illustration" aria-hidden="true">
+            <div className="empty-doc">
+              <Type size={20} strokeWidth={1.8} />
+              <span />
+              <span />
+            </div>
+            <div className="empty-arrow" />
+            <div className="empty-controls">
+              <MousePointerClick size={18} strokeWidth={1.8} />
+              <span />
+              <span />
+            </div>
+          </div>
           <h2>请选择一个元素</h2>
-          <p>在预览区选择一个文本元素，然后微调内容、字体和间距。</p>
+          <ol>
+            <li>在预览区点击任意文字元素</li>
+            <li>在右侧面板调整内容和样式</li>
+            <li>实时查看修改效果</li>
+          </ol>
         </div>
       ) : (
         <div className="inspector-content">

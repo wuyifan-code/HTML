@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { Header } from "./components/Header";
 import { HistoryPanel } from "./components/HistoryPanel";
@@ -17,6 +18,7 @@ import type {
   EditableEffects,
   EditableAttributes,
   ElementQuickAction,
+  SourcePanelPlacement,
 } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
 import { copyHtmlToClipboard } from "./utils/clipboard";
@@ -33,6 +35,12 @@ import { buildHistoryDisplayItems } from "./utils/historySummary";
 import { injectEditableIds } from "./utils/injectEditableIds";
 
 const initialHtml = injectEditableIds(sampleHtml).html;
+const MIN_SOURCE_WIDTH = 260;
+const MIN_INSPECTOR_WIDTH = 260;
+const MIN_PREVIEW_WIDTH = 430;
+const DEFAULT_SOURCE_WIDTH = 380;
+const DEFAULT_INSPECTOR_WIDTH = 320;
+const RESIZER_WIDTH = 18;
 
 export default function App() {
   const history = useEditorHistory({ html: initialHtml, selectedId: null });
@@ -48,6 +56,12 @@ export default function App() {
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [exportPreviewHtml, setExportPreviewHtml] = useState<string | null>(null);
+  const [sourcePanelPlacement, setSourcePanelPlacement] = useState<SourcePanelPlacement>("side");
+  const [sourceWidth, setSourceWidth] = useState(DEFAULT_SOURCE_WIDTH);
+  const [inspectorWidth, setInspectorWidth] = useState(DEFAULT_INSPECTOR_WIDTH);
+  const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const [hasImportedHtml, setHasImportedHtml] = useState(false);
+  const workspaceRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     latestHtmlRef.current = state.html;
@@ -177,6 +191,7 @@ export default function App() {
         setSelectedElement(null);
         setModalState({ found: false, open: false, label: "" });
         setModalCommand(null);
+        setHasImportedHtml(true);
         setStatusMessage(`已导入 ${file.name}`);
       };
       reader.readAsText(file);
@@ -254,6 +269,57 @@ export default function App() {
       setStatusMessage("已进入专注预览");
     }
   }, [isInspectorCollapsed, isSourceCollapsed]);
+
+  const handleToggleSourcePlacement = useCallback(() => {
+    setSourcePanelPlacement((placement) => (placement === "side" ? "bottom" : "side"));
+    setIsSourceCollapsed(false);
+    setStatusMessage(sourcePanelPlacement === "side" ? "源码区已移到底部" : "源码区已回到左侧");
+  }, [sourcePanelPlacement]);
+
+  const startPanelResize = useCallback(
+    (panel: "source" | "inspector") => (event: ReactPointerEvent<HTMLButtonElement>) => {
+      if (sourcePanelPlacement !== "side") return;
+      const workspace = workspaceRef.current;
+      if (!workspace) return;
+
+      event.preventDefault();
+      const rect = workspace.getBoundingClientRect();
+      const startSourceWidth = sourceWidth;
+      const startInspectorWidth = inspectorWidth;
+
+      const handlePointerMove = (moveEvent: PointerEvent) => {
+        const availableWidth = rect.width - RESIZER_WIDTH * 2;
+
+        if (panel === "source") {
+          const nextWidth = clamp(
+            moveEvent.clientX - rect.left,
+            MIN_SOURCE_WIDTH,
+            Math.max(MIN_SOURCE_WIDTH, availableWidth - startInspectorWidth - MIN_PREVIEW_WIDTH)
+          );
+          setSourceWidth(nextWidth);
+          return;
+        }
+
+        const nextWidth = clamp(
+          rect.right - moveEvent.clientX,
+          MIN_INSPECTOR_WIDTH,
+          Math.max(MIN_INSPECTOR_WIDTH, availableWidth - startSourceWidth - MIN_PREVIEW_WIDTH)
+        );
+        setInspectorWidth(nextWidth);
+      };
+
+      const handlePointerUp = () => {
+        document.body.classList.remove("is-resizing-panels");
+        window.removeEventListener("pointermove", handlePointerMove);
+        window.removeEventListener("pointerup", handlePointerUp);
+      };
+
+      document.body.classList.add("is-resizing-panels");
+      window.addEventListener("pointermove", handlePointerMove);
+      window.addEventListener("pointerup", handlePointerUp);
+    },
+    [inspectorWidth, sourcePanelPlacement, sourceWidth]
+  );
 
   const handleSelectFromTree = useCallback((hftId: string) => {
     setSelectCommand({ id: Date.now(), hftId });
@@ -333,6 +399,16 @@ export default function App() {
     () => buildHistoryDisplayItems(history.timeline, history.currentIndex),
     [history.currentIndex, history.timeline]
   );
+  const workspaceStyle = useMemo(
+    () =>
+      ({
+        "--source-col": isSourceCollapsed ? "56px" : `${sourceWidth}px`,
+        "--inspector-col": isInspectorCollapsed ? "56px" : `${inspectorWidth}px`,
+      }) as CSSProperties,
+    [inspectorWidth, isInspectorCollapsed, isSourceCollapsed, sourceWidth]
+  );
+  const previewStatusText = isPreviewReady ? "实时预览 · 已就绪" : "实时预览 · 渲染中";
+  const characterCountText = `${state.html.length.toLocaleString()} 字符`;
 
   return (
     <div className={`app-shell${isFocusPreview ? " app-shell-focus-preview" : ""}`}>
@@ -370,10 +446,13 @@ export default function App() {
         />
       ) : null}
       <main
+        ref={workspaceRef}
+        style={workspaceStyle}
         className={[
           "workspace",
           isSourceCollapsed ? "workspace-source-collapsed" : "",
           isInspectorCollapsed ? "workspace-inspector-collapsed" : "",
+          sourcePanelPlacement === "bottom" ? "workspace-source-bottom" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -384,9 +463,19 @@ export default function App() {
           domTree={domTree}
           selectedId={state.selectedId}
           onChange={handleHtmlChange}
+          onImport={handleImport}
           onSelectElement={handleSelectFromTree}
           isCollapsed={isSourceCollapsed}
           onToggleCollapse={() => setIsSourceCollapsed((value) => !value)}
+          placement={sourcePanelPlacement}
+          onTogglePlacement={handleToggleSourcePlacement}
+          showImportDropzone={!hasImportedHtml}
+        />
+        <button
+          className="workspace-resizer workspace-resizer-source"
+          type="button"
+          aria-label="拖拽调整源码区宽度"
+          onPointerDown={startPanelResize("source")}
         />
         <PreviewFrame
           html={state.html}
@@ -400,6 +489,13 @@ export default function App() {
           onElementSelected={updateSelectedElement}
           onModalStateChange={handleModalStateChange}
           onElementAction={handleElementQuickAction}
+          onReadyChange={setIsPreviewReady}
+        />
+        <button
+          className="workspace-resizer workspace-resizer-inspector"
+          type="button"
+          aria-label="拖拽调整检查器宽度"
+          onPointerDown={startPanelResize("inspector")}
         />
         <StyleEditorPanel
           selectedElement={selectedElement}
@@ -413,6 +509,8 @@ export default function App() {
       </main>
       <footer className="status-bar" aria-live="polite">
         <span>{editorStatus}</span>
+        <span>{characterCountText}</span>
+        <span>{previewStatusText}</span>
         <span>{statusMessage}</span>
       </footer>
     </div>
@@ -447,4 +545,8 @@ function withRelatedStyleUpdates(
   }
 
   return styles;
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
 }

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
-import { Eye, Loader2, Maximize2, Minimize2, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Eye, Maximize2, Minimize2, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useIframeSelection } from "../hooks/useIframeSelection";
 import type {
   ElementQuickAction,
@@ -24,6 +24,7 @@ interface PreviewFrameProps {
   onElementSelected: (element: SelectedElementSnapshot) => void;
   onModalStateChange: (state: ModalState) => void;
   onElementAction: (hftId: string, action: ElementQuickAction) => void;
+  onReadyChange: (isReady: boolean) => void;
 }
 
 export function PreviewFrame({
@@ -38,6 +39,7 @@ export function PreviewFrame({
   onElementSelected,
   onModalStateChange,
   onElementAction,
+  onReadyChange,
 }: PreviewFrameProps) {
   const { iframeRef, isReady, markRendering } = useIframeSelection(
     onElementSelected,
@@ -48,7 +50,12 @@ export function PreviewFrame({
 
   useEffect(() => {
     markRendering();
-  }, [markRendering, srcDoc]);
+    onReadyChange(false);
+  }, [markRendering, onReadyChange, srcDoc]);
+
+  useEffect(() => {
+    onReadyChange(isReady);
+  }, [isReady, onReadyChange]);
 
   useEffect(() => {
     if (!modalCommand || !isReady) return;
@@ -81,8 +88,10 @@ export function PreviewFrame({
           <Eye size={18} strokeWidth={1.8} />
           <span>实时预览</span>
         </div>
-        <div className="preview-header-actions">
-          <div className="segmented-control" aria-label="预览宽度">
+      </div>
+      <div className={`iframe-shell iframe-shell-${viewportMode}`}>
+        <div className="preview-floating-toolbar">
+          <div className="segmented-control preview-mode-control" aria-label="预览宽度">
             <PreviewModeButton
               mode="desktop"
               activeMode={viewportMode}
@@ -109,18 +118,12 @@ export function PreviewFrame({
             className="ghost-button compact-action"
             type="button"
             onClick={onToggleFocusPreview}
-            title={isFocusPreview ? "恢复三栏" : "专注预览"}
+            title={isFocusPreview ? "恢复三栏编辑器" : "隐藏编辑器，全屏预览"}
           >
             {isFocusPreview ? <Minimize2 size={15} strokeWidth={1.9} /> : <Maximize2 size={15} strokeWidth={1.9} />}
-            {isFocusPreview ? "恢复" : "专注"}
+            {isFocusPreview ? "恢复" : "全屏"}
           </button>
-          <div className="preview-status" aria-live="polite">
-            {!isReady ? <Loader2 className="spin" size={15} /> : <span className="status-dot" />}
-            {isReady ? "已就绪" : "渲染中"}
-          </div>
         </div>
-      </div>
-      <div className={`iframe-shell iframe-shell-${viewportMode}`}>
         <div className={`preview-viewport preview-viewport-${viewportMode}`}>
           <iframe
             ref={iframeRef}
@@ -167,14 +170,14 @@ function buildPreviewDocument(html: string, selectedId: string | null): string {
     }
     [data-html-finetune-hovered="true"]:not([data-html-finetune-selected="true"]) {
       outline: 1.5px dashed #d97757 !important;
-      outline-offset: 4px !important;
+      outline-offset: 2px !important;
       box-shadow: 0 0 0 5px rgba(217, 119, 87, 0.08) !important;
       border-radius: 0 !important;
     }
     [data-html-finetune-selected="true"] {
-      outline: 2.5px solid #d97757 !important;
-      outline-offset: 4px !important;
-      box-shadow: 0 0 0 7px rgba(217, 119, 87, 0.13) !important;
+      outline: 2px solid #c96f4a !important;
+      outline-offset: 2px !important;
+      box-shadow: 0 0 0 6px rgba(201, 111, 74, 0.13) !important;
       border-radius: 0 !important;
     }
     #html-finetune-floating-toolbar {
