@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { MousePointerClick, PanelRightClose, PanelRightOpen, SlidersHorizontal, Type } from "lucide-react";
 import type { EditableAttributes, EditableEffects, EditableStyleKey, SelectedElementSnapshot } from "../types/editor";
 
@@ -23,7 +24,7 @@ const fontLabels = ["系统无衬线", "编辑感衬线", "等宽字体", "Arial
 const weightOptions = ["300", "400", "500", "600", "700", "800"];
 const textAlignOptions = ["left", "center", "right", "justify", "start"];
 
-export function StyleEditorPanel({
+export function StyleEditorPanelImpl({
   selectedElement,
   onTextChange,
   onStyleChange,
@@ -426,6 +427,8 @@ export function StyleEditorPanel({
     </aside>
   );
 }
+
+export const StyleEditorPanel = memo(StyleEditorPanelImpl);
 
 interface NumericUnitFieldProps {
   label: string;

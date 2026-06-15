@@ -144,17 +144,12 @@ export function deleteHtmlElementByHftId(html: string, hftId: string): string {
 }
 
 export function getHoverBackgroundColor(html: string, hftId: string): string {
-  const parser = new DOMParser();
-  const documentRef = parser.parseFromString(html, "text/html");
-  const styleElement = getHoverStyleElement(documentRef, false);
-  if (!styleElement?.textContent) return "";
-
   const escapedId = escapeRegExp(hftId);
   const pattern = new RegExp(
     `\\[${HFT_ID_ATTRIBUTE}="${escapedId}"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}`,
     "i"
   );
-  const match = styleElement.textContent.match(pattern);
+  const match = html.match(pattern);
   return match?.[1]?.trim() ?? "";
 }
 

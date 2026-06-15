@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from "react";
+import { memo, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { Eye, Maximize2, Minimize2, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useIframeSelection } from "../hooks/useIframeSelection";
@@ -6,6 +6,7 @@ import type {
   ElementQuickAction,
   ModalCommand,
   ModalState,
+  PatchCommand,
   PreviewViewportMode,
   SelectElementCommand,
   SelectedElementSnapshot,
@@ -15,6 +16,8 @@ import { createEditableElementScriptConfig } from "../utils/editableElement";
 interface PreviewFrameProps {
   html: string;
   selectedId: string | null;
+  reloadNonce: number;
+  patchCommand: PatchCommand | null;
   modalCommand: ModalCommand | null;
   selectCommand: SelectElementCommand | null;
   viewportMode: PreviewViewportMode;
@@ -27,9 +30,11 @@ interface PreviewFrameProps {
   onReadyChange: (isReady: boolean) => void;
 }
 
-export function PreviewFrame({
+function PreviewFrameComponent({
   html,
   selectedId,
+  reloadNonce,
+  patchCommand,
   modalCommand,
   selectCommand,
   viewportMode,
@@ -48,7 +53,12 @@ export function PreviewFrame({
     onModalStateChange,
     onElementAction
   );
-  const srcDoc = useMemo(() => buildPreviewDocument(html, bridgeTokenRef.current), [html]);
+  // srcDoc 仅在结构性变更(reloadNonce)时重建;文本/样式编辑通过 patchCommand 增量下发。
+  const srcDoc = useMemo(
+    () => buildPreviewDocument(html, bridgeTokenRef.current),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reloadNonce]
+  );
 
   useEffect(() => {
     markRendering();
@@ -58,6 +68,20 @@ export function PreviewFrame({
   useEffect(() => {
     onReadyChange(isReady);
   }, [isReady, onReadyChange]);
+
+  // 增量补丁:文本/样式/属性就地应用到 iframe,不触发整文档重建。
+  useEffect(() => {
+    if (!patchCommand || !isReady) return;
+    iframeRef.current?.contentWindow?.postMessage(
+      {
+        type: "HTML_FINETUNE_PATCH_ELEMENT",
+        hftId: patchCommand.hftId,
+        patch: patchCommand.patch,
+        token: bridgeTokenRef.current,
+      },
+      "*"
+    );
+  }, [iframeRef, isReady, patchCommand]);
 
   useEffect(() => {
     if (!modalCommand || !isReady) return;
@@ -141,6 +165,8 @@ export function PreviewFrame({
     </section>
   );
 }
+
+export const PreviewFrame = memo(PreviewFrameComponent);
 
 interface PreviewModeButtonProps {
   mode: PreviewViewportMode;
@@ -474,17 +500,25 @@ function createBridgeScript(bridgeToken: string): string {
         toolbar.style.left = left + "px";
       }
 
+      let cachedFrameBounds = null;
+      function invalidateFrameBounds() {
+        cachedFrameBounds = null;
+      }
+
       function getVisibleFrameBounds() {
+        if (cachedFrameBounds) return cachedFrameBounds;
         const fallback = { width: window.innerWidth, height: window.innerHeight };
         try {
           if (!window.frameElement || !window.parent) return fallback;
           const frameRect = window.frameElement.getBoundingClientRect();
           const parentWidth = window.parent.innerWidth || fallback.width;
           const parentHeight = window.parent.innerHeight || fallback.height;
-          return {
+          const bounds = {
             width: Math.max(120, Math.min(fallback.width, parentWidth - frameRect.left - 8)),
             height: Math.max(80, Math.min(fallback.height, parentHeight - frameRect.top - 8))
           };
+          cachedFrameBounds = bounds;
+          return bounds;
         } catch {
           return fallback;
         }
@@ -510,6 +544,88 @@ function createBridgeScript(bridgeToken: string): string {
         return Array.from(document.querySelectorAll(modalSelectors.join(","))).filter((element) => {
           return element instanceof HTMLElement;
         });
+      }
+
+      // 增量补丁:文本/样式/属性就地应用,避免整文档重建。
+      function patchElement(hftId, patch) {
+        const element = queryByHftId(hftId);
+        if (!element || !(element instanceof HTMLElement)) return;
+
+        if (typeof patch.text === "string" && element.children.length === 0) {
+          element.textContent = patch.text;
+        }
+
+        if (patch.attributes) {
+          Object.keys(patch.attributes).forEach((attribute) => {
+            const value = patch.attributes[attribute];
+            if (typeof value !== "string") return;
+            if (attribute === "alt") {
+              element.setAttribute(attribute, value);
+              return;
+            }
+            if (value.trim()) {
+              element.setAttribute(attribute, value);
+            } else {
+              element.removeAttribute(attribute);
+            }
+          });
+        }
+
+        if (patch.styles) {
+          Object.keys(patch.styles).forEach((property) => {
+            const value = patch.styles[property];
+            if (typeof value !== "string") return;
+            const kebab = property.replace(/[A-Z]/g, (letter) => "-" + letter.toLowerCase());
+            if (value.trim()) {
+              element.style.setProperty(kebab, value);
+            } else {
+              element.style.removeProperty(kebab);
+            }
+          });
+        }
+
+        if (patch.effects && typeof patch.effects.hoverBackgroundColor !== "undefined") {
+          updateHoverBackgroundRule(element, patch.effects.hoverBackgroundColor);
+        }
+
+        if (element.getAttribute(config.selectedAttribute) === "true") {
+          positionFloatingToolbar(element);
+        }
+      }
+
+      function updateHoverBackgroundRule(element, color) {
+        const styleId = "html-finetune-hover-rules";
+        let styleElement = document.getElementById(styleId);
+        const rules = [];
+        if (styleElement && styleElement.textContent) {
+          const pattern = new RegExp(
+            "\\[" + config.hftIdAttribute + "=\"([^\"]+)\"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}",
+            "gi"
+          );
+          for (const match of styleElement.textContent.matchAll(pattern)) {
+            rules.push({ hftId: match[1], color: match[2].trim() });
+          }
+        }
+
+        const hftId = element.getAttribute(config.hftIdAttribute) || "";
+        const filtered = rules.filter((rule) => rule.hftId !== hftId);
+        if (color.trim()) {
+          filtered.push({ hftId, color: color.trim() });
+        }
+
+        if (filtered.length === 0) {
+          if (styleElement) styleElement.remove();
+          return;
+        }
+
+        if (!styleElement) {
+          styleElement = document.createElement("style");
+          styleElement.id = styleId;
+          document.head.appendChild(styleElement);
+        }
+        styleElement.textContent = "\\n" + filtered
+          .map((rule) => "[" + config.hftIdAttribute + "=\"" + rule.hftId + "\"]:hover { background-color: " + rule.color + "; }")
+          .join("\\n") + "\\n";
       }
 
       function isNativeDialog(element) {
@@ -711,14 +827,25 @@ function createBridgeScript(bridgeToken: string): string {
           return;
         }
 
+        if (data.type === "HTML_FINETUNE_PATCH_ELEMENT") {
+          patchElement(data.hftId, data.patch || {});
+          return;
+        }
+
         if (data.type !== "HTML_FINETUNE_MODAL_COMMAND") return;
 
         if (data.action === "open") openModal();
         if (data.action === "close") closeModal();
       });
 
-      window.addEventListener("scroll", repositionFloatingToolbar, true);
-      window.addEventListener("resize", repositionFloatingToolbar);
+      window.addEventListener("scroll", () => {
+        invalidateFrameBounds();
+        repositionFloatingToolbar();
+      }, true);
+      window.addEventListener("resize", () => {
+        invalidateFrameBounds();
+        repositionFloatingToolbar();
+      });
 
       markEditableElements();
       postModalState();

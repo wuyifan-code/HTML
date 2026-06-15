@@ -1,4 +1,4 @@
-import type { EditorDocumentState } from "../types/editor";
+import type { EditorDocumentState, HistorySummary } from "../types/editor";
 import { HFT_ID_ATTRIBUTE } from "./editableElement";
 import { parseHtmlDocument } from "./injectEditableIds";
 
@@ -48,7 +48,26 @@ export function buildHistoryDisplayItems(
   });
 }
 
-function summarizeStateChange(previous: EditorDocumentState, next: EditorDocumentState) {
+/**
+ * 纯映射版本:summary 已在 commit 时随 HistoryEntry 永久存储,
+ * 此处仅做展示拼接,不再解析 DOM。
+ */
+export function buildDisplayItemsFromSummaries(
+  summaries: (HistorySummary | null)[],
+  currentIndex: number
+): HistoryDisplayItem[] {
+  return summaries.map((summary, index) => ({
+    index,
+    title: summary?.title ?? labels.initialTitle,
+    detail: summary?.detail ?? labels.initialDetail,
+    isCurrent: index === currentIndex,
+  }));
+}
+
+export function summarizeStateChange(
+  previous: EditorDocumentState,
+  next: EditorDocumentState
+): HistorySummary {
   const previousDocument = parseHtmlDocument(previous.html);
   const nextDocument = parseHtmlDocument(next.html);
   const previousElements = getEditableElementMap(previousDocument);

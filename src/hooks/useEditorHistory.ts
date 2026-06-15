@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { EditorDocumentState } from "../types/editor";
+import type { EditorDocumentState, HistoryEntry, HistorySummary } from "../types/editor";
+import { summarizeStateChange } from "../utils/historySummary";
 
 interface CommitOptions {
   record?: boolean;
@@ -9,11 +10,11 @@ interface CommitOptions {
 const TEXT_DEBOUNCE_MS = 450;
 
 export function useEditorHistory(initialState: EditorDocumentState) {
-  const [present, setPresent] = useState(initialState);
-  const [past, setPast] = useState<EditorDocumentState[]>([]);
-  const [future, setFuture] = useState<EditorDocumentState[]>([]);
+  const [present, setPresent] = useState<HistoryEntry>({ state: initialState, summary: null });
+  const [past, setPast] = useState<HistoryEntry[]>([]);
+  const [future, setFuture] = useState<HistoryEntry[]>([]);
   const [hasPendingHistory, setHasPendingHistory] = useState(false);
-  const pendingBaseRef = useRef<EditorDocumentState | null>(null);
+  const pendingBaseRef = useRef<HistoryEntry | null>(null);
   const debounceTimerRef = useRef<number | null>(null);
   const presentRef = useRef(present);
   const pastRef = useRef(past);
@@ -48,8 +49,10 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     }
 
     const current = presentRef.current;
-    if (pendingBase.html !== current.html) {
-      const nextPast = [...pastRef.current, pendingBase];
+    if (pendingBase.state.html !== current.state.html) {
+      const summary = summarizeStateChange(pendingBase.state, current.state);
+      const entry: HistoryEntry = { state: pendingBase.state, summary };
+      const nextPast = [...pastRef.current, entry];
       pastRef.current = nextPast;
       futureRef.current = [];
       setPast(nextPast);
@@ -64,12 +67,14 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       const { record = true, debounce = false } = options;
       const current = presentRef.current;
 
-      if (nextState.html === current.html && nextState.selectedId === current.selectedId) return;
+      if (nextState.html === current.state.html && nextState.selectedId === current.state.selectedId) return;
+
+      const nextEntry: HistoryEntry = { state: nextState, summary: null };
 
       if (!record) {
         flushDebouncedHistory();
-        setPresent(nextState);
-        presentRef.current = nextState;
+        setPresent(nextEntry);
+        presentRef.current = nextEntry;
         return;
       }
 
@@ -79,8 +84,8 @@ export function useEditorHistory(initialState: EditorDocumentState) {
           setHasPendingHistory(true);
         }
 
-        setPresent(nextState);
-        presentRef.current = nextState;
+        setPresent(nextEntry);
+        presentRef.current = nextEntry;
         clearDebounce();
         debounceTimerRef.current = window.setTimeout(() => {
           flushDebouncedHistory();
@@ -89,13 +94,15 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       }
 
       flushDebouncedHistory();
-      const nextPast = [...pastRef.current, current];
+      const summary = summarizeStateChange(current.state, nextState);
+      const baseEntry: HistoryEntry = { state: current.state, summary };
+      const nextPast = [...pastRef.current, baseEntry];
       pastRef.current = nextPast;
       futureRef.current = [];
       setPast(nextPast);
       setFuture([]);
-      setPresent(nextState);
-      presentRef.current = nextState;
+      setPresent(nextEntry);
+      presentRef.current = nextEntry;
     },
     [clearDebounce, flushDebouncedHistory]
   );
@@ -105,8 +112,9 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       clearDebounce();
       pendingBaseRef.current = null;
       setHasPendingHistory(false);
-      setPresent(nextState);
-      presentRef.current = nextState;
+      const nextEntry: HistoryEntry = { state: nextState, summary: null };
+      setPresent(nextEntry);
+      presentRef.current = nextEntry;
       pastRef.current = [];
       futureRef.current = [];
       setPast([]);
@@ -170,20 +178,28 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     [flushDebouncedHistory]
   );
 
-  const timeline = useMemo(() => [...past, present, ...future], [future, past, present]);
+  const timeline = useMemo(
+    () => [...past, present, ...future].map((entry) => entry.state),
+    [future, past, present]
+  );
+  const summaries = useMemo(
+    () => [...past, present, ...future].map((entry) => entry.summary),
+    [future, past, present]
+  );
   const currentIndex = past.length;
   const canUndo = past.length > 0 || hasPendingHistory;
   const canRedo = future.length > 0;
 
   return useMemo(
     () => ({
-      state: present,
+      state: present.state,
       commit,
       reset,
       undo,
       redo,
       jumpToHistoryIndex,
       timeline,
+      summaries,
       currentIndex,
       canUndo,
       canRedo,
@@ -196,9 +212,10 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       currentIndex,
       flushDebouncedHistory,
       jumpToHistoryIndex,
-      present,
+      present.state,
       redo,
       reset,
+      summaries,
       timeline,
       undo,
     ]

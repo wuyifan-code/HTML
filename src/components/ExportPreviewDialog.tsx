@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { CheckCircle2, Clipboard, Download, X } from "lucide-react";
 
 interface ExportPreviewDialogProps {
@@ -14,7 +15,7 @@ const internalMarkers = [
   "html-finetune-floating-toolbar",
 ];
 
-export function ExportPreviewDialog({ html, onClose, onCopy, onDownload }: ExportPreviewDialogProps) {
+function ExportPreviewDialogImpl({ html, onClose, onCopy, onDownload }: ExportPreviewDialogProps) {
   const hasInternalMarkers = internalMarkers.some((marker) => html.includes(marker));
 
   return (
@@ -51,3 +52,5 @@ export function ExportPreviewDialog({ html, onClose, onCopy, onDownload }: Expor
     </div>
   );
 }
+
+export const ExportPreviewDialog = memo(ExportPreviewDialogImpl);

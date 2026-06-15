@@ -126,3 +126,19 @@ export interface EditorDocumentState {
   html: string;
   selectedId: string | null;
 }
+
+export interface PatchCommand {
+  id: number;
+  hftId: string;
+  patch: ElementUpdate;
+}
+
+export interface HistorySummary {
+  title: string;
+  detail: string;
+}
+
+export interface HistoryEntry {
+  state: EditorDocumentState;
+  summary: HistorySummary | null;
+}

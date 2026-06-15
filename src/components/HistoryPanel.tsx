@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { History, RotateCcw, RotateCw, X } from "lucide-react";
 import type { HistoryDisplayItem } from "../utils/historySummary";
 
@@ -11,7 +12,7 @@ interface HistoryPanelProps {
   onClose: () => void;
 }
 
-export function HistoryPanel({
+function HistoryPanelImpl({
   items,
   canUndo,
   canRedo,
@@ -68,3 +69,5 @@ export function HistoryPanel({
     </aside>
   );
 }
+
+export const HistoryPanel = memo(HistoryPanelImpl);

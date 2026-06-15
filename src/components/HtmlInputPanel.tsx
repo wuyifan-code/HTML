@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { memo, useState } from "react";
 import { Code2, FileUp, ListTree, PanelBottom, PanelLeft, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { DomTreeNode, SourcePanelPlacement } from "../types/editor";
+
+type SourcePanelView = "source" | "tree";
 
 interface HtmlInputPanelProps {
   value: string;
@@ -14,9 +16,11 @@ interface HtmlInputPanelProps {
   placement: SourcePanelPlacement;
   onTogglePlacement: () => void;
   showImportDropzone: boolean;
+  sourceView: SourcePanelView;
+  onSourceViewChange: (view: SourcePanelView) => void;
 }
 
-export function HtmlInputPanel({
+function HtmlInputPanelComponent({
   value,
   domTree,
   selectedId,
@@ -28,8 +32,11 @@ export function HtmlInputPanel({
   placement,
   onTogglePlacement,
   showImportDropzone,
+  sourceView,
+  onSourceViewChange,
 }: HtmlInputPanelProps) {
-  const [activeView, setActiveView] = useSourcePanelView();
+  const activeView = sourceView;
+  const setActiveView = onSourceViewChange;
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const isBottomPlacement = placement === "bottom";
 
@@ -175,9 +182,4 @@ export function HtmlInputPanel({
   );
 }
 
-type SourcePanelView = "source" | "tree";
-
-function useSourcePanelView(): [SourcePanelView, (view: SourcePanelView) => void] {
-  const [activeView, setActiveView] = useState<SourcePanelView>("source");
-  return [activeView, setActiveView];
-}
+export const HtmlInputPanel = memo(HtmlInputPanelComponent);

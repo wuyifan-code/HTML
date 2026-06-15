@@ -12,6 +12,7 @@ import type {
   EditableStyleKey,
   ModalCommand,
   ModalState,
+  PatchCommand,
   PreviewViewportMode,
   SelectElementCommand,
   SelectedElementSnapshot,
@@ -31,7 +32,7 @@ import {
   updateHtmlElementByHftId,
 } from "./utils/domPath";
 import { exportHtml } from "./utils/exportHtml";
-import { buildHistoryDisplayItems } from "./utils/historySummary";
+import { buildDisplayItemsFromSummaries } from "./utils/historySummary";
 import { injectEditableIds } from "./utils/injectEditableIds";
 
 const initialHtml = injectEditableIds(sampleHtml).html;
@@ -52,6 +53,7 @@ export default function App() {
     redo,
     jumpToHistoryIndex,
     timeline,
+    summaries,
     currentIndex,
     canUndo,
     canRedo,
@@ -65,6 +67,9 @@ export default function App() {
   const [modalState, setModalState] = useState<ModalState>({ found: false, open: false, label: "" });
   const [modalCommand, setModalCommand] = useState<ModalCommand | null>(null);
   const [selectCommand, setSelectCommand] = useState<SelectElementCommand | null>(null);
+  const [patchCommand, setPatchCommand] = useState<PatchCommand | null>(null);
+  const [reloadNonce, setReloadNonce] = useState(0);
+  const [sourceView, setSourceView] = useState<"source" | "tree">("source");
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [exportPreviewHtml, setExportPreviewHtml] = useState<string | null>(null);
@@ -81,6 +86,11 @@ export default function App() {
 
   const updateSelectedElement = useCallback(
     (nextElement: SelectedElementSnapshot) => {
+      // ⑦ 守卫:选中同一元素时跳过无意义 commit
+      if (nextElement.hftId === state.selectedId) {
+        flushDebouncedHistory();
+        return;
+      }
       flushDebouncedHistory();
       const currentHtml = latestHtmlRef.current;
       setSelectedElement(withElementEffects(nextElement, currentHtml));
@@ -92,93 +102,103 @@ export default function App() {
         { record: false }
       );
     },
-    [commit, flushDebouncedHistory]
+    [commit, flushDebouncedHistory, state.selectedId]
   );
 
-  const applyTextUpdate = useCallback(
-    (text: string) => {
-      if (!selectedElement?.canEditText) return;
-      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, { text });
-      latestHtmlRef.current = nextHtml;
-      commit(
-        {
-          html: nextHtml,
-          selectedId: selectedElement.hftId,
-        },
-        { debounce: true }
-      );
-      setSelectedElement({ ...selectedElement, text });
-    },
+	  const applyTextUpdate = useCallback(
+	    (text: string) => {
+	      if (!selectedElement?.canEditText) return;
+	      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, { text });
+	      latestHtmlRef.current = nextHtml;
+	      commit(
+	        {
+	          html: nextHtml,
+	          selectedId: selectedElement.hftId,
+	        },
+	        { debounce: true }
+	      );
+	      setSelectedElement({ ...selectedElement, text });
+	      setPatchCommand({ id: Date.now(), hftId: selectedElement.hftId, patch: { text } });
+	    },
     [commit, selectedElement]
   );
 
-  const applyStyleUpdate = useCallback(
-    (property: EditableStyleKey, value: string) => {
-      if (!selectedElement) return;
-      const styles = withRelatedStyleUpdates(property, value, selectedElement);
-      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
-        styles,
-      });
-      latestHtmlRef.current = nextHtml;
-      commit({
-        html: nextHtml,
-        selectedId: selectedElement.hftId,
-      });
-      setSelectedElement({
-        ...selectedElement,
-        styles: {
-          ...selectedElement.styles,
-          ...styles,
-        },
-        hasInlineStyle: true,
-      });
-    },
+	  const applyStyleUpdate = useCallback(
+	    (property: EditableStyleKey, value: string) => {
+	      if (!selectedElement) return;
+	      const styles = withRelatedStyleUpdates(property, value, selectedElement);
+	      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
+	        styles,
+	      });
+	      latestHtmlRef.current = nextHtml;
+	      commit(
+	        {
+	          html: nextHtml,
+	          selectedId: selectedElement.hftId,
+	        },
+	        { debounce: true }
+	      );
+	      setSelectedElement({
+	        ...selectedElement,
+	        styles: {
+	          ...selectedElement.styles,
+	          ...styles,
+	        },
+	        hasInlineStyle: true,
+	      });
+	      setPatchCommand({ id: Date.now(), hftId: selectedElement.hftId, patch: { styles } });
+	    },
     [commit, selectedElement]
   );
 
-  const applyEffectUpdate = useCallback(
-    (property: keyof EditableEffects, value: string) => {
-      if (!selectedElement) return;
-      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
-        effects: { [property]: value },
-      });
-      latestHtmlRef.current = nextHtml;
-      commit({
-        html: nextHtml,
-        selectedId: selectedElement.hftId,
-      });
-      setSelectedElement({
-        ...selectedElement,
-        effects: {
-          ...selectedElement.effects,
-          [property]: value,
-        },
-      });
-    },
-    [commit, selectedElement]
-  );
+	  const applyEffectUpdate = useCallback(
+	    (property: keyof EditableEffects, value: string) => {
+	      if (!selectedElement) return;
+	      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
+	        effects: { [property]: value },
+	      });
+	      latestHtmlRef.current = nextHtml;
+	      commit(
+	        {
+	          html: nextHtml,
+	          selectedId: selectedElement.hftId,
+	        },
+	        { debounce: true }
+	      );
+	      setSelectedElement({
+	        ...selectedElement,
+	        effects: {
+	          ...selectedElement.effects,
+	          [property]: value,
+	        },
+	      });
+	      setPatchCommand({ id: Date.now(), hftId: selectedElement.hftId, patch: { effects: { [property]: value } } });
+	    },
+	    [commit, selectedElement]
+	  );
 
-  const applyAttributeUpdate = useCallback(
-    (property: keyof EditableAttributes, value: string) => {
-      if (!selectedElement) return;
-      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
-        attributes: { [property]: value },
-      });
-      latestHtmlRef.current = nextHtml;
-      commit({
-        html: nextHtml,
-        selectedId: selectedElement.hftId,
-      });
-      setSelectedElement({
-        ...selectedElement,
-        attributes: {
-          ...selectedElement.attributes,
-          [property]: value,
-        },
-      });
-    },
-    [commit, selectedElement]
-  );
+	  const applyAttributeUpdate = useCallback(
+	    (property: keyof EditableAttributes, value: string) => {
+	      if (!selectedElement) return;
+	      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
+	        attributes: { [property]: value },
+	      });
+	      latestHtmlRef.current = nextHtml;
+	      commit({
+	        html: nextHtml,
+	        selectedId: selectedElement.hftId,
+	      });
+	      setSelectedElement({
+	        ...selectedElement,
+	        attributes: {
+	          ...selectedElement.attributes,
+	          [property]: value,
+	        },
+	      });
+	      setPatchCommand({ id: Date.now(), hftId: selectedElement.hftId, patch: { attributes: { [property]: value } } });
+	    },
+	    [commit, selectedElement]
+	  );
 
   const handleHtmlChange = useCallback(
     (value: string) => {
@@ -194,6 +214,7 @@ export default function App() {
       setSelectedElement(null);
       setModalState({ found: false, open: false, label: "" });
       setModalCommand(null);
+      setReloadNonce((n) => n + 1);
     },
     [commit]
   );
@@ -213,6 +234,7 @@ export default function App() {
         setModalCommand(null);
         setHasImportedHtml(true);
         setStatusMessage(`已导入 ${file.name}`);
+        setReloadNonce((n) => n + 1);
       };
       reader.readAsText(file);
     },
@@ -253,17 +275,20 @@ export default function App() {
 
   const handleUndo = useCallback(() => {
     undo();
+    setReloadNonce((n) => n + 1);
     setStatusMessage("已撤销上一步编辑");
   }, [undo]);
 
   const handleRedo = useCallback(() => {
     redo();
+    setReloadNonce((n) => n + 1);
     setStatusMessage("已重做编辑");
   }, [redo]);
 
   const handleJumpToHistory = useCallback(
     (index: number) => {
       jumpToHistoryIndex(index);
+      setReloadNonce((n) => n + 1);
       setStatusMessage(`已跳转到历史第 ${index + 1} 步`);
     },
     [jumpToHistoryIndex]
@@ -376,6 +401,7 @@ export default function App() {
         selectedId: null,
       });
       setSelectedElement(null);
+      setReloadNonce((n) => n + 1);
       setStatusMessage(action === "duplicate" ? "已复制选中元素" : "已删除选中元素");
     },
     [commit]
@@ -424,10 +450,13 @@ export default function App() {
     return `已选择 ${selectedElement.tagName.toUpperCase()} · ${selectedElement.hftId}`;
   }, [selectedElement]);
 
-  const domTree = useMemo(() => buildEditableDomTree(state.html), [state.html]);
+  const domTree = useMemo(() => {
+    if (sourceView !== "tree") return [];
+    return buildEditableDomTree(state.html);
+  }, [state.html, sourceView]);
   const historyItems = useMemo(
-    () => buildHistoryDisplayItems(timeline, currentIndex),
-    [currentIndex, timeline]
+    () => buildDisplayItemsFromSummaries(summaries, currentIndex),
+    [currentIndex, summaries]
   );
   const workspaceStyle = useMemo(
     () =>
@@ -500,6 +529,8 @@ export default function App() {
           placement={sourcePanelPlacement}
           onTogglePlacement={handleToggleSourcePlacement}
           showImportDropzone={!hasImportedHtml}
+          sourceView={sourceView}
+          onSourceViewChange={setSourceView}
         />
         <button
           className="workspace-resizer workspace-resizer-source"
@@ -510,6 +541,8 @@ export default function App() {
         <PreviewFrame
           html={state.html}
           selectedId={state.selectedId}
+          reloadNonce={reloadNonce}
+          patchCommand={patchCommand}
           modalCommand={modalCommand}
           selectCommand={selectCommand}
           viewportMode={previewViewportMode}
