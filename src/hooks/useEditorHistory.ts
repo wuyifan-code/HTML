@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { EditorDocumentState } from "../types/editor";
 
 interface CommitOptions {
@@ -12,13 +12,24 @@ export function useEditorHistory(initialState: EditorDocumentState) {
   const [present, setPresent] = useState(initialState);
   const [past, setPast] = useState<EditorDocumentState[]>([]);
   const [future, setFuture] = useState<EditorDocumentState[]>([]);
+  const [hasPendingHistory, setHasPendingHistory] = useState(false);
   const pendingBaseRef = useRef<EditorDocumentState | null>(null);
   const debounceTimerRef = useRef<number | null>(null);
   const presentRef = useRef(present);
+  const pastRef = useRef(past);
+  const futureRef = useRef(future);
 
   useEffect(() => {
     presentRef.current = present;
   }, [present]);
+
+  useEffect(() => {
+    pastRef.current = past;
+  }, [past]);
+
+  useEffect(() => {
+    futureRef.current = future;
+  }, [future]);
 
   const clearDebounce = useCallback(() => {
     if (debounceTimerRef.current) {
@@ -31,14 +42,21 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     clearDebounce();
 
     const pendingBase = pendingBaseRef.current;
-    if (!pendingBase) return;
+    if (!pendingBase) {
+      setHasPendingHistory(false);
+      return;
+    }
 
     const current = presentRef.current;
     if (pendingBase.html !== current.html) {
-      setPast((items) => [...items, pendingBase]);
+      const nextPast = [...pastRef.current, pendingBase];
+      pastRef.current = nextPast;
+      futureRef.current = [];
+      setPast(nextPast);
       setFuture([]);
     }
     pendingBaseRef.current = null;
+    setHasPendingHistory(false);
   }, [clearDebounce]);
 
   const commit = useCallback(
@@ -58,6 +76,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       if (debounce) {
         if (!pendingBaseRef.current) {
           pendingBaseRef.current = current;
+          setHasPendingHistory(true);
         }
 
         setPresent(nextState);
@@ -70,7 +89,10 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       }
 
       flushDebouncedHistory();
-      setPast((items) => [...items, current]);
+      const nextPast = [...pastRef.current, current];
+      pastRef.current = nextPast;
+      futureRef.current = [];
+      setPast(nextPast);
       setFuture([]);
       setPresent(nextState);
       presentRef.current = nextState;
@@ -82,8 +104,11 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     (nextState: EditorDocumentState) => {
       clearDebounce();
       pendingBaseRef.current = null;
+      setHasPendingHistory(false);
       setPresent(nextState);
       presentRef.current = nextState;
+      pastRef.current = [];
+      futureRef.current = [];
       setPast([]);
       setFuture([]);
     },
@@ -92,61 +117,90 @@ export function useEditorHistory(initialState: EditorDocumentState) {
 
   const undo = useCallback(() => {
     flushDebouncedHistory();
-    setPast((items) => {
-      if (!items.length) return items;
-      const previous = items[items.length - 1];
-      const remaining = items.slice(0, -1);
-      const current = present;
-      setFuture((futureItems) => [current, ...futureItems]);
-      setPresent(previous);
-      presentRef.current = previous;
-      return remaining;
-    });
-  }, [flushDebouncedHistory, present]);
+    const items = pastRef.current;
+    if (!items.length) return;
+
+    const previous = items[items.length - 1];
+    const remaining = items.slice(0, -1);
+    const current = presentRef.current;
+    const nextFuture = [current, ...futureRef.current];
+
+    pastRef.current = remaining;
+    futureRef.current = nextFuture;
+    setPast(remaining);
+    setFuture(nextFuture);
+    setPresent(previous);
+    presentRef.current = previous;
+  }, [flushDebouncedHistory]);
 
   const redo = useCallback(() => {
     flushDebouncedHistory();
-    setFuture((items) => {
-      if (!items.length) return items;
-      const next = items[0];
-      const remaining = items.slice(1);
-      const current = present;
-      setPast((pastItems) => [...pastItems, current]);
-      setPresent(next);
-      presentRef.current = next;
-      return remaining;
-    });
-  }, [flushDebouncedHistory, present]);
+    const items = futureRef.current;
+    if (!items.length) return;
+
+    const next = items[0];
+    const remaining = items.slice(1);
+    const current = presentRef.current;
+    const nextPast = [...pastRef.current, current];
+
+    pastRef.current = nextPast;
+    futureRef.current = remaining;
+    setPast(nextPast);
+    setFuture(remaining);
+    setPresent(next);
+    presentRef.current = next;
+  }, [flushDebouncedHistory]);
 
   const jumpToHistoryIndex = useCallback(
     (targetIndex: number) => {
       flushDebouncedHistory();
-      const timeline = [...past, presentRef.current, ...future];
+      const timeline = [...pastRef.current, presentRef.current, ...futureRef.current];
       if (targetIndex < 0 || targetIndex >= timeline.length) return;
 
       const target = timeline[targetIndex];
-      setPast(timeline.slice(0, targetIndex));
+      const nextPast = timeline.slice(0, targetIndex);
+      const nextFuture = timeline.slice(targetIndex + 1);
+      pastRef.current = nextPast;
+      futureRef.current = nextFuture;
+      setPast(nextPast);
       setPresent(target);
       presentRef.current = target;
-      setFuture(timeline.slice(targetIndex + 1));
+      setFuture(nextFuture);
     },
-    [flushDebouncedHistory, future, past]
+    [flushDebouncedHistory]
   );
 
-  const timeline = [...past, present, ...future];
+  const timeline = useMemo(() => [...past, present, ...future], [future, past, present]);
   const currentIndex = past.length;
+  const canUndo = past.length > 0 || hasPendingHistory;
+  const canRedo = future.length > 0;
 
-  return {
-    state: present,
-    commit,
-    reset,
-    undo,
-    redo,
-    jumpToHistoryIndex,
-    timeline,
-    currentIndex,
-    canUndo: past.length > 0 || pendingBaseRef.current !== null,
-    canRedo: future.length > 0,
-    flushDebouncedHistory,
-  };
+  return useMemo(
+    () => ({
+      state: present,
+      commit,
+      reset,
+      undo,
+      redo,
+      jumpToHistoryIndex,
+      timeline,
+      currentIndex,
+      canUndo,
+      canRedo,
+      flushDebouncedHistory,
+    }),
+    [
+      canRedo,
+      canUndo,
+      commit,
+      currentIndex,
+      flushDebouncedHistory,
+      jumpToHistoryIndex,
+      present,
+      redo,
+      reset,
+      timeline,
+      undo,
+    ]
+  );
 }

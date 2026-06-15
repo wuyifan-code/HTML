@@ -44,7 +44,19 @@ const RESIZER_WIDTH = 18;
 
 export default function App() {
   const history = useEditorHistory({ html: initialHtml, selectedId: null });
-  const { state } = history;
+  const {
+    state,
+    commit,
+    reset,
+    undo,
+    redo,
+    jumpToHistoryIndex,
+    timeline,
+    currentIndex,
+    canUndo,
+    canRedo,
+    flushDebouncedHistory,
+  } = history;
   const latestHtmlRef = useRef(state.html);
   const [selectedElement, setSelectedElement] = useState<SelectedElementSnapshot | null>(null);
   const [statusMessage, setStatusMessage] = useState("仅本地运行 · iframe srcDoc · postMessage 通信");
@@ -69,23 +81,26 @@ export default function App() {
 
   const updateSelectedElement = useCallback(
     (nextElement: SelectedElementSnapshot) => {
-      setSelectedElement(withElementEffects(nextElement, latestHtmlRef.current));
-      history.commit(
+      flushDebouncedHistory();
+      const currentHtml = latestHtmlRef.current;
+      setSelectedElement(withElementEffects(nextElement, currentHtml));
+      commit(
         {
-          html: latestHtmlRef.current,
+          html: currentHtml,
           selectedId: nextElement.hftId,
         },
         { record: false }
       );
     },
-    [history]
+    [commit, flushDebouncedHistory]
   );
 
   const applyTextUpdate = useCallback(
     (text: string) => {
-      if (!selectedElement) return;
-      const nextHtml = updateHtmlElementByHftId(state.html, selectedElement.hftId, { text });
-      history.commit(
+      if (!selectedElement?.canEditText) return;
+      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, { text });
+      latestHtmlRef.current = nextHtml;
+      commit(
         {
           html: nextHtml,
           selectedId: selectedElement.hftId,
@@ -94,17 +109,18 @@ export default function App() {
       );
       setSelectedElement({ ...selectedElement, text });
     },
-    [history, selectedElement, state.html]
+    [commit, selectedElement]
   );
 
   const applyStyleUpdate = useCallback(
     (property: EditableStyleKey, value: string) => {
       if (!selectedElement) return;
       const styles = withRelatedStyleUpdates(property, value, selectedElement);
-      const nextHtml = updateHtmlElementByHftId(state.html, selectedElement.hftId, {
+      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
         styles,
       });
-      history.commit({
+      latestHtmlRef.current = nextHtml;
+      commit({
         html: nextHtml,
         selectedId: selectedElement.hftId,
       });
@@ -117,16 +133,17 @@ export default function App() {
         hasInlineStyle: true,
       });
     },
-    [history, selectedElement, state.html]
+    [commit, selectedElement]
   );
 
   const applyEffectUpdate = useCallback(
     (property: keyof EditableEffects, value: string) => {
       if (!selectedElement) return;
-      const nextHtml = updateHtmlElementByHftId(state.html, selectedElement.hftId, {
+      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
         effects: { [property]: value },
       });
-      history.commit({
+      latestHtmlRef.current = nextHtml;
+      commit({
         html: nextHtml,
         selectedId: selectedElement.hftId,
       });
@@ -138,16 +155,17 @@ export default function App() {
         },
       });
     },
-    [history, selectedElement, state.html]
+    [commit, selectedElement]
   );
 
   const applyAttributeUpdate = useCallback(
     (property: keyof EditableAttributes, value: string) => {
       if (!selectedElement) return;
-      const nextHtml = updateHtmlElementByHftId(state.html, selectedElement.hftId, {
+      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, selectedElement.hftId, {
         attributes: { [property]: value },
       });
-      history.commit({
+      latestHtmlRef.current = nextHtml;
+      commit({
         html: nextHtml,
         selectedId: selectedElement.hftId,
       });
@@ -159,13 +177,14 @@ export default function App() {
         },
       });
     },
-    [history, selectedElement, state.html]
+    [commit, selectedElement]
   );
 
   const handleHtmlChange = useCallback(
     (value: string) => {
       const nextHtml = injectEditableIds(value).html;
-      history.commit(
+      latestHtmlRef.current = nextHtml;
+      commit(
         {
           html: nextHtml,
           selectedId: null,
@@ -176,7 +195,7 @@ export default function App() {
       setModalState({ found: false, open: false, label: "" });
       setModalCommand(null);
     },
-    [history]
+    [commit]
   );
 
   const handleImport = useCallback(
@@ -184,7 +203,8 @@ export default function App() {
       const reader = new FileReader();
       reader.onload = () => {
         const nextHtml = injectEditableIds(String(reader.result ?? "")).html;
-        history.reset({
+        latestHtmlRef.current = nextHtml;
+        reset({
           html: nextHtml,
           selectedId: null,
         });
@@ -196,19 +216,23 @@ export default function App() {
       };
       reader.readAsText(file);
     },
-    [history]
+    [reset]
   );
 
   const handleCopy = useCallback(async () => {
-    const cleanHtml = cleanHtmlForExport(state.html);
-    await copyHtmlToClipboard(cleanHtml);
-    setStatusMessage("已复制干净 HTML 到剪贴板");
-  }, [state.html]);
+    try {
+      const cleanHtml = cleanHtmlForExport(latestHtmlRef.current);
+      await copyHtmlToClipboard(cleanHtml);
+      setStatusMessage("已复制干净 HTML 到剪贴板");
+    } catch {
+      setStatusMessage("复制失败，请检查浏览器剪贴板权限");
+    }
+  }, []);
 
   const handleExport = useCallback(() => {
-    setExportPreviewHtml(cleanHtmlForExport(state.html));
+    setExportPreviewHtml(cleanHtmlForExport(latestHtmlRef.current));
     setStatusMessage("已生成导出前预览");
-  }, [state.html]);
+  }, []);
 
   const handleDownloadExportPreview = useCallback(() => {
     if (!exportPreviewHtml) return;
@@ -219,26 +243,30 @@ export default function App() {
 
   const handleCopyExportPreview = useCallback(async () => {
     if (!exportPreviewHtml) return;
-    await copyHtmlToClipboard(exportPreviewHtml);
-    setStatusMessage("已复制导出预览中的干净 HTML");
+    try {
+      await copyHtmlToClipboard(exportPreviewHtml);
+      setStatusMessage("已复制导出预览中的干净 HTML");
+    } catch {
+      setStatusMessage("复制失败，请检查浏览器剪贴板权限");
+    }
   }, [exportPreviewHtml]);
 
   const handleUndo = useCallback(() => {
-    history.undo();
+    undo();
     setStatusMessage("已撤销上一步编辑");
-  }, [history]);
+  }, [undo]);
 
   const handleRedo = useCallback(() => {
-    history.redo();
+    redo();
     setStatusMessage("已重做编辑");
-  }, [history]);
+  }, [redo]);
 
   const handleJumpToHistory = useCallback(
     (index: number) => {
-      history.jumpToHistoryIndex(index);
+      jumpToHistoryIndex(index);
       setStatusMessage(`已跳转到历史第 ${index + 1} 步`);
     },
-    [history]
+    [jumpToHistoryIndex]
   );
 
   const handleModalStateChange = useCallback((nextState: ModalState) => {
@@ -323,7 +351,8 @@ export default function App() {
 
   const handleSelectFromTree = useCallback((hftId: string) => {
     setSelectCommand({ id: Date.now(), hftId });
-    history.commit(
+    flushDebouncedHistory();
+    commit(
       {
         html: latestHtmlRef.current,
         selectedId: hftId,
@@ -331,24 +360,25 @@ export default function App() {
       { record: false }
     );
     setStatusMessage(`已从结构面板定位 ${hftId}`);
-  }, [history]);
+  }, [commit, flushDebouncedHistory]);
 
   const handleElementQuickAction = useCallback(
     (hftId: string, action: ElementQuickAction) => {
       const mutatedHtml =
         action === "duplicate"
-          ? duplicateHtmlElementByHftId(state.html, hftId)
-          : deleteHtmlElementByHftId(state.html, hftId);
+          ? duplicateHtmlElementByHftId(latestHtmlRef.current, hftId)
+          : deleteHtmlElementByHftId(latestHtmlRef.current, hftId);
       const nextHtml = action === "duplicate" ? injectEditableIds(mutatedHtml).html : mutatedHtml;
 
-      history.commit({
+      latestHtmlRef.current = nextHtml;
+      commit({
         html: nextHtml,
         selectedId: null,
       });
       setSelectedElement(null);
       setStatusMessage(action === "duplicate" ? "已复制选中元素" : "已删除选中元素");
     },
-    [history, state.html]
+    [commit]
   );
 
   useEffect(() => {
@@ -378,7 +408,7 @@ export default function App() {
     }
 
     if (!hasElementWithHftId(state.html, state.selectedId)) {
-      history.commit(
+      commit(
         {
           html: state.html,
           selectedId: null,
@@ -387,7 +417,7 @@ export default function App() {
       );
       setSelectedElement(null);
     }
-  }, [history, state.html, state.selectedId]);
+  }, [commit, state.html, state.selectedId]);
 
   const editorStatus = useMemo(() => {
     if (!selectedElement) return "未选择元素";
@@ -396,8 +426,8 @@ export default function App() {
 
   const domTree = useMemo(() => buildEditableDomTree(state.html), [state.html]);
   const historyItems = useMemo(
-    () => buildHistoryDisplayItems(history.timeline, history.currentIndex),
-    [history.currentIndex, history.timeline]
+    () => buildHistoryDisplayItems(timeline, currentIndex),
+    [currentIndex, timeline]
   );
   const workspaceStyle = useMemo(
     () =>
@@ -413,8 +443,8 @@ export default function App() {
   return (
     <div className={`app-shell${isFocusPreview ? " app-shell-focus-preview" : ""}`}>
       <Header
-        canUndo={history.canUndo}
-        canRedo={history.canRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
         hasModal={modalState.found}
         isModalOpen={modalState.open}
         onUndo={handleUndo}
@@ -429,8 +459,8 @@ export default function App() {
       {isHistoryOpen && !isFocusPreview ? (
         <HistoryPanel
           items={historyItems}
-          canUndo={history.canUndo}
-          canRedo={history.canRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
           onUndo={handleUndo}
           onRedo={handleRedo}
           onJumpTo={handleJumpToHistory}

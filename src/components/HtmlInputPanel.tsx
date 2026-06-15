@@ -155,6 +155,7 @@ export function HtmlInputPanel({
                 type="button"
                 role="treeitem"
                 aria-selected={node.hftId === selectedId}
+                aria-level={node.depth + 1}
                 style={{ paddingLeft: `${12 + node.depth * 14}px` }}
                 title={node.label}
                 onClick={() => onSelectElement(node.hftId)}

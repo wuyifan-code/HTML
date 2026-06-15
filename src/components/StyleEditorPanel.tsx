@@ -95,7 +95,7 @@ export function StyleEditorPanel({
             已选择 <span>{selectedElement.location || selectedElement.tagName}</span>
           </div>
 
-          {!isImageElement(selectedElement) ? (
+          {selectedElement.canEditText ? (
             <fieldset className="inspector-group">
               <legend>内容</legend>
               <label className="field field-full">

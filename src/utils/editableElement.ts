@@ -60,7 +60,7 @@ export function isEditableElement(element: Element | null): element is HTMLEleme
   if (editableMediaTagSet.has(tagName)) return true;
   if (!getElementText(element).trim()) return false;
   if (editableTagSet.has(tagName)) return true;
-  if (editableBlockTagSet.has(tagName)) return true;
+  if (editableBlockTagSet.has(tagName)) return hasDirectText(element);
 
   return false;
 }

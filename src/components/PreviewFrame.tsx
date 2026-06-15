@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { Eye, Maximize2, Minimize2, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useIframeSelection } from "../hooks/useIframeSelection";
@@ -41,12 +41,14 @@ export function PreviewFrame({
   onElementAction,
   onReadyChange,
 }: PreviewFrameProps) {
+  const bridgeTokenRef = useRef(createBridgeToken());
   const { iframeRef, isReady, markRendering } = useIframeSelection(
+    bridgeTokenRef.current,
     onElementSelected,
     onModalStateChange,
     onElementAction
   );
-  const srcDoc = useMemo(() => buildPreviewDocument(html, selectedId), [html, selectedId]);
+  const srcDoc = useMemo(() => buildPreviewDocument(html, bridgeTokenRef.current), [html]);
 
   useEffect(() => {
     markRendering();
@@ -64,22 +66,25 @@ export function PreviewFrame({
       {
         type: "HTML_FINETUNE_MODAL_COMMAND",
         action: modalCommand.action,
+        token: bridgeTokenRef.current,
       },
       "*"
     );
   }, [iframeRef, isReady, modalCommand]);
 
   useEffect(() => {
-    if (!selectCommand || !isReady) return;
+    const hftId = selectCommand?.hftId || selectedId;
+    if (!hftId || !isReady) return;
 
     iframeRef.current?.contentWindow?.postMessage(
       {
         type: "HTML_FINETUNE_SELECT_ELEMENT",
-        hftId: selectCommand.hftId,
+        hftId,
+        token: bridgeTokenRef.current,
       },
       "*"
     );
-  }, [iframeRef, isReady, selectCommand]);
+  }, [iframeRef, isReady, selectCommand, selectedId]);
 
   return (
     <section className="panel preview-panel" aria-label="HTML 实时预览">
@@ -162,8 +167,8 @@ function PreviewModeButton({ mode, activeMode, label, icon, onClick }: PreviewMo
   );
 }
 
-function buildPreviewDocument(html: string, selectedId: string | null): string {
-  const script = createBridgeScript(selectedId);
+function buildPreviewDocument(html: string, bridgeToken: string): string {
+  const script = createBridgeScript(bridgeToken);
   const style = `<style id="html-finetune-bridge-style">
     [data-html-finetune-editable="true"] {
       cursor: text !important;
@@ -230,12 +235,12 @@ function insertBeforeClosingTag(html: string, tag: "head" | "body", content: str
   return `${html}${content}`;
 }
 
-function createBridgeScript(selectedId: string | null): string {
+function createBridgeScript(bridgeToken: string): string {
   const config = createEditableElementScriptConfig();
 
   return `<script>
     (() => {
-      const selectedId = ${JSON.stringify(selectedId)};
+      const bridgeToken = ${JSON.stringify(bridgeToken)};
       const config = ${JSON.stringify(config)};
       const editableTags = new Set(config.editableTags.map((tag) => tag.toUpperCase()));
       const editableBlockTags = new Set(config.editableBlockTags.map((tag) => tag.toUpperCase()));
@@ -266,7 +271,7 @@ function createBridgeScript(selectedId: string | null): string {
         const text = (element.textContent || "").trim();
         if (!text) return false;
         if (editableTags.has(element.tagName)) return true;
-        if (editableBlockTags.has(element.tagName)) return true;
+        if (editableBlockTags.has(element.tagName)) return hasDirectText(element);
         return false;
       }
 
@@ -385,7 +390,8 @@ function createBridgeScript(selectedId: string | null): string {
             alt: element instanceof HTMLImageElement ? element.getAttribute("alt") || "" : ""
           },
           location: describeLocation(element),
-          hasInlineStyle: Boolean(element.getAttribute("style"))
+          hasInlineStyle: Boolean(element.getAttribute("style")),
+          canEditText: !(element instanceof HTMLImageElement) && !element.querySelector("*")
         };
       }
 
@@ -397,6 +403,7 @@ function createBridgeScript(selectedId: string | null): string {
         if (shouldNotify) {
           window.parent.postMessage({
             type: "HTML_FINETUNE_ELEMENT_SELECTED",
+            token: bridgeToken,
             payload: makePayload(element)
           }, "*");
         }
@@ -432,6 +439,7 @@ function createBridgeScript(selectedId: string | null): string {
 
           window.parent.postMessage({
             type: "HTML_FINETUNE_ELEMENT_ACTION",
+            token: bridgeToken,
             payload: { hftId, action }
           }, "*");
         }, true);
@@ -551,6 +559,7 @@ function createBridgeScript(selectedId: string | null): string {
         const modal = findPrimaryModal();
         window.parent.postMessage({
           type: "HTML_FINETUNE_MODAL_STATE",
+          token: bridgeToken,
           payload: {
             found: Boolean(modal),
             open: modal ? isModalOpen(modal) : false,
@@ -696,6 +705,7 @@ function createBridgeScript(selectedId: string | null): string {
 
       window.addEventListener("message", (event) => {
         const data = event.data || {};
+        if (data.token !== bridgeToken) return;
         if (data.type === "HTML_FINETUNE_SELECT_ELEMENT") {
           selectElementByHftId(data.hftId);
           return;
@@ -711,14 +721,13 @@ function createBridgeScript(selectedId: string | null): string {
       window.addEventListener("resize", repositionFloatingToolbar);
 
       markEditableElements();
-      if (selectedId) {
-        const selected = queryByHftId(selectedId);
-        if (selected && isEditableElement(selected)) {
-          selectElement(selected, true);
-        }
-      }
       postModalState();
-      window.parent.postMessage({ type: "HTML_FINETUNE_PREVIEW_READY" }, "*");
+      window.parent.postMessage({ type: "HTML_FINETUNE_PREVIEW_READY", token: bridgeToken }, "*");
     })();
   </script>`;
+}
+
+function createBridgeToken(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `hft-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }

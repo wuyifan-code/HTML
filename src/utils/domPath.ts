@@ -42,7 +42,7 @@ export function updateHtmlElement(html: string, path: string, update: ElementUpd
   }
 
   if (typeof update.text === "string") {
-    element.textContent = update.text;
+    updateTextOnlyElement(element, update.text);
   }
 
   if (update.attributes) {
@@ -85,7 +85,7 @@ export function updateHtmlElementByHftId(
   }
 
   if (typeof update.text === "string") {
-    element.textContent = update.text;
+    updateTextOnlyElement(element, update.text);
   }
 
   if (update.attributes) {
@@ -195,6 +195,11 @@ function applyAttributeUpdates(element: HTMLElement, attributes: NonNullable<Ele
       element.removeAttribute(attribute);
     }
   });
+}
+
+function updateTextOnlyElement(element: HTMLElement, text: string): void {
+  if (element.children.length > 0) return;
+  element.textContent = text;
 }
 
 function updateHoverBackgroundRule(documentRef: Document, hftId: string, color: string): void {

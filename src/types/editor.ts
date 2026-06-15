@@ -46,6 +46,7 @@ export interface SelectedElementSnapshot {
   attributes: EditableAttributes;
   location: string;
   hasInlineStyle: boolean;
+  canEditText: boolean;
 }
 
 export interface ElementUpdate {
@@ -58,6 +59,7 @@ export interface ElementUpdate {
 export interface PreviewElementMessage {
   type: "HTML_FINETUNE_ELEMENT_SELECTED";
   payload: SelectedElementSnapshot;
+  token?: string;
 }
 
 export type ElementQuickAction = "duplicate" | "delete";
@@ -68,10 +70,12 @@ export interface PreviewElementActionMessage {
     hftId: string;
     action: ElementQuickAction;
   };
+  token?: string;
 }
 
 export interface PreviewReadyMessage {
   type: "HTML_FINETUNE_PREVIEW_READY";
+  token?: string;
 }
 
 export interface DomTreeNode {
@@ -93,6 +97,7 @@ export interface ModalState {
 export interface PreviewModalStateMessage {
   type: "HTML_FINETUNE_MODAL_STATE";
   payload: ModalState;
+  token?: string;
 }
 
 export type ModalCommandAction = "open" | "close";
