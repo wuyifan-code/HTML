@@ -128,7 +128,7 @@ export function PreviewFrame({
           <iframe
             ref={iframeRef}
             title="HTML FineTune 实时预览"
-            sandbox="allow-scripts allow-same-origin"
+            sandbox="allow-scripts"
             srcDoc={srcDoc}
           />
         </div>
