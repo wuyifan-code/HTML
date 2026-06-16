@@ -37,6 +37,22 @@ export function parseHtmlDocument(html: string): Document {
   return parser.parseFromString(source, "text/html");
 }
 
+// 单条目解析缓存：读操作频繁且 html 字符串在短时间内不变，缓存可避免重复解析。
+// 写操作（updateHtmlElementByHftId）会生成新 html 字符串，自动失效。
+let cachedParseHtml: string | null = null;
+let cachedParseDoc: Document | null = null;
+
+/** 读取操作用缓存解析，html 不变时复用上次 Document 对象。 */
+export function parseHtmlReadOnly(html: string): Document {
+  if (cachedParseHtml === html && cachedParseDoc) {
+    // 克隆以避免外部意外修改影响缓存
+    return cachedParseDoc.cloneNode(true) as Document;
+  }
+  cachedParseHtml = html;
+  cachedParseDoc = parseHtmlDocument(html);
+  return cachedParseDoc.cloneNode(true) as Document;
+}
+
 function createHftId(index: number): string {
   return `hft-${String(index).padStart(4, "0")}`;
 }

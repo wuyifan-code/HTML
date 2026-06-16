@@ -1,5 +1,6 @@
 import type { ElementUpdate } from "../types/editor";
 import { HFT_ID_ATTRIBUTE } from "./editableElement";
+import { parseHtmlDocument } from "./injectEditableIds";
 
 const HOVER_STYLE_ATTRIBUTE = "data-html-finetune-hover-rules";
 
@@ -66,9 +67,10 @@ export function queryElementByHftId(documentRef: Document, hftId: string): HTMLE
 }
 
 export function hasElementWithHftId(html: string, hftId: string): boolean {
-  const parser = new DOMParser();
-  const documentRef = parser.parseFromString(html, "text/html");
-  return Boolean(queryElementByHftId(documentRef, hftId));
+  // 轻量正则查询，避免 DOMParser 完整解析
+  const escapedId = cssEscape(hftId);
+  const pattern = new RegExp(`${HFT_ID_ATTRIBUTE}="${escapedId}"`);
+  return pattern.test(html);
 }
 
 export function updateHtmlElementByHftId(

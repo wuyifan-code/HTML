@@ -1,11 +1,11 @@
 import type { DomTreeNode } from "../types/editor";
 import { HFT_ID_ATTRIBUTE, isEditableElement } from "./editableElement";
-import { parseHtmlDocument } from "./injectEditableIds";
+import { parseHtmlReadOnly } from "./injectEditableIds";
 
 const MAX_LABEL_LENGTH = 48;
 
 export function buildEditableDomTree(html: string): DomTreeNode[] {
-  const documentRef = parseHtmlDocument(html);
+  const documentRef = parseHtmlReadOnly(html);
   const nodes: DomTreeNode[] = [];
 
   walkElement(documentRef.body, 0, nodes);

@@ -47,6 +47,7 @@ function PreviewFrameComponent({
   onReadyChange,
 }: PreviewFrameProps) {
   const bridgeTokenRef = useRef(createBridgeToken());
+  const targetOriginRef = useRef(window.location.origin);
   const { iframeRef, isReady, markRendering } = useIframeSelection(
     bridgeTokenRef.current,
     onElementSelected,
@@ -72,42 +73,42 @@ function PreviewFrameComponent({
   // 增量补丁:文本/样式/属性就地应用到 iframe,不触发整文档重建。
   useEffect(() => {
     if (!patchCommand || !isReady) return;
-    iframeRef.current?.contentWindow?.postMessage(
-      {
-        type: "HTML_FINETUNE_PATCH_ELEMENT",
-        hftId: patchCommand.hftId,
-        patch: patchCommand.patch,
-        token: bridgeTokenRef.current,
-      },
-      "*"
-    );
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: "HTML_FINETUNE_PATCH_ELEMENT",
+          hftId: patchCommand.hftId,
+          patch: patchCommand.patch,
+          token: bridgeTokenRef.current,
+        },
+        targetOriginRef.current
+      );
   }, [iframeRef, isReady, patchCommand]);
 
   useEffect(() => {
     if (!modalCommand || !isReady) return;
 
-    iframeRef.current?.contentWindow?.postMessage(
-      {
-        type: "HTML_FINETUNE_MODAL_COMMAND",
-        action: modalCommand.action,
-        token: bridgeTokenRef.current,
-      },
-      "*"
-    );
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: "HTML_FINETUNE_MODAL_COMMAND",
+          action: modalCommand.action,
+          token: bridgeTokenRef.current,
+        },
+        targetOriginRef.current
+      );
   }, [iframeRef, isReady, modalCommand]);
 
   useEffect(() => {
     const hftId = selectCommand?.hftId || selectedId;
     if (!hftId || !isReady) return;
 
-    iframeRef.current?.contentWindow?.postMessage(
-      {
-        type: "HTML_FINETUNE_SELECT_ELEMENT",
-        hftId,
-        token: bridgeTokenRef.current,
-      },
-      "*"
-    );
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: "HTML_FINETUNE_SELECT_ELEMENT",
+          hftId,
+          token: bridgeTokenRef.current,
+        },
+        targetOriginRef.current
+      );
   }, [iframeRef, isReady, selectCommand, selectedId]);
 
   return (
@@ -501,6 +502,7 @@ function createBridgeScript(bridgeToken: string): string {
       }
 
       let cachedFrameBounds = null;
+      let pendingReposition = false;
       function invalidateFrameBounds() {
         cachedFrameBounds = null;
       }
@@ -840,11 +842,23 @@ function createBridgeScript(bridgeToken: string): string {
 
       window.addEventListener("scroll", () => {
         invalidateFrameBounds();
-        repositionFloatingToolbar();
+        if (!pendingReposition) {
+          pendingReposition = true;
+          requestAnimationFrame(() => {
+            pendingReposition = false;
+            repositionFloatingToolbar();
+          });
+        }
       }, true);
       window.addEventListener("resize", () => {
         invalidateFrameBounds();
-        repositionFloatingToolbar();
+        if (!pendingReposition) {
+          pendingReposition = true;
+          requestAnimationFrame(() => {
+            pendingReposition = false;
+            repositionFloatingToolbar();
+          });
+        }
       });
 
       markEditableElements();

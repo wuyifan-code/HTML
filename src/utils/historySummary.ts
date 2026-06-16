@@ -1,6 +1,6 @@
 import type { EditorDocumentState, HistorySummary } from "../types/editor";
 import { HFT_ID_ATTRIBUTE } from "./editableElement";
-import { parseHtmlDocument } from "./injectEditableIds";
+import { parseHtmlReadOnly } from "./injectEditableIds";
 
 export interface HistoryDisplayItem {
   index: number;
@@ -68,8 +68,8 @@ export function summarizeStateChange(
   previous: EditorDocumentState,
   next: EditorDocumentState
 ): HistorySummary {
-  const previousDocument = parseHtmlDocument(previous.html);
-  const nextDocument = parseHtmlDocument(next.html);
+  const previousDocument = parseHtmlReadOnly(previous.html);
+  const nextDocument = parseHtmlReadOnly(next.html);
   const previousElements = getEditableElementMap(previousDocument);
   const nextElements = getEditableElementMap(nextDocument);
   const added = [...nextElements.keys()].filter((id) => !previousElements.has(id));

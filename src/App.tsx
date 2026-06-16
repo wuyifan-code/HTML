@@ -1,8 +1,6 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
-import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { Header } from "./components/Header";
-import { HistoryPanel } from "./components/HistoryPanel";
 import { HtmlInputPanel } from "./components/HtmlInputPanel";
 import { PreviewFrame } from "./components/PreviewFrame";
 import { StyleEditorPanel } from "./components/StyleEditorPanel";
@@ -34,6 +32,13 @@ import {
 import { exportHtml } from "./utils/exportHtml";
 import { buildDisplayItemsFromSummaries } from "./utils/historySummary";
 import { injectEditableIds } from "./utils/injectEditableIds";
+
+const HistoryPanel = lazy(() =>
+  import("./components/HistoryPanel").then((m) => ({ default: m.HistoryPanel }))
+);
+const ExportPreviewDialog = lazy(() =>
+  import("./components/ExportPreviewDialog").then((m) => ({ default: m.ExportPreviewDialog }))
+);
 
 const initialHtml = injectEditableIds(sampleHtml).html;
 const MIN_SOURCE_WIDTH = 260;
@@ -486,23 +491,27 @@ export default function App() {
         onExport={handleExport}
       />
       {isHistoryOpen && !isFocusPreview ? (
-        <HistoryPanel
-          items={historyItems}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onJumpTo={handleJumpToHistory}
-          onClose={() => setIsHistoryOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <HistoryPanel
+            items={historyItems}
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onJumpTo={handleJumpToHistory}
+            onClose={() => setIsHistoryOpen(false)}
+          />
+        </Suspense>
       ) : null}
       {exportPreviewHtml ? (
-        <ExportPreviewDialog
-          html={exportPreviewHtml}
-          onClose={() => setExportPreviewHtml(null)}
-          onCopy={handleCopyExportPreview}
-          onDownload={handleDownloadExportPreview}
-        />
+        <Suspense fallback={null}>
+          <ExportPreviewDialog
+            html={exportPreviewHtml}
+            onClose={() => setExportPreviewHtml(null)}
+            onCopy={handleCopyExportPreview}
+            onDownload={handleDownloadExportPreview}
+          />
+        </Suspense>
       ) : null}
       <main
         ref={workspaceRef}
