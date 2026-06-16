@@ -1,6 +1,6 @@
-import { memo, useEffect, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Eye, Lock, Maximize2, Minimize2, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Eye, Lock, Maximize2, Minimize2, Monitor, Scan, Smartphone, Tablet, ZoomIn, ZoomOut } from "lucide-react";
 import { useIframeSelection } from "../hooks/useIframeSelection";
 import type {
   ElementQuickAction,
@@ -48,7 +48,7 @@ function PreviewFrameComponent({
 }: PreviewFrameProps) {
   const bridgeTokenRef = useRef(createBridgeToken());
   const targetOriginRef = useRef("*");
-  const { iframeRef, isReady, markReady, markRendering } = useIframeSelection(
+  const { iframeRef, isReady, contentDimensions, markReady, markRendering } = useIframeSelection(
     bridgeTokenRef.current,
     onElementSelected,
     onModalStateChange,
@@ -61,6 +61,57 @@ function PreviewFrameComponent({
     [reloadNonce]
   );
   const viewportSize = viewportDimensions[viewportMode];
+  const [zoom, setZoom] = useState(1);
+  const [autoFit, setAutoFit] = useState(true);
+
+  // 重置 autoFit 当 HTML 结构变更(reloadNonce)时
+  useEffect(() => {
+    setAutoFit(true);
+    setZoom(1);
+  }, [reloadNonce]);
+
+  // 自适应 viewport 尺寸:匹配内容宽高比,不缩放 iframe 内部渲染
+  const adaptiveViewport = useMemo(() => {
+    if (!autoFit || !contentDimensions) return null;
+    const preset = viewportDimensions[viewportMode];
+    const contentRatio = contentDimensions.contentWidth / contentDimensions.contentHeight;
+    const presetRatio = preset.width / preset.height;
+    if (contentRatio > presetRatio) {
+      // 内容比预设更宽 → 保持宽度,缩减高度
+      return {
+        width: preset.width,
+        height: Math.round(preset.width / contentRatio),
+        ratio: String(contentRatio),
+      };
+    }
+    // 内容比预设更高 → 保持高度,缩减宽度
+    return {
+      width: Math.round(preset.height * contentRatio),
+      height: preset.height,
+      ratio: String(contentRatio),
+    };
+  }, [autoFit, contentDimensions, viewportMode]);
+
+  const displayZoom = autoFit ? 1 : zoom;
+
+  const handleZoomIn = useCallback(() => {
+    setAutoFit(false);
+    setZoom((z) => Math.min(2, z + 0.1));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setAutoFit(false);
+    setZoom((z) => Math.max(0.25, z - 0.1));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setAutoFit(false);
+    setZoom(1);
+  }, []);
+
+  const handleAutoFit = useCallback(() => {
+    setAutoFit((prev) => !prev);
+  }, []);
 
   useEffect(() => {
     markRendering();
@@ -147,12 +198,48 @@ function PreviewFrameComponent({
           </div>
           <div className="preview-readouts" aria-label="画布读数">
             <div className="canvas-size-control" aria-label="当前画布尺寸">
-              <span>{viewportSize.width}</span>
+              <span>{adaptiveViewport ? adaptiveViewport.width : viewportSize.width}</span>
               <small>x</small>
-              <span>{viewportSize.height}</span>
+              <span>{adaptiveViewport ? adaptiveViewport.height : viewportSize.height}</span>
               <Lock size={13} strokeWidth={1.75} />
             </div>
-            <span className="canvas-zoom-pill">100%</span>
+            <div className="zoom-control-cluster" aria-label="缩放控制">
+              <button
+                className="ghost-button compact-action zoom-btn"
+                type="button"
+                onClick={handleZoomOut}
+                disabled={displayZoom <= 0.25}
+                title="缩小"
+              >
+                <ZoomOut size={14} strokeWidth={1.75} />
+              </button>
+              <button
+                className="zoom-pill-button"
+                type="button"
+                onClick={handleZoomReset}
+                title="重置为 100%"
+              >
+                {autoFit ? "适应" : `${Math.round(displayZoom * 100)}%`}
+              </button>
+              <button
+                className="ghost-button compact-action zoom-btn"
+                type="button"
+                onClick={handleZoomIn}
+                disabled={displayZoom >= 2}
+                title="放大"
+              >
+                <ZoomIn size={14} strokeWidth={1.75} />
+              </button>
+              <button
+                className={`ghost-button compact-action zoom-fit-btn${autoFit ? " zoom-fit-active" : ""}`}
+                type="button"
+                onClick={handleAutoFit}
+                title={autoFit ? "已开启自适应，点击关闭" : "自适应画布"}
+              >
+                <Scan size={14} strokeWidth={1.75} />
+                <span>适应</span>
+              </button>
+            </div>
           </div>
           <button
             className="ghost-button compact-action preview-focus-button"
@@ -166,7 +253,15 @@ function PreviewFrameComponent({
         </div>
       </div>
       <div className={`iframe-shell iframe-shell-${viewportMode}`}>
-        <div className={`preview-viewport preview-viewport-${viewportMode}`}>
+        <div
+          className={`preview-viewport preview-viewport-${viewportMode}`}
+          style={{
+            "--adaptive-width": adaptiveViewport ? `${adaptiveViewport.width}px` : undefined,
+            "--adaptive-height": adaptiveViewport ? `${adaptiveViewport.height}px` : undefined,
+            "--adaptive-ratio": adaptiveViewport ? adaptiveViewport.ratio : undefined,
+            "--preview-zoom": displayZoom,
+          } as React.CSSProperties}
+        >
           <iframe
             ref={iframeRef}
             title="HTML FineTune 实时预览"
@@ -815,7 +910,29 @@ function createBridgeScript(bridgeToken: string): string {
       }
 
       function postPreviewReady() {
-        window.parent.postMessage({ type: "HTML_FINETUNE_PREVIEW_READY", token: bridgeToken }, "*");
+        // 用 bounding rect 测量实际内容区域，而不是 body 的 scroll 尺寸
+        var bodyChildren = Array.from(document.body.children);
+        var maxArea = 0;
+        var contentWidth = window.innerWidth;
+        var contentHeight = window.innerHeight;
+        for (var i = 0; i < bodyChildren.length; i++) {
+          var rect = bodyChildren[i].getBoundingClientRect();
+          if (rect.width < 24 || rect.height < 24) continue;
+          var area = rect.width * rect.height;
+          if (area > maxArea) {
+            maxArea = area;
+            contentWidth = Math.round(rect.width);
+            contentHeight = Math.round(rect.height);
+          }
+        }
+        window.parent.postMessage({
+          type: "HTML_FINETUNE_PREVIEW_READY",
+          token: bridgeToken,
+          payload: {
+            contentWidth: contentWidth,
+            contentHeight: contentHeight
+          }
+        }, "*");
       }
 
       function openModal() {
@@ -943,9 +1060,6 @@ function createBridgeScript(bridgeToken: string): string {
           }
           return;
         }
-
-        event.preventDefault();
-        event.stopPropagation();
       }, true);
 
       document.addEventListener("submit", (event) => {

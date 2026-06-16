@@ -75,6 +75,10 @@ export interface PreviewElementActionMessage {
 
 export interface PreviewReadyMessage {
   type: "HTML_FINETUNE_PREVIEW_READY";
+  payload?: {
+    contentWidth: number;
+    contentHeight: number;
+  };
   token?: string;
 }
 

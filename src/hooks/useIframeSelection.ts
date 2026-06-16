@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ElementQuickAction, ModalState, PreviewMessage, SelectedElementSnapshot } from "../types/editor";
 
+export interface ContentDimensions {
+  contentWidth: number;
+  contentHeight: number;
+}
+
 export function useIframeSelection(
   bridgeToken: string,
   onElementSelected: (element: SelectedElementSnapshot) => void,
@@ -12,6 +17,7 @@ export function useIframeSelection(
   const onModalStateChangeRef = useRef(onModalStateChange);
   const onElementActionRef = useRef(onElementAction);
   const [isReady, setIsReady] = useState(false);
+  const [contentDimensions, setContentDimensions] = useState<ContentDimensions | null>(null);
 
   useEffect(() => {
     onElementSelectedRef.current = onElementSelected;
@@ -21,6 +27,7 @@ export function useIframeSelection(
 
   const markRendering = useCallback(() => {
     setIsReady(false);
+    setContentDimensions(null);
   }, []);
 
   const markReady = useCallback(() => {
@@ -42,6 +49,12 @@ export function useIframeSelection(
 
       if (event.data?.type === "HTML_FINETUNE_PREVIEW_READY") {
         setIsReady(true);
+        if (event.data.payload?.contentWidth && event.data.payload?.contentHeight) {
+          setContentDimensions({
+            contentWidth: event.data.payload.contentWidth,
+            contentHeight: event.data.payload.contentHeight,
+          });
+        }
       }
 
       if (event.data?.type === "HTML_FINETUNE_MODAL_STATE") {
@@ -56,6 +69,7 @@ export function useIframeSelection(
   return {
     iframeRef,
     isReady,
+    contentDimensions,
     markReady,
     markRendering,
   };
