@@ -28,6 +28,7 @@ import {
   getDomPath,
   getHoverBackgroundColor,
   hasElementWithHftId,
+  moveHtmlElementByHftId,
   queryElementByHftId,
   updateHtmlElementByHftId,
 } from "./utils/domPath";
@@ -49,6 +50,8 @@ const MIN_PREVIEW_WIDTH = 520;
 const DEFAULT_SOURCE_WIDTH = 292;
 const DEFAULT_INSPECTOR_WIDTH = 318;
 const RESIZER_WIDTH = 12;
+
+type StyleClipboard = Pick<SelectedElementSnapshot, "styles" | "effects">;
 
 export default function App() {
   const history = useEditorHistory({ html: initialHtml, selectedId: null });
@@ -75,6 +78,7 @@ export default function App() {
   const [modalCommand, setModalCommand] = useState<ModalCommand | null>(null);
   const [selectCommand, setSelectCommand] = useState<SelectElementCommand | null>(null);
   const [patchCommand, setPatchCommand] = useState<PatchCommand | null>(null);
+  const [styleClipboard, setStyleClipboard] = useState<StyleClipboard | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
   const [sourceView, setSourceView] = useState<"source" | "tree">("tree");
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
@@ -402,6 +406,65 @@ export default function App() {
 
   const handleElementQuickAction = useCallback(
     (hftId: string, action: ElementQuickAction) => {
+      if (action === "copy-style") {
+        const snapshot =
+          selectedElement?.hftId === hftId
+            ? selectedElement
+            : buildElementSnapshotFromHtml(latestHtmlRef.current, hftId);
+        if (!snapshot) {
+          setStatusMessage("未找到要复制样式的元素");
+          return;
+        }
+
+        setStyleClipboard({
+          styles: { ...snapshot.styles },
+          effects: { ...snapshot.effects },
+        });
+        setStatusMessage(`已复制 ${snapshot.location || hftId} 的样式`);
+        return;
+      }
+
+      if (action === "paste-style") {
+        if (!styleClipboard) {
+          setStatusMessage("先复制一个元素的样式，再粘贴到目标元素");
+          return;
+        }
+
+        const patch = {
+          styles: { ...styleClipboard.styles },
+          effects: { ...styleClipboard.effects },
+        };
+        const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, hftId, patch);
+        latestHtmlRef.current = nextHtml;
+        commit({
+          html: nextHtml,
+          selectedId: hftId,
+        });
+        setSelectedElement(buildElementSnapshotFromHtml(nextHtml, hftId));
+        setPatchCommand({ id: Date.now(), hftId, patch });
+        setStatusMessage("已套用样式到选中元素");
+        return;
+      }
+
+      if (action === "move-up" || action === "move-down") {
+        const nextHtml = moveHtmlElementByHftId(latestHtmlRef.current, hftId, action === "move-up" ? "up" : "down");
+        if (nextHtml === latestHtmlRef.current) {
+          setStatusMessage(action === "move-up" ? "这个元素已经在同级最上方" : "这个元素已经在同级最下方");
+          return;
+        }
+
+        latestHtmlRef.current = nextHtml;
+        commit({
+          html: nextHtml,
+          selectedId: hftId,
+        });
+        setSelectedElement(buildElementSnapshotFromHtml(nextHtml, hftId));
+        setSelectCommand({ id: Date.now(), hftId });
+        setReloadNonce((n) => n + 1);
+        setStatusMessage(action === "move-up" ? "已将元素上移一位" : "已将元素下移一位");
+        return;
+      }
+
       const mutatedHtml =
         action === "duplicate"
           ? duplicateHtmlElementByHftId(latestHtmlRef.current, hftId)
@@ -415,9 +478,9 @@ export default function App() {
       });
       setSelectedElement(null);
       setReloadNonce((n) => n + 1);
-      setStatusMessage(action === "duplicate" ? "已复制选中元素" : "已删除选中元素");
+      setStatusMessage(action === "duplicate" ? "已克隆选中元素" : "已删除选中元素");
     },
-    [commit]
+    [commit, selectedElement, styleClipboard]
   );
 
   useEffect(() => {

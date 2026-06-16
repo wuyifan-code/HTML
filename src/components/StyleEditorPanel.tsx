@@ -1,7 +1,9 @@
-import { memo, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { Copy, MousePointerClick, PanelRightClose, PanelRightOpen, SlidersHorizontal, Type } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
 import type { EditableAttributes, EditableEffects, EditableStyleKey, SelectedElementSnapshot } from "../types/editor";
+import { FONT_SELECT_OPTIONS, normalizeFontValue } from "../utils/fontLibrary";
 
 interface StyleEditorPanelProps {
   selectedElement: SelectedElementSnapshot | null;
@@ -13,16 +15,7 @@ interface StyleEditorPanelProps {
   onToggleCollapse: () => void;
 }
 
-const fontOptions = [
-  'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  'Georgia, "Times New Roman", serif',
-  '"SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace',
-  'Arial, Helvetica, sans-serif',
-  '"Times New Roman", Times, serif',
-];
-
-const fontLabels = ["系统无衬线", "编辑感衬线", "等宽字体", "Arial", "Times New Roman"];
-const fontSelectOptions = fontOptions.map((value, i) => ({ value, label: fontLabels[i] }));
+const fontSelectOptions = FONT_SELECT_OPTIONS.map(({ value, label }) => ({ value, label }));
 const weightOptions = ["300", "400", "500", "600", "700", "800"];
 const weightSelectOptions = weightOptions.map((w) => ({ value: w, label: w }));
 const textAlignOptions = ["left", "center", "right", "justify", "start"];
@@ -227,22 +220,12 @@ export function StyleEditorPanelImpl({
               />
             </label>
 
-            <label className="field field-full">
-              <span>颜色</span>
-              <div className="color-row">
-                <input
-                  type="color"
-                  value={normalizeHexColor(selectedElement.styles.color)}
-                  onChange={(event) => onStyleChange("color", event.target.value)}
-                />
-                <input
-                  type="text"
-                  placeholder="#141413"
-                  value={selectedElement.styles.color || ""}
-                  onChange={(event) => onStyleChange("color", event.target.value)}
-                />
-              </div>
-            </label>
+            <ColorField
+              label="颜色"
+              value={selectedElement.styles.color}
+              onChange={(value) => onStyleChange("color", value)}
+              full
+            />
             </fieldset>
           ) : null}
 
@@ -576,21 +559,201 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+interface ColorFieldProps {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  full?: boolean;
+}
+
+const colorPopoverMetrics = {
+  width: 280,
+  height: 292,
+  gap: 8,
+  margin: 10,
+};
+
+function ColorField({ label, value, onChange, full = false }: ColorFieldProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const normalizedValue = normalizeHexColor(value);
+  const [isOpen, setIsOpen] = useState(false);
+  const [popoverStyle, setPopoverStyle] = useState<CSSProperties>();
+  const [picker, setPicker] = useState<HsvColor>(() => hexToHsv(normalizedValue));
+  const pickerHex = useMemo(() => hsvToHex(picker), [picker]);
+  const rgb = useMemo(() => hexToRgb(pickerHex), [pickerHex]);
+
+  useEffect(() => {
+    if (isValidHexColor(value)) {
+      setPicker(hexToHsv(normalizeHexColor(value)));
+    }
+  }, [value]);
+
+  const updatePopoverPosition = () => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const rect = root.getBoundingClientRect();
+    const { width, height, gap, margin } = colorPopoverMetrics;
+    const maxLeft = Math.max(margin, window.innerWidth - width - margin);
+    const maxTop = Math.max(margin, window.innerHeight - height - margin);
+    const hasRoomBelow = rect.bottom + gap + height <= window.innerHeight - margin;
+    const preferredTop = hasRoomBelow ? rect.bottom + gap : rect.top - height - gap;
+
+    setPopoverStyle({
+      left: Math.round(clampNumber(rect.left, margin, maxLeft)),
+      top: Math.round(clampNumber(preferredTop, margin, maxTop)),
+    });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    updatePopoverPosition();
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown, true);
+    window.addEventListener("resize", updatePopoverPosition);
+    window.addEventListener("scroll", updatePopoverPosition, true);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown, true);
+      window.removeEventListener("resize", updatePopoverPosition);
+      window.removeEventListener("scroll", updatePopoverPosition, true);
+    };
+  }, [isOpen]);
+
+  const commitPicker = (nextPicker: HsvColor) => {
+    setPicker(nextPicker);
+    onChange(hsvToHex(nextPicker));
+  };
+
+  const updateMapPosition = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const saturation = clampNumber(((event.clientX - rect.left) / rect.width) * 100, 0, 100);
+    const brightness = clampNumber((1 - (event.clientY - rect.top) / rect.height) * 100, 0, 100);
+    commitPicker({ ...picker, s: saturation, v: brightness });
+  };
 
   return (
-    <label className="field">
+    <div className={`field color-field${full ? " field-full" : ""}`} ref={rootRef}>
       <span>{label}</span>
       <div className="color-row">
-        <input type="color" value={normalizedValue} onChange={(event) => onChange(event.target.value)} />
+        <button
+          className="color-swatch-button"
+          type="button"
+          aria-label={`选择${label}`}
+          aria-expanded={isOpen}
+          onClick={() => {
+            if (!isOpen) updatePopoverPosition();
+            setIsOpen((current) => !current);
+          }}
+        >
+          <span style={{ backgroundColor: normalizedValue }} />
+        </button>
         <input
           type="text"
           placeholder="#c96442"
           value={value || ""}
-          onChange={(event) => onChange(event.target.value)}
+          onChange={(event) => {
+            const nextValue = event.target.value;
+            onChange(nextValue);
+            if (isValidHexColor(nextValue)) {
+              setPicker(hexToHsv(normalizeHexColor(nextValue)));
+            }
+          }}
         />
+        {isOpen ? (
+          <div
+            className="color-popover"
+            style={popoverStyle}
+            role="dialog"
+            aria-label={`${label}颜色选择器`}
+          >
+            <div
+              className="color-map"
+              style={{ "--picker-hue": `hsl(${picker.h} 100% 50%)` } as CSSProperties}
+              role="slider"
+              aria-label="饱和度与明度"
+              aria-valuetext={`${Math.round(picker.s)}% / ${Math.round(picker.v)}%`}
+              tabIndex={0}
+              onPointerDown={(event) => {
+                event.currentTarget.setPointerCapture(event.pointerId);
+                updateMapPosition(event);
+              }}
+              onPointerMove={(event) => {
+                if (event.buttons === 1) updateMapPosition(event);
+              }}
+            >
+              <span
+                className="color-map-thumb"
+                style={{ left: `${picker.s}%`, top: `${100 - picker.v}%` }}
+              />
+            </div>
+            <div className="color-controls">
+              <span className="color-current" style={{ backgroundColor: pickerHex }} />
+              <input
+                className="color-hue-slider"
+                type="range"
+                min="0"
+                max="360"
+                value={Math.round(picker.h)}
+                aria-label="色相"
+                onChange={(event) => {
+                  commitPicker({ ...picker, h: Number(event.target.value) });
+                }}
+              />
+            </div>
+            <div className="color-rgb-grid">
+              <ColorChannelInput label="R" value={rgb.r} onChange={(next) => commitPicker(hexToHsv(rgbToHex({ ...rgb, r: next })))} />
+              <ColorChannelInput label="G" value={rgb.g} onChange={(next) => commitPicker(hexToHsv(rgbToHex({ ...rgb, g: next })))} />
+              <ColorChannelInput label="B" value={rgb.b} onChange={(next) => commitPicker(hexToHsv(rgbToHex({ ...rgb, b: next })))} />
+            </div>
+            <div className="color-preset-row" aria-label="主题色快捷选择">
+              {colorPresets.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  aria-label={`选择 ${preset}`}
+                  title={preset}
+                  style={{ backgroundColor: preset }}
+                  onClick={() => {
+                    const nextPicker = hexToHsv(preset);
+                    setPicker(nextPicker);
+                    onChange(preset);
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : null}
       </div>
+    </div>
+  );
+}
+
+function ColorChannelInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <label className="color-channel">
+      <input
+        type="number"
+        min={0}
+        max={255}
+        value={value}
+        onChange={(event) => onChange(clampNumber(Number(event.target.value), 0, 255))}
+      />
+      <span>{label}</span>
     </label>
   );
 }
@@ -605,18 +768,105 @@ function toPx(value: string): string {
   return `${value}px`;
 }
 
-function normalizeFontValue(fontFamily: string): string {
-  const lower = fontFamily.toLowerCase();
-  if (lower.includes("georgia") || lower.includes("times")) return fontOptions[1];
-  if (lower.includes("consolas") || lower.includes("monospace") || lower.includes("menlo")) {
-    return fontOptions[2];
-  }
-  if (lower.includes("arial")) return fontOptions[3];
-  return fontOptions[0];
+const colorPresets = ["#141413", "#53615e", "#6b6a64", "#19a997", "#0f766e", "#ff6f4f", "#f8fbfa"];
+
+interface RgbColor {
+  r: number;
+  g: number;
+  b: number;
+}
+
+interface HsvColor {
+  h: number;
+  s: number;
+  v: number;
 }
 
 function normalizeHexColor(value: string): string {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#141413";
+  const trimmed = value.trim();
+  if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed.toLowerCase();
+  if (/^#[0-9a-f]{3}$/i.test(trimmed)) {
+    return `#${trimmed
+      .slice(1)
+      .split("")
+      .map((part) => part + part)
+      .join("")}`.toLowerCase();
+  }
+  return "#141413";
+}
+
+function isValidHexColor(value: string): boolean {
+  return /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(value.trim());
+}
+
+function hexToRgb(hex: string): RgbColor {
+  const normalized = normalizeHexColor(hex);
+  return {
+    r: Number.parseInt(normalized.slice(1, 3), 16),
+    g: Number.parseInt(normalized.slice(3, 5), 16),
+    b: Number.parseInt(normalized.slice(5, 7), 16),
+  };
+}
+
+function rgbToHex(rgb: RgbColor): string {
+  return `#${[rgb.r, rgb.g, rgb.b]
+    .map((channel) => Math.round(clampNumber(channel, 0, 255)).toString(16).padStart(2, "0"))
+    .join("")}`;
+}
+
+function hexToHsv(hex: string): HsvColor {
+  const { r, g, b } = hexToRgb(hex);
+  const red = r / 255;
+  const green = g / 255;
+  const blue = b / 255;
+  const max = Math.max(red, green, blue);
+  const min = Math.min(red, green, blue);
+  const delta = max - min;
+  let hue = 0;
+
+  if (delta > 0) {
+    if (max === red) hue = 60 * (((green - blue) / delta) % 6);
+    if (max === green) hue = 60 * ((blue - red) / delta + 2);
+    if (max === blue) hue = 60 * ((red - green) / delta + 4);
+  }
+
+  if (hue < 0) hue += 360;
+
+  return {
+    h: hue,
+    s: max === 0 ? 0 : (delta / max) * 100,
+    v: max * 100,
+  };
+}
+
+function hsvToHex(hsv: HsvColor): string {
+  const saturation = clampNumber(hsv.s, 0, 100) / 100;
+  const value = clampNumber(hsv.v, 0, 100) / 100;
+  const chroma = value * saturation;
+  const hue = ((hsv.h % 360) + 360) % 360;
+  const x = chroma * (1 - Math.abs(((hue / 60) % 2) - 1));
+  const match = value - chroma;
+  let red = 0;
+  let green = 0;
+  let blue = 0;
+
+  if (hue < 60) [red, green, blue] = [chroma, x, 0];
+  else if (hue < 120) [red, green, blue] = [x, chroma, 0];
+  else if (hue < 180) [red, green, blue] = [0, chroma, x];
+  else if (hue < 240) [red, green, blue] = [0, x, chroma];
+  else if (hue < 300) [red, green, blue] = [x, 0, chroma];
+  else [red, green, blue] = [chroma, 0, x];
+
+  return rgbToHex({
+    r: (red + match) * 255,
+    g: (green + match) * 255,
+    b: (blue + match) * 255,
+  });
+}
+
+function clampNumber(value: number, min: number, max: number): number {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
 }
 
 function normalizeTextAlign(value: string): string {

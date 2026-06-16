@@ -1,5 +1,6 @@
 import type { ElementUpdate } from "../types/editor";
 import { HFT_ID_ATTRIBUTE } from "./editableElement";
+import { syncRemoteFontLibraryLinks } from "./fontLibrary";
 import { parseHtmlDocument } from "./injectEditableIds";
 
 const HOVER_STYLE_ATTRIBUTE = "data-html-finetune-hover-rules";
@@ -110,6 +111,8 @@ export function updateHtmlElementByHftId(
     updateHoverBackgroundRule(documentRef, hftId, update.effects.hoverBackgroundColor);
   }
 
+  syncRemoteFontLibraryLinks(documentRef);
+
   return serializeDocument(documentRef);
 }
 
@@ -129,6 +132,7 @@ export function duplicateHtmlElementByHftId(html: string, hftId: string): string
   }
 
   element.insertAdjacentElement("afterend", clone as Element);
+  syncRemoteFontLibraryLinks(documentRef);
   return serializeDocument(documentRef);
 }
 
@@ -142,6 +146,31 @@ export function deleteHtmlElementByHftId(html: string, hftId: string): string {
   }
 
   element.remove();
+  syncRemoteFontLibraryLinks(documentRef);
+  return serializeDocument(documentRef);
+}
+
+export function moveHtmlElementByHftId(html: string, hftId: string, direction: "up" | "down"): string {
+  const parser = new DOMParser();
+  const documentRef = parser.parseFromString(html, "text/html");
+  const element = queryElementByHftId(documentRef, hftId);
+
+  if (!element || !element.parentElement) {
+    return html;
+  }
+
+  const sibling = direction === "up" ? element.previousElementSibling : element.nextElementSibling;
+  if (!sibling) {
+    return html;
+  }
+
+  if (direction === "up") {
+    sibling.insertAdjacentElement("beforebegin", element);
+  } else {
+    sibling.insertAdjacentElement("afterend", element);
+  }
+
+  syncRemoteFontLibraryLinks(documentRef);
   return serializeDocument(documentRef);
 }
 

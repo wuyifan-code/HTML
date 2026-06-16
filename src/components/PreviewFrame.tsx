@@ -1,6 +1,6 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
-import { Eye, Lock, Maximize2, Minimize2, Monitor, Scan, Smartphone, Tablet, ZoomIn, ZoomOut } from "lucide-react";
+import { Eye, Lock, Maximize2, Minimize2, Monitor, Scan, Shrink, Smartphone, Tablet, ZoomIn, ZoomOut } from "lucide-react";
 import { useIframeSelection } from "../hooks/useIframeSelection";
 import type {
   ElementQuickAction,
@@ -12,6 +12,7 @@ import type {
   SelectedElementSnapshot,
 } from "../types/editor";
 import { createEditableElementScriptConfig } from "../utils/editableElement";
+import { getFontLibraryScriptConfig, syncRemoteFontLibraryLinks } from "../utils/fontLibrary";
 
 interface PreviewFrameProps {
   html: string;
@@ -48,6 +49,7 @@ function PreviewFrameComponent({
 }: PreviewFrameProps) {
   const bridgeTokenRef = useRef(createBridgeToken());
   const targetOriginRef = useRef("*");
+  const lastSelectCommandIdRef = useRef<number | null>(null);
   const { iframeRef, isReady, contentDimensions, markReady, markRendering } = useIframeSelection(
     bridgeTokenRef.current,
     onElementSelected,
@@ -150,13 +152,20 @@ function PreviewFrameComponent({
   }, [iframeRef, isReady, modalCommand]);
 
   useEffect(() => {
-    const hftId = selectCommand?.hftId || selectedId;
+    const pendingCommand =
+      selectCommand && selectCommand.id !== lastSelectCommandIdRef.current ? selectCommand : null;
+    const hftId = pendingCommand?.hftId || selectedId;
     if (!hftId || !isReady) return;
+
+    if (pendingCommand) {
+      lastSelectCommandIdRef.current = pendingCommand.id;
+    }
 
       iframeRef.current?.contentWindow?.postMessage(
         {
           type: "HTML_FINETUNE_SELECT_ELEMENT",
           hftId,
+          notify: Boolean(pendingCommand),
           token: bridgeTokenRef.current,
         },
         targetOriginRef.current
@@ -181,6 +190,13 @@ function PreviewFrameComponent({
                 icon={<Monitor size={15} strokeWidth={1.75} />}
               />
               <PreviewModeButton
+                mode="wide"
+                activeMode={viewportMode}
+                label="宽屏"
+                onClick={onViewportModeChange}
+                icon={<Maximize2 size={15} strokeWidth={1.75} />}
+              />
+              <PreviewModeButton
                 mode="tablet"
                 activeMode={viewportMode}
                 label="平板"
@@ -193,6 +209,13 @@ function PreviewFrameComponent({
                 label="手机"
                 onClick={onViewportModeChange}
                 icon={<Smartphone size={15} strokeWidth={1.75} />}
+              />
+              <PreviewModeButton
+                mode="fit"
+                activeMode={viewportMode}
+                label="适配"
+                onClick={onViewportModeChange}
+                icon={<Shrink size={15} strokeWidth={1.75} />}
               />
             </div>
           </div>
@@ -268,6 +291,7 @@ function PreviewFrameComponent({
             sandbox="allow-scripts"
             srcDoc={srcDoc}
             onLoad={markReady}
+            style={viewportMode === "fit" ? { width: "100%", height: "100%" } : undefined}
           />
         </div>
       </div>
@@ -279,8 +303,10 @@ export const PreviewFrame = memo(PreviewFrameComponent);
 
 const viewportDimensions: Record<PreviewViewportMode, { width: number; height: number }> = {
   desktop: { width: 1280, height: 800 },
+  wide: { width: 1440, height: 900 },
   tablet: { width: 820, height: 1180 },
   mobile: { width: 390, height: 844 },
+  fit: { width: 0, height: 0 },
 };
 
 interface PreviewModeButtonProps {
@@ -331,11 +357,11 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
       z-index: 2147483647 !important;
       display: none;
       align-items: center !important;
-      gap: 6px !important;
-      min-height: 44px !important;
-      padding: 5px !important;
+      gap: 4px !important;
+      min-height: 42px !important;
+      padding: 4px !important;
       border: 1px solid rgba(148, 163, 184, 0.28) !important;
-      border-radius: 11px !important;
+      border-radius: 10px !important;
       background: rgba(255, 255, 255, 0.96) !important;
       box-shadow:
         0 0 0 1px rgba(255, 255, 255, 0.8) inset,
@@ -387,13 +413,21 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
       display: inline-flex !important;
       align-items: center !important;
       gap: 7px !important;
-      padding: 0 10px !important;
+      max-width: 112px !important;
+      padding: 0 9px !important;
       border-radius: 7px !important;
       background: #f3fbf9 !important;
       color: #0f766e !important;
       font-size: 12px !important;
       font-weight: 700 !important;
       line-height: 1 !important;
+    }
+    #html-finetune-floating-toolbar .hft-toolbar-meta strong {
+      min-width: 0 !important;
+      max-width: 74px !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
     }
     #html-finetune-floating-toolbar .hft-toolbar-dot {
       width: 7px !important;
@@ -410,13 +444,14 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
     }
     #html-finetune-floating-toolbar button {
       position: relative !important;
-      min-width: 38px !important;
+      width: 32px !important;
+      min-width: 32px !important;
       height: 32px !important;
       display: inline-flex !important;
       align-items: center !important;
       justify-content: center !important;
-      gap: 7px !important;
-      padding: 0 10px !important;
+      gap: 0 !important;
+      padding: 0 !important;
       border: 1px solid transparent !important;
       border-radius: 7px !important;
       background: transparent !important;
@@ -428,14 +463,47 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
       transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease !important;
     }
     #html-finetune-floating-toolbar button svg {
-      width: 15px !important;
-      height: 15px !important;
+      width: 16px !important;
+      height: 16px !important;
       flex: 0 0 auto !important;
       stroke: currentColor !important;
       stroke-width: 1.75 !important;
       fill: none !important;
       stroke-linecap: round !important;
       stroke-linejoin: round !important;
+    }
+    #html-finetune-floating-toolbar button span {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      overflow: hidden !important;
+      clip: rect(0 0 0 0) !important;
+      white-space: nowrap !important;
+    }
+    #html-finetune-floating-toolbar button::after {
+      content: attr(data-label) !important;
+      position: absolute !important;
+      left: 50% !important;
+      top: -34px !important;
+      z-index: 2 !important;
+      padding: 5px 7px !important;
+      border: 1px solid rgba(15, 118, 110, 0.16) !important;
+      border-radius: 6px !important;
+      background: rgba(17, 24, 39, 0.92) !important;
+      color: #ffffff !important;
+      font-size: 11px !important;
+      font-weight: 650 !important;
+      line-height: 1 !important;
+      white-space: nowrap !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translate(-50%, 4px) !important;
+      transition: opacity 140ms ease, transform 140ms ease !important;
+    }
+    #html-finetune-floating-toolbar button:hover::after,
+    #html-finetune-floating-toolbar button:focus-visible::after {
+      opacity: 1 !important;
+      transform: translate(-50%, 0) !important;
     }
     #html-finetune-floating-toolbar button:hover {
       color: #0f766e !important;
@@ -447,6 +515,10 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
     #html-finetune-floating-toolbar button:active {
       transform: translateY(1px) scale(0.97) !important;
       transition-duration: 60ms !important;
+    }
+    #html-finetune-floating-toolbar button[data-action="copy-style"],
+    #html-finetune-floating-toolbar button[data-action="paste-style"] {
+      color: #0f766e !important;
     }
     #html-finetune-floating-toolbar button[data-action="delete"] {
       color: #b42318 !important;
@@ -461,12 +533,24 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
   </style>`;
 
   const hasHtmlShell = /<html[\s>]/i.test(html);
-  const withStyle = insertBeforeClosingTag(hasHtmlShell ? html : wrapFragment(html), "head", style);
+  const source = withRemoteFontLibraryLinks(hasHtmlShell ? html : wrapFragment(html));
+  const withStyle = insertBeforeClosingTag(source, "head", style);
   return insertBeforeClosingTag(withStyle, "body", script);
 }
 
 function wrapFragment(fragment: string): string {
   return `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>${fragment}</body></html>`;
+}
+
+function withRemoteFontLibraryLinks(html: string): string {
+  try {
+    const parser = new DOMParser();
+    const documentRef = parser.parseFromString(html, "text/html");
+    syncRemoteFontLibraryLinks(documentRef);
+    return `<!doctype html>\n${documentRef.documentElement.outerHTML}`;
+  } catch {
+    return html;
+  }
 }
 
 function insertBeforeClosingTag(html: string, tag: "head" | "body", content: string): string {
@@ -480,11 +564,13 @@ function insertBeforeClosingTag(html: string, tag: "head" | "body", content: str
 
 function createBridgeScript(bridgeToken: string): string {
   const config = createEditableElementScriptConfig();
+  const fontLibrary = getFontLibraryScriptConfig();
 
   return `<script>
     (() => {
       const bridgeToken = ${JSON.stringify(bridgeToken)};
       const config = ${JSON.stringify(config)};
+      const fontLibrary = ${JSON.stringify(fontLibrary)};
       const editableTags = new Set(config.editableTags.map((tag) => tag.toUpperCase()));
       const editableBlockTags = new Set(config.editableBlockTags.map((tag) => tag.toUpperCase()));
       const editableMediaTags = new Set(config.editableMediaTags.map((tag) => tag.toUpperCase()));
@@ -499,6 +585,8 @@ function createBridgeScript(bridgeToken: string): string {
         ".dialog",
         ".popup"
       ];
+      let selectionSequence = 0;
+      let allowSlideNavigationEvent = false;
 
       function hasDirectText(element) {
         return Array.from(element.childNodes).some((node) => {
@@ -664,8 +752,12 @@ function createBridgeScript(bridgeToken: string): string {
         toolbar.innerHTML = [
           '<div class="hft-toolbar-meta" aria-hidden="true"><span class="hft-toolbar-dot"></span><strong data-role="tag">element</strong></div>',
           '<span class="hft-toolbar-divider" aria-hidden="true"></span>',
-          '<button type="button" data-action="duplicate" title="复制元素" aria-label="复制元素"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M4 16V6a2 2 0 0 1 2-2h10"></path></svg><span>复制</span></button>',
-          '<button type="button" data-action="delete" title="删除元素" aria-label="删除元素"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg><span>删除</span></button>'
+          '<button type="button" data-action="move-up" data-label="上移" title="上移一位" aria-label="上移一位"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg><span>上移</span></button>',
+          '<button type="button" data-action="move-down" data-label="下移" title="下移一位" aria-label="下移一位"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M19 12l-7 7-7-7"></path></svg><span>下移</span></button>',
+          '<button type="button" data-action="duplicate" data-label="克隆" title="克隆元素" aria-label="克隆元素"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M4 16V6a2 2 0 0 1 2-2h10"></path></svg><span>克隆</span></button>',
+          '<button type="button" data-action="copy-style" data-label="取样式" title="复制样式" aria-label="复制样式"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m19 5-2-2a2.1 2.1 0 0 0-3 0l-9.5 9.5"></path><path d="m14 8 2 2"></path><path d="M4 13h6l-5 5H4z"></path><path d="M3 21h6"></path></svg><span>复制样式</span></button>',
+          '<button type="button" data-action="paste-style" data-label="套样式" title="粘贴样式" aria-label="粘贴样式"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l2 3v3H6V7z"></path><path d="M6 14h12"></path><path d="M8 18h8"></path><path d="M10 22h4"></path></svg><span>粘贴样式</span></button>',
+          '<button type="button" data-action="delete" data-label="删除" title="删除元素" aria-label="删除元素"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg><span>删除</span></button>'
         ].join("");
 
         toolbar.addEventListener("mousedown", (event) => {
@@ -771,6 +863,40 @@ function createBridgeScript(bridgeToken: string): string {
         });
       }
 
+      function normalizeFontName(value) {
+        return String(value || "").toLowerCase().replace(/["']/g, "").replace(/\s+/g, " ").trim();
+      }
+
+      function shouldLoadRemoteFont(fontFamily) {
+        const normalized = normalizeFontName(fontFamily);
+        return fontLibrary.remoteFamilies.some((familyName) => {
+          return normalized.includes(normalizeFontName(familyName));
+        });
+      }
+
+      function ensureRemoteFontLibrary(fontFamily) {
+        if (!shouldLoadRemoteFont(fontFamily)) return;
+        const existing = document.querySelector("link[" + fontLibrary.attribute + "='stylesheet']");
+        if (existing) return;
+
+        fontLibrary.preconnectOrigins.forEach((origin) => {
+          const link = document.createElement("link");
+          link.rel = "preconnect";
+          link.href = origin;
+          link.setAttribute(fontLibrary.attribute, "preconnect");
+          if (origin.indexOf("gstatic") >= 0) {
+            link.crossOrigin = "anonymous";
+          }
+          document.head.appendChild(link);
+        });
+
+        const stylesheet = document.createElement("link");
+        stylesheet.rel = "stylesheet";
+        stylesheet.href = fontLibrary.stylesheetHref;
+        stylesheet.setAttribute(fontLibrary.attribute, "stylesheet");
+        document.head.appendChild(stylesheet);
+      }
+
       // 增量补丁:文本/样式/属性就地应用,避免整文档重建。
       function patchElement(hftId, patch) {
         const element = queryByHftId(hftId);
@@ -805,6 +931,9 @@ function createBridgeScript(bridgeToken: string): string {
               element.style.setProperty(kebab, value);
             } else {
               element.style.removeProperty(kebab);
+            }
+            if (property === "fontFamily") {
+              ensureRemoteFontLibrary(value);
             }
           });
         }
@@ -1002,14 +1131,233 @@ function createBridgeScript(bridgeToken: string): string {
         postModalState();
       }
 
-      function selectElementByHftId(hftId) {
+      function isSlideCandidate(element) {
+        if (!element || !(element instanceof HTMLElement)) return false;
+        return element.classList.contains("slide") ||
+          element.hasAttribute("data-slide") ||
+          /^slide[-_]?\\d+$/i.test(element.id || "");
+      }
+
+      function getAllSlides() {
+        return Array.from(document.querySelectorAll(".slide, [data-slide], section[id^='slide-'], article[id^='slide-']"))
+          .filter(isSlideCandidate);
+      }
+
+      function getContainingSlide(element) {
+        const slide = element.closest(".slide, [data-slide], section[id^='slide-'], article[id^='slide-']");
+        return isSlideCandidate(slide) ? slide : null;
+      }
+
+      function getRelatedSlides(slide) {
+        const siblings = slide.parentElement
+          ? Array.from(slide.parentElement.children).filter(isSlideCandidate)
+          : [];
+        if (siblings.includes(slide) && siblings.length > 1) return siblings;
+
+        const allSlides = getAllSlides();
+        if (allSlides.includes(slide)) return allSlides;
+        return [slide];
+      }
+
+      function getSlideIndex(slide, slides) {
+        const dataSlide = Number(slide.getAttribute("data-slide"));
+        if (Number.isFinite(dataSlide) && dataSlide > 0) return dataSlide - 1;
+
+        const idMatch = (slide.id || "").match(/(?:^|[-_])0*(\\d+)$/);
+        if (idMatch) {
+          const idIndex = Number(idMatch[1]) - 1;
+          if (Number.isFinite(idIndex) && idIndex >= 0) return idIndex;
+        }
+
+        return Math.max(0, slides.indexOf(slide));
+      }
+
+      function clampSlideIndex(index, slides) {
+        const safeIndex = Number.isFinite(index) ? index : 0;
+        return Math.max(0, Math.min(slides.length - 1, safeIndex));
+      }
+
+      function isElementVisible(element) {
+        if (!element || !element.isConnected) return false;
+        const computed = window.getComputedStyle(element);
+        if (computed.display === "none" || computed.visibility === "hidden") return false;
+        return element.getClientRects().length > 0;
+      }
+
+      function isSlideVisible(slide) {
+        if (!isElementVisible(slide)) return false;
+        if (slide.getAttribute("aria-hidden") === "true") return false;
+        return true;
+      }
+
+      function nextPaint() {
+        return new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        });
+      }
+
+      async function waitForVisibleElement(element, attempts) {
+        for (let index = 0; index < attempts; index += 1) {
+          await nextPaint();
+          if (isElementVisible(element)) return true;
+        }
+        return isElementVisible(element);
+      }
+
+      function dispatchHashChange(oldUrl) {
+        let event;
+        try {
+          event = new HashChangeEvent("hashchange", {
+            oldURL: oldUrl,
+            newURL: window.location.href
+          });
+        } catch {
+          event = new Event("hashchange");
+        }
+        window.dispatchEvent(event);
+      }
+
+      function requestHashSlideNavigation(slide) {
+        if (!slide.id) return false;
+        const nextHash = "#" + slide.id;
+        const oldUrl = window.location.href;
+        if (window.location.hash !== nextHash) {
+          window.location.hash = nextHash;
+        }
+        dispatchHashChange(oldUrl);
+        return true;
+      }
+
+      function callExternalSlideApi(index) {
+        const api = window.__slideDeck;
+        if (!api || typeof api !== "object") return false;
+
+        try {
+          if (typeof api.show === "function") {
+            api.show(index);
+            return true;
+          }
+          if (typeof api.goTo === "function") {
+            api.goTo(index);
+            return true;
+          }
+        } catch {
+          return false;
+        }
+
+        return false;
+      }
+
+      function clickSlideNavigation(index) {
+        const target = String(index + 1);
+        const navButtons = Array.from(document.querySelectorAll(".nav-dots button[data-target]"));
+        const fallbackButtons = navButtons.length > 0 ? navButtons : Array.from(document.querySelectorAll("[data-target]"));
+        const button = fallbackButtons.find((candidate) => {
+          return candidate instanceof HTMLElement && candidate.getAttribute("data-target") === target;
+        });
+        if (!button || !(button instanceof HTMLElement)) return false;
+
+        allowSlideNavigationEvent = true;
+        try {
+          button.click();
+        } finally {
+          window.setTimeout(() => {
+            allowSlideNavigationEvent = false;
+          }, 0);
+        }
+        return true;
+      }
+
+      function syncSlideControls(index) {
+        document.querySelectorAll(".nav-dots button[data-target]").forEach((button) => {
+          const isActive = Number(button.getAttribute("data-target")) === index + 1;
+          button.classList.toggle("active", isActive);
+          if (isActive) {
+            button.setAttribute("aria-current", "step");
+          } else {
+            button.removeAttribute("aria-current");
+          }
+        });
+      }
+
+      function setActiveSlideDomOnly(slide, slides, index) {
+        slides.forEach((candidate) => {
+          const isActive = candidate === slide;
+          candidate.classList.toggle("is-active", isActive);
+          candidate.setAttribute("aria-hidden", isActive ? "false" : "true");
+          if (isActive && candidate.hasAttribute("hidden")) candidate.removeAttribute("hidden");
+        });
+        syncSlideControls(index);
+      }
+
+      function activateSlide(slide) {
+        const slides = getRelatedSlides(slide);
+        const slideIndex = clampSlideIndex(getSlideIndex(slide, slides), slides);
+        if (isSlideVisible(slide)) return false;
+
+        if (callExternalSlideApi(slideIndex)) return true;
+        if (requestHashSlideNavigation(slide)) return true;
+        if (clickSlideNavigation(slideIndex)) return true;
+
+        setActiveSlideDomOnly(slide, slides, slideIndex);
+        return true;
+      }
+
+      async function showSlideByIndex(index) {
+        const slides = getAllSlides();
+        if (!slides.length) return false;
+        const normalizedIndex = clampSlideIndex(Number(index), slides);
+        const slide = slides[normalizedIndex];
+        activateSlide(slide);
+        await waitForVisibleElement(slide, 4);
+        if (!isSlideVisible(slide)) {
+          setActiveSlideDomOnly(slide, slides, normalizedIndex);
+          await waitForVisibleElement(slide, 2);
+        }
+        return isSlideVisible(slide);
+      }
+
+      function exposeSlideDeckBridge() {
+        if (window.__htmlFineTuneSlideDeck) return;
+        window.__htmlFineTuneSlideDeck = {
+          show: showSlideByIndex,
+          showByNumber: (number) => showSlideByIndex(Number(number) - 1),
+          currentIndex: () => {
+            const slides = getAllSlides();
+            return Math.max(0, slides.findIndex(isSlideVisible));
+          }
+        };
+      }
+
+      async function activateContainingSlide(element) {
+        const slide = getContainingSlide(element);
+        if (!slide) return;
+        const slides = getRelatedSlides(slide);
+        const slideIndex = clampSlideIndex(getSlideIndex(slide, slides), slides);
+
+        activateSlide(slide);
+        if (await waitForVisibleElement(element, 4)) return;
+
+        setActiveSlideDomOnly(slide, slides, slideIndex);
+        await waitForVisibleElement(element, 3);
+      }
+
+      function selectElementByHftId(hftId, shouldNotify = true) {
         if (!hftId) return;
         const element = queryByHftId(hftId);
         if (!element || !isEditableElement(element)) return;
 
+        const requestId = selectionSequence + 1;
+        selectionSequence = requestId;
         openContainingModal(element);
-        element.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
-        selectElement(element, true);
+        activateContainingSlide(element).then(() => {
+          if (requestId !== selectionSequence) return;
+          element.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+          requestAnimationFrame(() => {
+            if (requestId !== selectionSequence) return;
+            selectElement(element, shouldNotify);
+          });
+        });
       }
 
       document.addEventListener("mouseover", (event) => {
@@ -1036,6 +1384,15 @@ function createBridgeScript(bridgeToken: string): string {
         }
 
         const element = target instanceof Element ? findEditableElement(target) : null;
+
+        if (
+          target instanceof Element &&
+          (target.closest(".nav-dots button[data-target]") ||
+            (allowSlideNavigationEvent && target.closest("[data-target]")))
+        ) {
+          hideFloatingToolbar();
+          return;
+        }
 
         if (element) {
           event.preventDefault();
@@ -1071,7 +1428,7 @@ function createBridgeScript(bridgeToken: string): string {
         const data = event.data || {};
         if (data.token !== bridgeToken) return;
         if (data.type === "HTML_FINETUNE_SELECT_ELEMENT") {
-          selectElementByHftId(data.hftId);
+          selectElementByHftId(data.hftId, data.notify !== false);
           return;
         }
 
@@ -1108,6 +1465,7 @@ function createBridgeScript(bridgeToken: string): string {
       });
 
       markEditableElements();
+      exposeSlideDeckBridge();
       postModalState();
       postPreviewReady();
       window.setTimeout(() => {

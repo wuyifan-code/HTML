@@ -5,6 +5,7 @@ import {
   HFT_SELECTED_ATTRIBUTE,
 } from "./editableElement";
 import { serializeDocument } from "./domPath";
+import { FONT_LIBRARY_ATTRIBUTE, syncRemoteFontLibraryLinks } from "./fontLibrary";
 import { parseHtmlDocument } from "./injectEditableIds";
 
 const INTERNAL_ATTRIBUTES = [
@@ -30,6 +31,11 @@ export function cleanHtmlForExport(html: string): string {
 
   documentRef.querySelectorAll("*").forEach((element) => {
     INTERNAL_ATTRIBUTES.forEach((attribute) => element.removeAttribute(attribute));
+  });
+
+  syncRemoteFontLibraryLinks(documentRef);
+  documentRef.querySelectorAll(`[${FONT_LIBRARY_ATTRIBUTE}]`).forEach((node) => {
+    node.removeAttribute(FONT_LIBRARY_ATTRIBUTE);
   });
 
   return serializeDocument(documentRef);

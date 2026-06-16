@@ -62,7 +62,7 @@ export interface PreviewElementMessage {
   token?: string;
 }
 
-export type ElementQuickAction = "duplicate" | "delete";
+export type ElementQuickAction = "move-up" | "move-down" | "duplicate" | "copy-style" | "paste-style" | "delete";
 
 export interface PreviewElementActionMessage {
   type: "HTML_FINETUNE_ELEMENT_ACTION";
@@ -116,7 +116,7 @@ export interface SelectElementCommand {
   hftId: string;
 }
 
-export type PreviewViewportMode = "desktop" | "tablet" | "mobile";
+export type PreviewViewportMode = "desktop" | "wide" | "tablet" | "mobile" | "fit";
 
 export type SourcePanelPlacement = "side" | "bottom";
 
