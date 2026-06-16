@@ -1,13 +1,13 @@
 export const sampleHtml = `<!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>静态系统工作室</title>
+    <title>FineTune Studio</title>
     <style>
       :root {
-        color: #2f2a25;
-        background: #faf7f1;
+        color: #17202a;
+        background: #f7faf9;
         font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       }
 
@@ -17,45 +17,64 @@ export const sampleHtml = `<!doctype html>
 
       body {
         margin: 0;
-        background: #faf7f1;
+        background: #f7faf9;
       }
 
       .page {
         min-height: 100vh;
-        color: #2f2a25;
+        color: #17202a;
       }
 
       .nav {
+        height: 72px;
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 28px 44px;
-        border-bottom: 1px solid #e9dfd2;
+        padding: 0 44px;
+        border-bottom: 1px solid #e4ebe8;
+        background: rgba(255, 255, 255, 0.86);
+        backdrop-filter: blur(12px);
       }
 
       .brand {
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: 25px;
-        font-weight: 500;
-        color: #2f2a25;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 19px;
+        font-weight: 750;
+      }
+
+      .brand-mark {
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border-radius: 8px;
+        background: #12b8a6;
+        color: #ffffff;
+        font-size: 14px;
       }
 
       .links {
         display: flex;
-        gap: 22px;
+        gap: 24px;
       }
 
       .links a {
-        color: #5f574d;
+        color: #64706d;
         text-decoration: none;
         font-size: 14px;
       }
 
+      .links a:hover {
+        color: #0f766e;
+      }
+
       .hero {
         display: grid;
-        grid-template-columns: 1fr 0.86fr;
-        gap: 34px;
-        padding: 58px 44px 36px;
+        grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.78fr);
+        gap: 36px;
+        padding: 62px 44px 42px;
       }
 
       .hero-copy {
@@ -64,45 +83,27 @@ export const sampleHtml = `<!doctype html>
 
       .kicker {
         margin: 0 0 14px;
-        color: #9a7b66;
+        color: #0f766e;
         font-size: 13px;
-        letter-spacing: 0.08em;
+        font-weight: 700;
+        letter-spacing: 0;
         text-transform: uppercase;
       }
 
       h1 {
-        margin: 0 0 22px;
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: 60px;
-        font-weight: 500;
-        line-height: 1.02;
+        margin: 0 0 20px;
+        font-size: clamp(42px, 6vw, 72px);
+        font-weight: 760;
+        line-height: 0.98;
+        letter-spacing: 0;
       }
 
       .subtitle {
-        max-width: 520px;
-        margin: 0 0 24px;
-        color: #6f665d;
+        max-width: 560px;
+        margin: 0 0 26px;
+        color: #53615e;
         font-size: 19px;
         line-height: 1.65;
-      }
-
-      .body-copy {
-        max-width: 560px;
-        margin: 0 0 30px;
-        color: #5e564d;
-        font-size: 16px;
-        line-height: 1.72;
-      }
-
-      button {
-        width: fit-content;
-        border: 0;
-        border-radius: 0;
-        background: #c96f4a;
-        color: #fffaf5;
-        padding: 13px 20px;
-        font: inherit;
-        font-weight: 600;
       }
 
       .hero-actions {
@@ -111,111 +112,151 @@ export const sampleHtml = `<!doctype html>
         gap: 12px;
       }
 
+      button,
+      .button-link {
+        width: fit-content;
+        border: 0;
+        border-radius: 8px;
+        background: #12b8a6;
+        color: #ffffff;
+        padding: 13px 18px;
+        font: inherit;
+        font-weight: 700;
+      }
+
+      .button-link {
+        display: inline-flex;
+        text-decoration: none;
+      }
+
       .quiet-button {
-        border: 1px solid #e3d7c8;
-        background: #fffdf8;
-        color: #6a5f55;
+        border: 1px solid #d9e4e1;
+        background: #ffffff;
+        color: #34413e;
       }
 
-      .note-card {
+      .preview-card {
         align-self: stretch;
-        min-height: 360px;
-        border: 1px solid #e4d9ca;
-        border-radius: 0;
-        background: #fffdf8;
-        box-shadow: 0 18px 60px rgba(69, 52, 34, 0.12);
-        padding: 28px;
+        min-height: 372px;
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 20px;
+        padding: 22px;
+        border: 1px solid #dfe8e5;
+        border-radius: 8px;
+        background: #ffffff;
+        box-shadow: 0 22px 52px rgba(18, 32, 43, 0.09);
+      }
+
+      .preview-card-header {
         display: flex;
-        flex-direction: column;
+        align-items: center;
         justify-content: space-between;
-      }
-
-      .note-card span {
-        color: #8a7b68;
+        color: #66736f;
         font-size: 13px;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
       }
 
-      .note-card strong {
-        display: block;
-        max-width: 260px;
-        margin-top: 12px;
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: 36px;
-        font-weight: 500;
-        line-height: 1.08;
+      .status-pill {
+        border-radius: 999px;
+        background: #e8f8f5;
+        color: #0f766e;
+        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 700;
       }
 
-      .note-image {
+      .preview-image {
         width: 100%;
-        height: 138px;
+        min-height: 150px;
         object-fit: cover;
+        border-radius: 8px;
+        border: 1px solid #e1e8e6;
         display: block;
-        margin: 22px 0;
-        border: 1px solid #e8dccd;
-        border-radius: 0;
+      }
+
+      .metric-row {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+
+      .metric {
+        border: 1px solid #e5ece9;
+        border-radius: 8px;
+        padding: 14px;
+        background: #fbfdfc;
+      }
+
+      .metric strong {
+        display: block;
+        margin-bottom: 6px;
+        color: #16242a;
+        font-size: 21px;
+      }
+
+      .metric span {
+        color: #66736f;
+        font-size: 12px;
       }
 
       .features {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
-        gap: 18px;
-        padding: 24px 44px 34px;
+        gap: 16px;
+        padding: 6px 44px 40px;
       }
 
       .feature {
-        padding: 24px;
-        border: 1px solid #eadfce;
-        border-radius: 0;
-        background: rgba(255, 253, 248, 0.78);
+        padding: 22px;
+        border: 1px solid #e2ebe8;
+        border-radius: 8px;
+        background: #ffffff;
       }
 
       .feature h2 {
         margin: 0 0 9px;
         font-size: 18px;
-        font-weight: 600;
+        font-weight: 740;
       }
 
       .feature p {
         margin: 0;
-        color: #6f665d;
+        color: #65716e;
         font-size: 14px;
         line-height: 1.58;
       }
 
-      blockquote {
-        margin: 14px 44px 48px;
-        padding: 26px 30px;
-        border-left: 4px solid #c96f4a;
-        border-radius: 0;
-        background: #fffdf8;
-        color: #453d35;
-        font-family: Georgia, "Times New Roman", serif;
-        font-size: 26px;
-        line-height: 1.38;
+      .note {
+        margin: 0 44px 48px;
+        padding: 24px 28px;
+        border-left: 4px solid #ff6f4f;
+        border-radius: 8px;
+        background: #fffefe;
+        color: #34413e;
+        font-size: 22px;
+        line-height: 1.46;
+        box-shadow: 0 18px 40px rgba(18, 32, 43, 0.06);
       }
 
-      blockquote small {
+      .note small {
         display: block;
-        margin-top: 14px;
-        color: #7a7368;
-        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+        margin-top: 12px;
+        color: #697672;
         font-size: 13px;
       }
 
       dialog.modal-card {
         width: min(520px, calc(100% - 40px));
-        border: 1px solid #dfd3c3;
-        border-radius: 0;
+        border: 1px solid #dbe6e3;
+        border-radius: 8px;
         padding: 0;
-        background: #fffdf8;
-        color: #2f2a25;
-        box-shadow: 0 24px 80px rgba(55, 43, 31, 0.22);
+        background: #ffffff;
+        color: #17202a;
+        box-shadow: 0 24px 80px rgba(17, 24, 39, 0.2);
       }
 
       dialog.modal-card::backdrop {
-        background: rgba(47, 42, 37, 0.24);
+        background: rgba(17, 24, 39, 0.24);
       }
 
       .modal-inner {
@@ -224,22 +265,22 @@ export const sampleHtml = `<!doctype html>
 
       .modal-kicker {
         margin: 0 0 12px;
-        color: #9a7b66;
+        color: #0f766e;
         font-size: 12px;
-        letter-spacing: 0.08em;
+        font-weight: 700;
+        letter-spacing: 0;
         text-transform: uppercase;
       }
 
       .modal-card h2 {
         margin: 0 0 14px;
-        font-family: Georgia, "Times New Roman", serif;
         font-size: 30px;
-        font-weight: 500;
+        font-weight: 760;
         line-height: 1.15;
       }
 
       .modal-card p {
-        color: #665d53;
+        color: #5e6a67;
         line-height: 1.62;
       }
 
@@ -253,7 +294,8 @@ export const sampleHtml = `<!doctype html>
         .nav,
         .links,
         .hero,
-        .features {
+        .features,
+        .metric-row {
           display: block;
         }
 
@@ -264,19 +306,20 @@ export const sampleHtml = `<!doctype html>
           padding-right: 24px;
         }
 
-        h1 {
-          font-size: 44px;
+        .links {
+          display: none;
         }
 
-        .note-card {
+        .preview-card {
           margin-top: 28px;
         }
 
-        .feature {
+        .feature,
+        .metric {
           margin-bottom: 14px;
         }
 
-        blockquote {
+        .note {
           margin-left: 24px;
           margin-right: 24px;
         }
@@ -286,65 +329,68 @@ export const sampleHtml = `<!doctype html>
   <body>
     <main class="page">
       <nav class="nav">
-        <div class="brand">静态系统工作室</div>
+        <div class="brand"><span class="brand-mark">&lt;/&gt;</span> FineTune</div>
         <div class="links">
-          <a href="#method">方法</a>
-          <a href="#work">作品</a>
-          <a href="#notes">札记</a>
+          <a href="#workflow">流程</a>
+          <a href="#preview">预览</a>
+          <a href="#export">导出</a>
         </div>
       </nav>
 
       <section class="hero">
         <div class="hero-copy">
-          <p class="kicker">编辑式生产力设计</p>
-          <h1>让生成的页面更像精心完成的作品</h1>
-          <p class="subtitle">这是一个用于微调语言、节奏和视觉层级的小型页面系统，适合在第一版 HTML 已经生成之后继续打磨。</p>
-          <p class="body-copy">你可以用这个示例测试标题修改、段落间距、按钮文字、小卡片列表和引用区块。每一处内容都故意保持克制，方便你直接调整而不必和设计对抗。</p>
+          <p class="kicker">Visual HTML Editing</p>
+          <h1>所见即所得，精准微调</h1>
+          <p class="subtitle">把生成后的 HTML 放进一个真实预览环境，直接选择文字、按钮、图片和区块，快速修正内容、样式与发布前细节。</p>
           <div class="hero-actions">
-            <button>查看方法</button>
+            <a class="button-link" href="#workflow">查看工作流</a>
             <button class="quiet-button" data-hft-open-modal>打开说明弹窗</button>
           </div>
         </div>
 
-        <aside class="note-card">
-          <div>
-            <span>实时编辑界面</span>
-            <strong>小改动，也应该立刻被看见</strong>
+        <aside class="preview-card" id="preview">
+          <div class="preview-card-header">
+            <span>Live Preview</span>
+            <span class="status-pill">Connected</span>
           </div>
           <img
-            class="note-image"
-            src="https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=900&q=80"
-            alt="安静的工作桌面与笔记本电脑"
+            class="preview-image"
+            src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=960&q=80"
+            alt="带有设计稿和代码界面的工作台"
           />
-          <p>点击预览中的文字，再用右侧安静的检查器调整细节。</p>
+          <div class="metric-row">
+            <div class="metric"><strong>32</strong><span>可编辑节点</span></div>
+            <div class="metric"><strong>0ms</strong><span>整页重载</span></div>
+            <div class="metric"><strong>1</strong><span>干净导出</span></div>
+          </div>
         </aside>
       </section>
 
-      <section class="features" id="method">
+      <section class="features" id="workflow">
         <article class="feature">
-          <h2>塑造层级</h2>
-          <p>调整字号、字重和对齐方式，让页面按照正确顺序被阅读。</p>
+          <h2>选择元素</h2>
+          <p>在预览里点击文字或图片，右侧立即显示当前元素的可调属性。</p>
         </article>
         <article class="feature">
-          <h2>打磨语言</h2>
-          <p>改写标签、标题和辅助说明，不需要重新处理整份文件。</p>
+          <h2>即时更新</h2>
+          <p>修改文字、颜色、字号、间距或圆角时，画布会同步响应。</p>
         </article>
-        <article class="feature">
-          <h2>导出干净 HTML</h2>
-          <p>复制或下载前，会自动移除编辑器内部标记。</p>
+        <article class="feature" id="export">
+          <h2>干净交付</h2>
+          <p>复制或下载前移除编辑器标记，保留可以直接发布的 HTML。</p>
         </article>
       </section>
 
-      <blockquote id="notes">
-        “最后一公里通常不是重写，而是一连串谨慎的小决定。”
-        <small>静态系统工作室札记</small>
+      <blockquote class="note">
+        发布前最重要的不是重做页面，而是把每一个会被看见的细节调准。
+        <small>FineTune Studio</small>
       </blockquote>
 
       <dialog class="modal-card" aria-labelledby="modal-title" data-hft-modal>
         <div class="modal-inner">
-          <p class="modal-kicker">发布前微调</p>
-          <h2 id="modal-title">先把页面调到你愿意发布的语气</h2>
-          <p>这个弹窗用来测试 HTML FineTune 对模态内容的处理。打开它以后，你可以点击标题或正文，并在右侧检查器中调整内容、字号、颜色和间距。</p>
+          <p class="modal-kicker">Publish Check</p>
+          <h2 id="modal-title">先把页面调到可以交付的状态</h2>
+          <p>这个弹窗用于测试 HTML FineTune 对模态内容的处理。打开后，你可以点击标题或正文，并在右侧检查器中调整内容、字号、颜色和间距。</p>
           <div class="modal-actions">
             <button class="quiet-button" data-hft-close-modal>关闭</button>
           </div>

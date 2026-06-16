@@ -25,21 +25,21 @@ function HistoryPanelImpl({
     <aside className="history-popover" aria-label="撤销历史面板">
       <div className="history-header">
         <div className="panel-title">
-          <History size={17} strokeWidth={1.8} />
+          <History size={17} strokeWidth={1.75} />
           <span>历史</span>
         </div>
         <button className="icon-button" type="button" onClick={onClose} aria-label="关闭历史面板" title="关闭">
-          <X size={16} strokeWidth={1.9} />
+          <X size={16} strokeWidth={1.75} />
         </button>
       </div>
 
       <div className="history-actions">
         <button className="ghost-button compact-action" type="button" onClick={onUndo} disabled={!canUndo}>
-          <RotateCcw size={15} strokeWidth={1.9} />
+          <RotateCcw size={15} strokeWidth={1.75} />
           撤销
         </button>
         <button className="ghost-button compact-action" type="button" onClick={onRedo} disabled={!canRedo}>
-          <RotateCw size={15} strokeWidth={1.9} />
+          <RotateCw size={15} strokeWidth={1.75} />
           重做
         </button>
       </div>

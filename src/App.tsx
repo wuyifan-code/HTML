@@ -25,8 +25,10 @@ import { buildEditableDomTree } from "./utils/domTree";
 import {
   deleteHtmlElementByHftId,
   duplicateHtmlElementByHftId,
+  getDomPath,
   getHoverBackgroundColor,
   hasElementWithHftId,
+  queryElementByHftId,
   updateHtmlElementByHftId,
 } from "./utils/domPath";
 import { exportHtml } from "./utils/exportHtml";
@@ -41,12 +43,12 @@ const ExportPreviewDialog = lazy(() =>
 );
 
 const initialHtml = injectEditableIds(sampleHtml).html;
-const MIN_SOURCE_WIDTH = 260;
-const MIN_INSPECTOR_WIDTH = 260;
-const MIN_PREVIEW_WIDTH = 430;
-const DEFAULT_SOURCE_WIDTH = 380;
-const DEFAULT_INSPECTOR_WIDTH = 320;
-const RESIZER_WIDTH = 18;
+const MIN_SOURCE_WIDTH = 280;
+const MIN_INSPECTOR_WIDTH = 286;
+const MIN_PREVIEW_WIDTH = 520;
+const DEFAULT_SOURCE_WIDTH = 292;
+const DEFAULT_INSPECTOR_WIDTH = 318;
+const RESIZER_WIDTH = 12;
 
 export default function App() {
   const history = useEditorHistory({ html: initialHtml, selectedId: null });
@@ -74,7 +76,7 @@ export default function App() {
   const [selectCommand, setSelectCommand] = useState<SelectElementCommand | null>(null);
   const [patchCommand, setPatchCommand] = useState<PatchCommand | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
-  const [sourceView, setSourceView] = useState<"source" | "tree">("source");
+  const [sourceView, setSourceView] = useState<"source" | "tree">("tree");
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [exportPreviewHtml, setExportPreviewHtml] = useState<string | null>(null);
@@ -91,14 +93,16 @@ export default function App() {
 
   const updateSelectedElement = useCallback(
     (nextElement: SelectedElementSnapshot) => {
-      // ⑦ 守卫:选中同一元素时跳过无意义 commit
-      if (nextElement.hftId === state.selectedId) {
+      const currentHtml = latestHtmlRef.current;
+      const elementWithEffects = withElementEffects(nextElement, currentHtml);
+      // ⑦ 守卫:同一元素的重复回传仍刷新检查器,但不再写历史。
+      if (nextElement.hftId === state.selectedId && selectedElement?.hftId === nextElement.hftId) {
         flushDebouncedHistory();
+        setSelectedElement(elementWithEffects);
         return;
       }
       flushDebouncedHistory();
-      const currentHtml = latestHtmlRef.current;
-      setSelectedElement(withElementEffects(nextElement, currentHtml));
+      setSelectedElement(elementWithEffects);
       commit(
         {
           html: currentHtml,
@@ -107,7 +111,7 @@ export default function App() {
         { record: false }
       );
     },
-    [commit, flushDebouncedHistory, state.selectedId]
+    [commit, flushDebouncedHistory, selectedElement?.hftId, state.selectedId]
   );
 
 	  const applyTextUpdate = useCallback(
@@ -380,6 +384,10 @@ export default function App() {
   );
 
   const handleSelectFromTree = useCallback((hftId: string) => {
+    const treeSnapshot = buildElementSnapshotFromHtml(latestHtmlRef.current, hftId);
+    if (treeSnapshot) {
+      setSelectedElement(treeSnapshot);
+    }
     setSelectCommand({ id: Date.now(), hftId });
     flushDebouncedHistory();
     commit(
@@ -450,15 +458,20 @@ export default function App() {
     }
   }, [commit, state.html, state.selectedId]);
 
-  const editorStatus = useMemo(() => {
-    if (!selectedElement) return "未选择元素";
-    return `已选择 ${selectedElement.tagName.toUpperCase()} · ${selectedElement.hftId}`;
+  const selectionStatus = useMemo(() => {
+    if (!selectedElement) {
+      return {
+        label: "未选择",
+        detail: "从结构树或 Canvas 选择元素",
+      };
+    }
+    return {
+      label: "已选择",
+      detail: `${selectedElement.tagName.toUpperCase()} · ${selectedElement.hftId}`,
+    };
   }, [selectedElement]);
 
-  const domTree = useMemo(() => {
-    if (sourceView !== "tree") return [];
-    return buildEditableDomTree(state.html);
-  }, [state.html, sourceView]);
+  const domTree = useMemo(() => buildEditableDomTree(state.html), [state.html]);
   const historyItems = useMemo(
     () => buildDisplayItemsFromSummaries(summaries, currentIndex),
     [currentIndex, summaries]
@@ -466,12 +479,14 @@ export default function App() {
   const workspaceStyle = useMemo(
     () =>
       ({
-        "--source-col": isSourceCollapsed ? "56px" : `${sourceWidth}px`,
-        "--inspector-col": isInspectorCollapsed ? "56px" : `${inspectorWidth}px`,
+        "--source-col": isSourceCollapsed ? "44px" : `${sourceWidth}px`,
+        "--inspector-col": isInspectorCollapsed ? "44px" : `${inspectorWidth}px`,
       }) as CSSProperties,
     [inspectorWidth, isInspectorCollapsed, isSourceCollapsed, sourceWidth]
   );
-  const previewStatusText = isPreviewReady ? "实时预览 · 已就绪" : "实时预览 · 渲染中";
+  const previewStatus = isPreviewReady
+    ? { label: "实时预览", detail: "已就绪", tone: "ready" }
+    : { label: "实时预览", detail: "渲染中", tone: "busy" };
   const characterCountText = `${state.html.length.toLocaleString()} 字符`;
 
   return (
@@ -580,13 +595,95 @@ export default function App() {
         />
       </main>
       <footer className="status-bar" aria-live="polite">
-        <span>{editorStatus}</span>
-        <span>{characterCountText}</span>
-        <span>{previewStatusText}</span>
-        <span>{statusMessage}</span>
+        <div className={`status-item status-selection${selectedElement ? " status-item-active" : ""}`}>
+          <span className="status-dot" aria-hidden="true" />
+          <span className="status-copy">
+            <strong>{selectionStatus.label}</strong>
+            <small>{selectionStatus.detail}</small>
+          </span>
+        </div>
+        <div className="status-item status-count">
+          <span className="status-dot status-dot-muted" aria-hidden="true" />
+          <span>{characterCountText}</span>
+        </div>
+        <div className={`status-item status-preview status-preview-${previewStatus.tone}`}>
+          <span className="status-dot" aria-hidden="true" />
+          <span className="status-copy">
+            <strong>{previewStatus.label}</strong>
+            <small>{previewStatus.detail}</small>
+          </span>
+        </div>
+        <div className="status-item status-message">
+          <span>{statusMessage}</span>
+        </div>
       </footer>
     </div>
   );
+}
+
+function buildElementSnapshotFromHtml(html: string, hftId: string): SelectedElementSnapshot | null {
+  const parser = new DOMParser();
+  const documentRef = parser.parseFromString(html, "text/html");
+  const element = queryElementByHftId(documentRef, hftId);
+  if (!element) return null;
+
+  return {
+    hftId,
+    path: getDomPath(element),
+    tagName: element.tagName.toLowerCase(),
+    id: element.id || "",
+    className: typeof element.className === "string" ? element.className : "",
+    text: element.textContent || "",
+    styles: getInlineStyleSnapshot(element),
+    effects: {
+      hoverBackgroundColor: getHoverBackgroundColor(html, hftId),
+    },
+    attributes: {
+      src: element instanceof HTMLImageElement ? element.getAttribute("src") || "" : "",
+      alt: element instanceof HTMLImageElement ? element.getAttribute("alt") || "" : "",
+    },
+    location: describeElementLocation(element),
+    hasInlineStyle: Boolean(element.getAttribute("style")),
+    canEditText: !(element instanceof HTMLImageElement) && element.children.length === 0,
+  };
+}
+
+function getInlineStyleSnapshot(element: HTMLElement): SelectedElementSnapshot["styles"] {
+  const inline = element.style;
+  return {
+    fontFamily: inline.fontFamily,
+    fontSize: inline.fontSize,
+    color: inline.color,
+    fontWeight: inline.fontWeight,
+    lineHeight: inline.lineHeight,
+    letterSpacing: inline.letterSpacing,
+    textAlign: inline.textAlign,
+    backgroundColor: inline.backgroundColor,
+    borderColor: inline.borderColor,
+    borderWidth: inline.borderWidth,
+    borderStyle: inline.borderStyle,
+    borderRadius: inline.borderRadius,
+    boxShadow: inline.boxShadow,
+    width: inline.width,
+    height: inline.height,
+    maxWidth: inline.maxWidth,
+    objectFit: inline.objectFit,
+    marginTop: inline.marginTop,
+    marginBottom: inline.marginBottom,
+    paddingTop: inline.paddingTop,
+    paddingBottom: inline.paddingBottom,
+    paddingLeft: inline.paddingLeft,
+    paddingRight: inline.paddingRight,
+  };
+}
+
+function describeElementLocation(element: HTMLElement): string {
+  const classes =
+    typeof element.className === "string" && element.className.trim()
+      ? `.${element.className.trim().split(/\s+/).filter(Boolean).join(".")}`
+      : "";
+  const id = element.id ? `#${element.id}` : "";
+  return `${element.tagName.toLowerCase()}${id}${classes}`;
 }
 
 function withElementEffects(element: SelectedElementSnapshot, html: string): SelectedElementSnapshot {

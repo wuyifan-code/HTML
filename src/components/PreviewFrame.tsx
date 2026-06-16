@@ -1,6 +1,6 @@
 import { memo, useEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
-import { Eye, Maximize2, Minimize2, Monitor, Smartphone, Tablet } from "lucide-react";
+import { Eye, Lock, Maximize2, Minimize2, Monitor, Smartphone, Tablet } from "lucide-react";
 import { useIframeSelection } from "../hooks/useIframeSelection";
 import type {
   ElementQuickAction,
@@ -47,8 +47,8 @@ function PreviewFrameComponent({
   onReadyChange,
 }: PreviewFrameProps) {
   const bridgeTokenRef = useRef(createBridgeToken());
-  const targetOriginRef = useRef(window.location.origin);
-  const { iframeRef, isReady, markRendering } = useIframeSelection(
+  const targetOriginRef = useRef("*");
+  const { iframeRef, isReady, markReady, markRendering } = useIframeSelection(
     bridgeTokenRef.current,
     onElementSelected,
     onModalStateChange,
@@ -60,6 +60,7 @@ function PreviewFrameComponent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [reloadNonce]
   );
+  const viewportSize = viewportDimensions[viewportMode];
 
   useEffect(() => {
     markRendering();
@@ -115,51 +116,63 @@ function PreviewFrameComponent({
     <section className="panel preview-panel" aria-label="HTML 实时预览">
       <div className="panel-header">
         <div className="panel-title">
-          <Eye size={18} strokeWidth={1.8} />
-          <span>实时预览</span>
+          <Eye size={18} strokeWidth={1.75} />
+          <span>Canvas</span>
         </div>
-      </div>
-      <div className={`iframe-shell iframe-shell-${viewportMode}`}>
-        <div className="preview-floating-toolbar">
-          <div className="segmented-control preview-mode-control" aria-label="预览宽度">
-            <PreviewModeButton
-              mode="desktop"
-              activeMode={viewportMode}
-              label="桌面"
-              onClick={onViewportModeChange}
-              icon={<Monitor size={15} strokeWidth={1.8} />}
-            />
-            <PreviewModeButton
-              mode="tablet"
-              activeMode={viewportMode}
-              label="平板"
-              onClick={onViewportModeChange}
-              icon={<Tablet size={15} strokeWidth={1.8} />}
-            />
-            <PreviewModeButton
-              mode="mobile"
-              activeMode={viewportMode}
-              label="手机"
-              onClick={onViewportModeChange}
-              icon={<Smartphone size={15} strokeWidth={1.8} />}
-            />
+        <div className="preview-header-actions">
+          <div className="preview-control-cluster">
+            <div className="segmented-control preview-mode-control" aria-label="预览宽度">
+              <PreviewModeButton
+                mode="desktop"
+                activeMode={viewportMode}
+                label="桌面"
+                onClick={onViewportModeChange}
+                icon={<Monitor size={15} strokeWidth={1.75} />}
+              />
+              <PreviewModeButton
+                mode="tablet"
+                activeMode={viewportMode}
+                label="平板"
+                onClick={onViewportModeChange}
+                icon={<Tablet size={15} strokeWidth={1.75} />}
+              />
+              <PreviewModeButton
+                mode="mobile"
+                activeMode={viewportMode}
+                label="手机"
+                onClick={onViewportModeChange}
+                icon={<Smartphone size={15} strokeWidth={1.75} />}
+              />
+            </div>
+          </div>
+          <div className="preview-readouts" aria-label="画布读数">
+            <div className="canvas-size-control" aria-label="当前画布尺寸">
+              <span>{viewportSize.width}</span>
+              <small>x</small>
+              <span>{viewportSize.height}</span>
+              <Lock size={13} strokeWidth={1.75} />
+            </div>
+            <span className="canvas-zoom-pill">100%</span>
           </div>
           <button
-            className="ghost-button compact-action"
+            className="ghost-button compact-action preview-focus-button"
             type="button"
             onClick={onToggleFocusPreview}
             title={isFocusPreview ? "恢复三栏编辑器" : "隐藏编辑器，全屏预览"}
           >
-            {isFocusPreview ? <Minimize2 size={15} strokeWidth={1.9} /> : <Maximize2 size={15} strokeWidth={1.9} />}
-            {isFocusPreview ? "恢复" : "全屏"}
+            {isFocusPreview ? <Minimize2 size={15} strokeWidth={1.75} /> : <Maximize2 size={15} strokeWidth={1.75} />}
+            <span>{isFocusPreview ? "恢复" : "全屏"}</span>
           </button>
         </div>
+      </div>
+      <div className={`iframe-shell iframe-shell-${viewportMode}`}>
         <div className={`preview-viewport preview-viewport-${viewportMode}`}>
           <iframe
             ref={iframeRef}
             title="HTML FineTune 实时预览"
             sandbox="allow-scripts"
             srcDoc={srcDoc}
+            onLoad={markReady}
           />
         </div>
       </div>
@@ -168,6 +181,12 @@ function PreviewFrameComponent({
 }
 
 export const PreviewFrame = memo(PreviewFrameComponent);
+
+const viewportDimensions: Record<PreviewViewportMode, { width: number; height: number }> = {
+  desktop: { width: 1280, height: 800 },
+  tablet: { width: 820, height: 1180 },
+  mobile: { width: 390, height: 844 },
+};
 
 interface PreviewModeButtonProps {
   mode: PreviewViewportMode;
@@ -201,46 +220,148 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
       cursor: text !important;
     }
     [data-html-finetune-hovered="true"]:not([data-html-finetune-selected="true"]) {
-      outline: 1.5px dashed #d97757 !important;
+      outline: 1.5px dashed #19a997 !important;
       outline-offset: 2px !important;
-      box-shadow: 0 0 0 5px rgba(217, 119, 87, 0.08) !important;
-      border-radius: 0 !important;
+      box-shadow: 0 0 0 5px rgba(25, 169, 151, 0.11) !important;
+      border-radius: 6px !important;
     }
     [data-html-finetune-selected="true"] {
-      outline: 2px solid #c96f4a !important;
+      outline: 2px solid #19a997 !important;
       outline-offset: 2px !important;
-      box-shadow: 0 0 0 6px rgba(201, 111, 74, 0.13) !important;
-      border-radius: 0 !important;
+      box-shadow: 0 0 0 6px rgba(25, 169, 151, 0.14) !important;
+      border-radius: 6px !important;
     }
     #html-finetune-floating-toolbar {
       position: fixed !important;
       z-index: 2147483647 !important;
       display: none;
       align-items: center !important;
-      gap: 0 !important;
-      border: 1px solid #d8c4b3 !important;
-      background: #fffdf8 !important;
-      box-shadow: 0 12px 32px rgba(47, 42, 37, 0.18) !important;
+      gap: 6px !important;
+      min-height: 44px !important;
+      padding: 5px !important;
+      border: 1px solid rgba(148, 163, 184, 0.28) !important;
+      border-radius: 11px !important;
+      background: rgba(255, 255, 255, 0.96) !important;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+        0 2px 4px rgba(15, 23, 42, 0.04),
+        0 8px 18px rgba(15, 23, 42, 0.10),
+        0 28px 56px rgba(15, 23, 42, 0.18) !important;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      backdrop-filter: blur(18px) !important;
+      -webkit-backdrop-filter: blur(18px) !important;
+      transform-origin: center bottom !important;
+      isolation: isolate !important;
+      animation: hft-toolbar-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    }
+
+    @keyframes hft-toolbar-enter {
+      0% {
+        opacity: 0 !important;
+        transform: translateY(8px) scale(0.94) !important;
+      }
+      100% {
+        opacity: 1 !important;
+        transform: translateY(0) scale(1) !important;
+      }
+    }
+    #html-finetune-floating-toolbar::after {
+      content: "" !important;
+      position: absolute !important;
+      left: 50% !important;
+      bottom: -6px !important;
+      width: 10px !important;
+      height: 10px !important;
+      transform: translateX(-50%) rotate(45deg) !important;
+      border-right: 1px solid rgba(148, 163, 184, 0.34) !important;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.34) !important;
+      background: rgba(255, 255, 255, 0.98) !important;
+    }
+    #html-finetune-floating-toolbar[data-placement="below"] {
+      transform-origin: center top !important;
+    }
+    #html-finetune-floating-toolbar[data-placement="below"]::after {
+      top: -6px !important;
+      bottom: auto !important;
+      border: 0 !important;
+      border-left: 1px solid rgba(148, 163, 184, 0.34) !important;
+      border-top: 1px solid rgba(148, 163, 184, 0.34) !important;
+    }
+    #html-finetune-floating-toolbar .hft-toolbar-meta {
+      height: 32px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      padding: 0 10px !important;
+      border-radius: 7px !important;
+      background: #f3fbf9 !important;
+      color: #0f766e !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      line-height: 1 !important;
+    }
+    #html-finetune-floating-toolbar .hft-toolbar-dot {
+      width: 7px !important;
+      height: 7px !important;
+      border-radius: 999px !important;
+      background: #19a997 !important;
+      box-shadow: 0 0 0 3px rgba(25, 169, 151, 0.16) !important;
+    }
+    #html-finetune-floating-toolbar .hft-toolbar-divider {
+      width: 1px !important;
+      height: 24px !important;
+      border-radius: 999px !important;
+      background: linear-gradient(180deg, transparent 0%, #cfdad7 40%, #cfdad7 60%, transparent 100%) !important;
     }
     #html-finetune-floating-toolbar button {
-      min-width: 48px !important;
+      position: relative !important;
+      min-width: 38px !important;
       height: 32px !important;
-      border: 0 !important;
-      border-right: 1px solid #e7e2d8 !important;
-      border-radius: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 7px !important;
+      padding: 0 10px !important;
+      border: 1px solid transparent !important;
+      border-radius: 7px !important;
       background: transparent !important;
-      color: #6f665d !important;
+      color: #334155 !important;
       font: inherit !important;
       font-size: 12px !important;
+      font-weight: 650 !important;
       cursor: pointer !important;
+      transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease !important;
     }
-    #html-finetune-floating-toolbar button:last-child {
-      border-right: 0 !important;
+    #html-finetune-floating-toolbar button svg {
+      width: 15px !important;
+      height: 15px !important;
+      flex: 0 0 auto !important;
+      stroke: currentColor !important;
+      stroke-width: 1.75 !important;
+      fill: none !important;
+      stroke-linecap: round !important;
+      stroke-linejoin: round !important;
     }
     #html-finetune-floating-toolbar button:hover {
-      color: #c96442 !important;
-      background: #fff4ec !important;
+      color: #0f766e !important;
+      background: rgba(25, 169, 151, 0.1) !important;
+      border-color: rgba(25, 169, 151, 0.18) !important;
+      box-shadow: 0 6px 14px rgba(15, 118, 110, 0.12) !important;
+      transform: translateY(-1px) scale(1.04) !important;
+    }
+    #html-finetune-floating-toolbar button:active {
+      transform: translateY(1px) scale(0.97) !important;
+      transition-duration: 60ms !important;
+    }
+    #html-finetune-floating-toolbar button[data-action="delete"] {
+      color: #b42318 !important;
+    }
+    #html-finetune-floating-toolbar button[data-action="delete"]:hover {
+      color: #ffffff !important;
+      background: #e5483f !important;
+      border-color: #e5483f !important;
+      box-shadow: 0 6px 18px rgba(229, 72, 63, 0.28) !important;
+      transform: translateY(-1px) scale(1.04) !important;
     }
   </style>`;
 
@@ -344,7 +465,7 @@ function createBridgeScript(bridgeToken: string): string {
             .join("");
         }
         if (/^#[0-9a-f]{6}$/i.test(color)) return color;
-        return "#2f2a25";
+        return "#141413";
       }
 
       function describeLocation(element) {
@@ -446,8 +567,10 @@ function createBridgeScript(bridgeToken: string): string {
         toolbar.setAttribute("role", "toolbar");
         toolbar.setAttribute("aria-label", "HTML FineTune 快捷工具");
         toolbar.innerHTML = [
-          '<button type="button" data-action="duplicate" title="复制元素">复制</button>',
-          '<button type="button" data-action="delete" title="删除元素">删除</button>'
+          '<div class="hft-toolbar-meta" aria-hidden="true"><span class="hft-toolbar-dot"></span><strong data-role="tag">element</strong></div>',
+          '<span class="hft-toolbar-divider" aria-hidden="true"></span>',
+          '<button type="button" data-action="duplicate" title="复制元素" aria-label="复制元素"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M4 16V6a2 2 0 0 1 2-2h10"></path></svg><span>复制</span></button>',
+          '<button type="button" data-action="delete" title="删除元素" aria-label="删除元素"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg><span>删除</span></button>'
         ].join("");
 
         toolbar.addEventListener("mousedown", (event) => {
@@ -485,17 +608,22 @@ function createBridgeScript(bridgeToken: string): string {
       function positionFloatingToolbar(element) {
         const toolbar = ensureFloatingToolbar();
         const rect = element.getBoundingClientRect();
+        const tagLabel = toolbar.querySelector("[data-role='tag']");
+        if (tagLabel) tagLabel.textContent = element.tagName.toLowerCase();
         toolbar.setAttribute("data-hft-id", element.getAttribute(config.hftIdAttribute) || "");
         toolbar.style.display = "flex";
 
-        const toolbarWidth = toolbar.offsetWidth || 104;
-        const toolbarHeight = toolbar.offsetHeight || 34;
+        const toolbarWidth = toolbar.offsetWidth || 188;
+        const toolbarHeight = toolbar.offsetHeight || 42;
         const visibleBounds = getVisibleFrameBounds();
-        const preferredTop = rect.top - 42;
+        const hasRoomAbove = rect.top >= toolbarHeight + 12;
+        toolbar.setAttribute("data-placement", hasRoomAbove ? "above" : "below");
+        const preferredTop = hasRoomAbove ? rect.top - toolbarHeight - 12 : rect.bottom + 12;
         const maxTop = Math.max(8, visibleBounds.height - toolbarHeight - 8);
         const top = Math.max(8, Math.min(preferredTop, maxTop));
         const maxLeft = Math.max(8, visibleBounds.width - toolbarWidth - 8);
-        const left = Math.max(8, Math.min(rect.left, maxLeft));
+        const preferredLeft = rect.left + rect.width / 2 - toolbarWidth / 2;
+        const left = Math.max(8, Math.min(preferredLeft, maxLeft));
 
         toolbar.style.top = top + "px";
         toolbar.style.left = left + "px";
@@ -601,7 +729,7 @@ function createBridgeScript(bridgeToken: string): string {
         const rules = [];
         if (styleElement && styleElement.textContent) {
           const pattern = new RegExp(
-            "\\[" + config.hftIdAttribute + "=\"([^\"]+)\"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}",
+            "\\[" + config.hftIdAttribute + "=\\\"([^\\\"]+)\\\"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}",
             "gi"
           );
           for (const match of styleElement.textContent.matchAll(pattern)) {
@@ -626,7 +754,7 @@ function createBridgeScript(bridgeToken: string): string {
           document.head.appendChild(styleElement);
         }
         styleElement.textContent = "\\n" + filtered
-          .map((rule) => "[" + config.hftIdAttribute + "=\"" + rule.hftId + "\"]:hover { background-color: " + rule.color + "; }")
+          .map((rule) => "[" + config.hftIdAttribute + "=\\\"" + rule.hftId + "\\\"]:hover { background-color: " + rule.color + "; }")
           .join("\\n") + "\\n";
       }
 
@@ -684,6 +812,10 @@ function createBridgeScript(bridgeToken: string): string {
             label: modal ? getModalLabel(modal) : ""
           }
         }, "*");
+      }
+
+      function postPreviewReady() {
+        window.parent.postMessage({ type: "HTML_FINETUNE_PREVIEW_READY", token: bridgeToken }, "*");
       }
 
       function openModal() {
@@ -863,7 +995,15 @@ function createBridgeScript(bridgeToken: string): string {
 
       markEditableElements();
       postModalState();
-      window.parent.postMessage({ type: "HTML_FINETUNE_PREVIEW_READY", token: bridgeToken }, "*");
+      postPreviewReady();
+      window.setTimeout(() => {
+        postModalState();
+        postPreviewReady();
+      }, 50);
+      window.setTimeout(() => {
+        postModalState();
+        postPreviewReady();
+      }, 250);
     })();
   </script>`;
 }

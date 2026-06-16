@@ -39,8 +39,8 @@ export function Toolbar({
           disabled={!canUndo}
           title="撤销 · Ctrl+Z / Cmd+Z"
         >
-          <Undo2 size={16} strokeWidth={1.9} />
-          撤销
+          <Undo2 size={16} strokeWidth={1.75} />
+          <span className="button-label">撤销</span>
         </button>
         <button
           className="ghost-button toolbar-button"
@@ -49,12 +49,12 @@ export function Toolbar({
           disabled={!canRedo}
           title="重做 · Ctrl+Y / Shift+Cmd+Z"
         >
-          <Redo2 size={16} strokeWidth={1.9} />
-          重做
+          <Redo2 size={16} strokeWidth={1.75} />
+          <span className="button-label">重做</span>
         </button>
         <button className="ghost-button toolbar-button" type="button" onClick={onToggleHistory} title="查看编辑历史">
-          <History size={16} strokeWidth={1.9} />
-          历史
+          <History size={16} strokeWidth={1.75} />
+          <span className="button-label">历史</span>
         </button>
       </div>
 
@@ -68,8 +68,8 @@ export function Toolbar({
           disabled={!hasModal || isModalOpen}
           title="打开预览中的弹窗"
         >
-          <MessageSquare size={16} strokeWidth={1.9} />
-          打开弹窗
+          <MessageSquare size={16} strokeWidth={1.75} />
+          <span className="button-label">打开弹窗</span>
         </button>
         <button
           className="ghost-button toolbar-button compact-toolbar-button"
@@ -78,12 +78,12 @@ export function Toolbar({
           disabled={!hasModal || !isModalOpen}
           title="关闭预览中的弹窗"
         >
-          <X size={16} strokeWidth={1.9} />
-          关闭弹窗
+          <X size={16} strokeWidth={1.75} />
+          <span className="button-label">关闭弹窗</span>
         </button>
         <label className="ghost-button toolbar-button compact-toolbar-button file-button" title="导入 .html 文件">
-          <FileUp size={16} strokeWidth={1.9} />
-          导入 HTML
+          <FileUp size={16} strokeWidth={1.75} />
+          <span className="button-label">导入 HTML</span>
           <input
             type="file"
             accept=".html,.htm,text/html"
@@ -95,16 +95,16 @@ export function Toolbar({
           />
         </label>
         <button className="ghost-button toolbar-button compact-toolbar-button" type="button" onClick={onCopy}>
-          <Clipboard size={16} strokeWidth={1.9} />
-          复制 HTML
+          <Clipboard size={16} strokeWidth={1.75} />
+          <span className="button-label">复制 HTML</span>
         </button>
       </div>
 
       <div className="toolbar-separator" aria-hidden="true" />
 
       <button className="primary-button toolbar-button export-toolbar-button" type="button" onClick={onExport}>
-        <Download size={17} strokeWidth={2} />
-        导出 HTML
+        <Download size={17} strokeWidth={1.75} />
+        <span className="button-label">导出 HTML</span>
       </button>
     </div>
   );

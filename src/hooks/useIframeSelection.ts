@@ -23,9 +23,13 @@ export function useIframeSelection(
     setIsReady(false);
   }, []);
 
+  const markReady = useCallback(() => {
+    setIsReady(true);
+  }, []);
+
   useEffect(() => {
     const handleMessage = (event: MessageEvent<PreviewMessage>) => {
-      if (event.source !== iframeRef.current?.contentWindow) return;
+      if (!event.data?.type?.startsWith("HTML_FINETUNE_")) return;
       if (event.data?.token !== bridgeToken) return;
 
       if (event.data?.type === "HTML_FINETUNE_ELEMENT_SELECTED") {
@@ -52,6 +56,7 @@ export function useIframeSelection(
   return {
     iframeRef,
     isReady,
+    markReady,
     markRendering,
   };
 }

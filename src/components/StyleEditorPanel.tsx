@@ -1,5 +1,6 @@
-import { memo } from "react";
-import { MousePointerClick, PanelRightClose, PanelRightOpen, SlidersHorizontal, Type } from "lucide-react";
+import { memo, useState } from "react";
+import { Copy, MousePointerClick, PanelRightClose, PanelRightOpen, SlidersHorizontal, Type } from "lucide-react";
+import { CustomSelect } from "./CustomSelect";
 import type { EditableAttributes, EditableEffects, EditableStyleKey, SelectedElementSnapshot } from "../types/editor";
 
 interface StyleEditorPanelProps {
@@ -21,8 +22,15 @@ const fontOptions = [
 ];
 
 const fontLabels = ["系统无衬线", "编辑感衬线", "等宽字体", "Arial", "Times New Roman"];
+const fontSelectOptions = fontOptions.map((value, i) => ({ value, label: fontLabels[i] }));
 const weightOptions = ["300", "400", "500", "600", "700", "800"];
+const weightSelectOptions = weightOptions.map((w) => ({ value: w, label: w }));
 const textAlignOptions = ["left", "center", "right", "justify", "start"];
+const textAlignSelectOptions = textAlignOptions.map((a) => ({ value: a, label: textAlignLabel(a) }));
+const borderStyleOptions = ["solid", "dashed", "none"] as const;
+const borderStyleSelectOptions = borderStyleOptions.map((s) => ({ value: s, label: s }));
+const objectFitOptions = ["cover", "contain", "fill", "none", "scale-down"];
+const objectFitSelectOptions = objectFitOptions.map((f) => ({ value: f, label: f }));
 
 export function StyleEditorPanelImpl({
   selectedElement,
@@ -33,6 +41,8 @@ export function StyleEditorPanelImpl({
   isCollapsed,
   onToggleCollapse,
 }: StyleEditorPanelProps) {
+  const [inspectorTab, setInspectorTab] = useState<"style" | "computed" | "events">("style");
+
   if (isCollapsed) {
     return (
       <aside className="panel collapsed-panel collapsed-inspector-panel" aria-label="样式检查器已收起">
@@ -43,7 +53,7 @@ export function StyleEditorPanelImpl({
           aria-label="展开样式检查器"
           title="展开样式检查器"
         >
-          <PanelRightOpen size={18} strokeWidth={1.8} />
+          <PanelRightOpen size={18} strokeWidth={1.75} />
           <span>展开检查器</span>
         </button>
       </aside>
@@ -54,8 +64,8 @@ export function StyleEditorPanelImpl({
     <aside className="panel inspector-panel" aria-label="样式检查器">
       <div className="panel-header">
         <div className="panel-title">
-          <SlidersHorizontal size={18} strokeWidth={1.8} />
-          <span>样式检查器</span>
+          <SlidersHorizontal size={18} strokeWidth={1.75} />
+          <span>Inspector</span>
         </div>
         <button
           className="icon-button"
@@ -64,7 +74,36 @@ export function StyleEditorPanelImpl({
           aria-label="收起样式检查器"
           title="收起样式检查器"
         >
-          <PanelRightClose size={18} strokeWidth={1.8} />
+          <PanelRightClose size={18} strokeWidth={1.75} />
+        </button>
+      </div>
+      <div className="inspector-tabs" role="tablist" aria-label="检查器视图">
+        <button
+          className={inspectorTab === "style" ? "inspector-tab-active" : ""}
+          type="button"
+          role="tab"
+          aria-selected={inspectorTab === "style"}
+          onClick={() => setInspectorTab("style")}
+        >
+          样式
+        </button>
+        <button
+          className={inspectorTab === "computed" ? "inspector-tab-active" : ""}
+          type="button"
+          role="tab"
+          aria-selected={inspectorTab === "computed"}
+          onClick={() => setInspectorTab("computed")}
+        >
+          计算样式
+        </button>
+        <button
+          className={inspectorTab === "events" ? "inspector-tab-active" : ""}
+          type="button"
+          role="tab"
+          aria-selected={inspectorTab === "events"}
+          onClick={() => setInspectorTab("events")}
+        >
+          事件
         </button>
       </div>
 
@@ -72,13 +111,13 @@ export function StyleEditorPanelImpl({
         <div className="empty-state">
           <div className="empty-state-illustration" aria-hidden="true">
             <div className="empty-doc">
-              <Type size={20} strokeWidth={1.8} />
+              <Type size={20} strokeWidth={1.75} />
               <span />
               <span />
             </div>
             <div className="empty-arrow" />
             <div className="empty-controls">
-              <MousePointerClick size={18} strokeWidth={1.8} />
+              <MousePointerClick size={18} strokeWidth={1.75} />
               <span />
               <span />
             </div>
@@ -90,10 +129,28 @@ export function StyleEditorPanelImpl({
             <li>实时查看修改效果</li>
           </ol>
         </div>
+      ) : inspectorTab === "computed" ? (
+        <ComputedInspector selectedElement={selectedElement} />
+      ) : inspectorTab === "events" ? (
+        <EventInspector selectedElement={selectedElement} />
       ) : (
         <div className="inspector-content">
-          <div className="selected-chip">
-            已选择 <span>{selectedElement.location || selectedElement.tagName}</span>
+          <div className="selected-element-bar">
+            <div>
+              <small>Selected</small>
+              <span>{selectedElement.location || selectedElement.tagName}</span>
+            </div>
+            <button
+              className="icon-button subtle-icon-button"
+              type="button"
+              title="复制选择器"
+              aria-label="复制选择器"
+              onClick={() => {
+                void navigator.clipboard?.writeText(selectedElement.location || selectedElement.tagName);
+              }}
+            >
+              <Copy size={15} strokeWidth={1.75} />
+            </button>
           </div>
 
           {selectedElement.canEditText ? (
@@ -116,16 +173,12 @@ export function StyleEditorPanelImpl({
               <legend>排版</legend>
               <label className="field field-full">
                 <span>字体</span>
-                <select
-                  value={normalizeFontValue(selectedElement.styles.fontFamily)}
-                  onChange={(event) => onStyleChange("fontFamily", event.target.value)}
-                >
-                  {fontOptions.map((font, index) => (
-                    <option key={font} value={font}>
-                      {fontLabels[index]}
-                    </option>
-                  ))}
-                </select>
+                <CustomSelect
+                  value={selectedElement.styles.fontFamily}
+                  options={fontSelectOptions}
+                  matchValue={(opt, current) => normalizeFontValue(current) === opt.value}
+                  onChange={(val) => onStyleChange("fontFamily", val)}
+                />
               </label>
 
             <div className="field-grid two-col">
@@ -138,16 +191,11 @@ export function StyleEditorPanelImpl({
               />
               <label className="field">
                 <span>字重</span>
-                <select
+                <CustomSelect
                   value={selectedElement.styles.fontWeight || "400"}
-                  onChange={(event) => onStyleChange("fontWeight", event.target.value)}
-                >
-                  {weightOptions.map((weight) => (
-                    <option key={weight} value={weight}>
-                      {weight}
-                    </option>
-                  ))}
-                </select>
+                  options={weightSelectOptions}
+                  onChange={(val) => onStyleChange("fontWeight", val)}
+                />
               </label>
             </div>
 
@@ -171,16 +219,12 @@ export function StyleEditorPanelImpl({
 
             <label className="field field-full">
               <span>文本对齐</span>
-              <select
-                value={normalizeTextAlign(selectedElement.styles.textAlign)}
-                onChange={(event) => onStyleChange("textAlign", event.target.value)}
-              >
-                {textAlignOptions.map((align) => (
-                  <option key={align} value={align}>
-                    {textAlignLabel(align)}
-                  </option>
-                ))}
-              </select>
+              <CustomSelect
+                value={selectedElement.styles.textAlign}
+                options={textAlignSelectOptions}
+                matchValue={(opt, current) => normalizeTextAlign(current) === opt.value}
+                onChange={(val) => onStyleChange("textAlign", val)}
+              />
             </label>
 
             <label className="field field-full">
@@ -193,7 +237,7 @@ export function StyleEditorPanelImpl({
                 />
                 <input
                   type="text"
-                  placeholder="#2f2a25"
+                  placeholder="#141413"
                   value={selectedElement.styles.color || ""}
                   onChange={(event) => onStyleChange("color", event.target.value)}
                 />
@@ -239,16 +283,12 @@ export function StyleEditorPanelImpl({
               </div>
               <label className="field field-full">
                 <span>填充方式</span>
-                <select
-                  value={normalizeObjectFit(selectedElement.styles.objectFit)}
-                  onChange={(event) => onStyleChange("objectFit", event.target.value)}
-                >
-                  <option value="cover">cover</option>
-                  <option value="contain">contain</option>
-                  <option value="fill">fill</option>
-                  <option value="none">none</option>
-                  <option value="scale-down">scale-down</option>
-                </select>
+                <CustomSelect
+                  value={selectedElement.styles.objectFit}
+                  options={objectFitSelectOptions}
+                  matchValue={(opt, current) => normalizeObjectFit(current) === opt.value}
+                  onChange={(val) => onStyleChange("objectFit", val)}
+                />
               </label>
             </fieldset>
           ) : null}
@@ -318,14 +358,12 @@ export function StyleEditorPanelImpl({
                 />
                 <label className="field">
                   <span>边框样式</span>
-                  <select
-                    value={normalizeBorderStyle(selectedElement.styles.borderStyle)}
-                    onChange={(event) => onStyleChange("borderStyle", event.target.value)}
-                  >
-                    <option value="solid">solid</option>
-                    <option value="dashed">dashed</option>
-                    <option value="none">none</option>
-                  </select>
+                  <CustomSelect
+                    value={selectedElement.styles.borderStyle}
+                    options={borderStyleSelectOptions}
+                    matchValue={(opt, current) => normalizeBorderStyle(current) === opt.value}
+                    onChange={(val) => onStyleChange("borderStyle", val)}
+                  />
                 </label>
               </div>
               <div className="field-grid two-col">
@@ -377,14 +415,12 @@ export function StyleEditorPanelImpl({
               <div className="field-grid two-col">
                 <label className="field">
                   <span>边框样式</span>
-                  <select
-                    value={normalizeBorderStyle(selectedElement.styles.borderStyle)}
-                    onChange={(event) => onStyleChange("borderStyle", event.target.value)}
-                  >
-                    <option value="solid">solid</option>
-                    <option value="dashed">dashed</option>
-                    <option value="none">none</option>
-                  </select>
+                  <CustomSelect
+                    value={selectedElement.styles.borderStyle}
+                    options={borderStyleSelectOptions}
+                    matchValue={(opt, current) => normalizeBorderStyle(current) === opt.value}
+                    onChange={(val) => onStyleChange("borderStyle", val)}
+                  />
                 </label>
                 <label className="field">
                   <span>阴影</span>
@@ -429,6 +465,78 @@ export function StyleEditorPanelImpl({
 }
 
 export const StyleEditorPanel = memo(StyleEditorPanelImpl);
+
+function ComputedInspector({ selectedElement }: { selectedElement: SelectedElementSnapshot }) {
+  return (
+    <div className="inspector-content inspector-readout">
+      <div className="selected-element-bar">
+        <div>
+          <small>Computed</small>
+          <span>{selectedElement.location || selectedElement.tagName}</span>
+        </div>
+      </div>
+      <fieldset className="inspector-group info-group">
+        <legend>Typography</legend>
+        <dl>
+          <InfoRow label="字体" value={selectedElement.styles.fontFamily || "inherit"} />
+          <InfoRow label="字号" value={selectedElement.styles.fontSize || "inherit"} />
+          <InfoRow label="字重" value={selectedElement.styles.fontWeight || "normal"} />
+          <InfoRow label="行高" value={selectedElement.styles.lineHeight || "normal"} />
+          <InfoRow label="对齐" value={selectedElement.styles.textAlign || "start"} />
+        </dl>
+      </fieldset>
+      <fieldset className="inspector-group info-group">
+        <legend>Box</legend>
+        <dl>
+          <InfoRow label="宽度" value={selectedElement.styles.width || "auto"} />
+          <InfoRow label="高度" value={selectedElement.styles.height || "auto"} />
+          <InfoRow label="上外边距" value={selectedElement.styles.marginTop || "0px"} />
+          <InfoRow label="下外边距" value={selectedElement.styles.marginBottom || "0px"} />
+          <InfoRow label="圆角" value={selectedElement.styles.borderRadius || "0px"} />
+        </dl>
+      </fieldset>
+      <fieldset className="inspector-group info-group">
+        <legend>Paint</legend>
+        <dl>
+          <InfoRow label="文字色" value={selectedElement.styles.color || "inherit"} />
+          <InfoRow label="背景色" value={selectedElement.styles.backgroundColor || "transparent"} />
+          <InfoRow label="边框色" value={selectedElement.styles.borderColor || "transparent"} />
+          <InfoRow label="阴影" value={selectedElement.styles.boxShadow || "none"} />
+        </dl>
+      </fieldset>
+    </div>
+  );
+}
+
+function EventInspector({ selectedElement }: { selectedElement: SelectedElementSnapshot }) {
+  return (
+    <div className="inspector-content inspector-readout">
+      <div className="selected-element-bar">
+        <div>
+          <small>Events</small>
+          <span>{selectedElement.location || selectedElement.tagName}</span>
+        </div>
+      </div>
+      <fieldset className="inspector-group info-group">
+        <legend>Element State</legend>
+        <dl>
+          <InfoRow label="点击语义" value={interactionLabel(selectedElement)} />
+          <InfoRow label="文本编辑" value={selectedElement.canEditText ? "可编辑" : "继承子元素"} />
+          <InfoRow label="Hover 背景" value={selectedElement.effects.hoverBackgroundColor || "未设置"} />
+          <InfoRow label="行内样式" value={selectedElement.hasInlineStyle ? "已设置" : "未设置"} />
+        </dl>
+      </fieldset>
+      <fieldset className="inspector-group info-group">
+        <legend>Attributes</legend>
+        <dl>
+          <InfoRow label="标签" value={selectedElement.tagName} />
+          <InfoRow label="类名" value={selectedElement.className || "无"} />
+          <InfoRow label="HFT ID" value={selectedElement.hftId} />
+        </dl>
+      </fieldset>
+    </div>
+  );
+}
 
 interface NumericUnitFieldProps {
   label: string;
@@ -478,7 +586,7 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
         <input type="color" value={normalizedValue} onChange={(event) => onChange(event.target.value)} />
         <input
           type="text"
-          placeholder="#c96f4a"
+          placeholder="#c96442"
           value={value || ""}
           onChange={(event) => onChange(event.target.value)}
         />
@@ -508,7 +616,7 @@ function normalizeFontValue(fontFamily: string): string {
 }
 
 function normalizeHexColor(value: string): string {
-  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#2f2a25";
+  return /^#[0-9a-f]{6}$/i.test(value) ? value : "#141413";
 }
 
 function normalizeTextAlign(value: string): string {
@@ -537,6 +645,14 @@ function isBlockLikeElement(element: SelectedElementSnapshot): boolean {
 
 function isImageElement(element: SelectedElementSnapshot): boolean {
   return element.tagName === "img";
+}
+
+function interactionLabel(element: SelectedElementSnapshot): string {
+  if (element.tagName === "button") return "button";
+  if (element.tagName === "a") return "link";
+  if (element.tagName === "dialog") return "dialog";
+  if (/modal|dialog|popup/i.test(element.className)) return "modal";
+  return "none";
 }
 
 function textAlignLabel(value: string): string {

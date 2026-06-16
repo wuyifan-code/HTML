@@ -27,12 +27,12 @@ function ExportPreviewDialogImpl({ html, onClose, onCopy, onDownload }: ExportPr
             <p>这是即将下载的干净 HTML，内部编辑标记会在这里被移除。</p>
           </div>
           <button className="icon-button" type="button" onClick={onClose} aria-label="关闭导出预览">
-            <X size={18} strokeWidth={1.9} />
+            <X size={18} strokeWidth={1.75} />
           </button>
         </div>
 
         <div className={`export-check ${hasInternalMarkers ? "export-check-warning" : ""}`}>
-          <CheckCircle2 size={17} strokeWidth={1.9} />
+          <CheckCircle2 size={17} strokeWidth={1.75} />
           {hasInternalMarkers ? "仍检测到内部标记，请先检查 HTML" : "未检测到 HTML FineTune 内部标记"}
         </div>
 
@@ -40,11 +40,11 @@ function ExportPreviewDialogImpl({ html, onClose, onCopy, onDownload }: ExportPr
 
         <div className="export-dialog-actions">
           <button className="ghost-button" type="button" onClick={onCopy}>
-            <Clipboard size={16} strokeWidth={1.9} />
+            <Clipboard size={16} strokeWidth={1.75} />
             复制干净 HTML
           </button>
           <button className="primary-button" type="button" onClick={onDownload} disabled={hasInternalMarkers}>
-            <Download size={17} strokeWidth={2} />
+            <Download size={17} strokeWidth={1.75} />
             下载 edited-page.html
           </button>
         </div>

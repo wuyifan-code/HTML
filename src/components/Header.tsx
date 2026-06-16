@@ -33,11 +33,11 @@ export function Header({
     <header className="app-header">
       <div className="brand-block">
         <div className="brand-mark" aria-hidden="true">
-          HF
+          &lt;/&gt;
         </div>
-        <div>
+        <div className="brand-copy">
           <h1>HTML FineTune</h1>
-          <p className="brand-subtitle">一个用于微调 AI 生成 HTML 的安静可视化编辑器</p>
+          <p className="brand-subtitle">实时页面微调工作台</p>
         </div>
       </div>
       <Toolbar
