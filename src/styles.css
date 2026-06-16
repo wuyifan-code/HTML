@@ -968,8 +968,7 @@ textarea:focus-visible {
   box-shadow: 0 6px 16px rgba(15, 118, 110, 0.1);
 }
 
-.canvas-size-control,
-.canvas-zoom-pill {
+.canvas-size-control {
   min-height: 30px;
   display: inline-flex;
   align-items: center;
@@ -993,9 +992,60 @@ textarea:focus-visible {
   color: var(--faint);
 }
 
-.canvas-zoom-pill {
-  color: var(--muted);
-  font-family: var(--ui);
+.zoom-control-cluster {
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+}
+
+.zoom-btn {
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zoom-pill-button {
+  min-width: 42px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink-soft);
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 680;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.zoom-pill-button:hover {
+  background: var(--surface-soft);
+  color: var(--ink);
+}
+
+.zoom-fit-btn {
+  height: 28px;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.zoom-fit-active {
+  color: var(--mint-strong);
+  background: rgba(25, 169, 151, 0.1);
+  border-color: rgba(25, 169, 151, 0.25);
 }
 
 .preview-focus-button {
@@ -1024,27 +1074,29 @@ textarea:focus-visible {
 .preview-viewport iframe {
   width: 100%;
   height: 100%;
+  transform: scale(var(--preview-zoom, 1));
+  transform-origin: top left;
   display: block;
   border: 0;
   background: var(--surface);
 }
 
 .preview-viewport-desktop {
-  width: min(100%, 1280px);
-  height: min(100%, 800px);
-  aspect-ratio: 16 / 10;
+  width: min(100%, var(--adaptive-width, 1280px));
+  height: min(100%, var(--adaptive-height, 800px));
+  aspect-ratio: var(--adaptive-ratio, 16 / 10);
 }
 
 .preview-viewport-tablet {
-  width: min(100%, 820px);
-  height: min(100%, 1180px);
-  aspect-ratio: 41 / 59;
+  width: min(100%, var(--adaptive-width, 820px));
+  height: min(100%, var(--adaptive-height, 1180px));
+  aspect-ratio: var(--adaptive-ratio, 41 / 59);
 }
 
 .preview-viewport-mobile {
-  width: min(100%, 390px);
-  height: min(100%, 844px);
-  aspect-ratio: 195 / 422;
+  width: min(100%, var(--adaptive-width, 390px));
+  height: min(100%, var(--adaptive-height, 844px));
+  aspect-ratio: var(--adaptive-ratio, 195 / 422);
 }
 
 .inspector-tabs {
@@ -1842,7 +1894,7 @@ textarea:focus-visible {
 @media (max-width: 1240px) {
   .button-label,
   .preview-mode-control .segmented-button span,
-  .canvas-zoom-pill {
+  .zoom-pill-button {
     display: none;
   }
 

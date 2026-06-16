@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node -e \"const l = require\\('lucide-react'\\); console.log\\('Scan:', typeof l.Scan\\); console.log\\('ZoomIn:', typeof l.ZoomIn\\); console.log\\('ZoomOut:', typeof l.ZoomOut\\);\")",
+      "Bash(npx tsc *)",
+      "mcp__Claude_in_Chrome__list_connected_browsers",
+      "mcp__Claude_in_Chrome__switch_browser",
+      "Bash(cp \"D:\\\\\\\\微信\\\\\\\\xwechat_files\\\\\\\\wxid_7jmm3z28ttja22_aee7\\\\\\\\msg\\\\\\\\file\\\\\\\\2026-06\\\\\\\\index.html\" \"D:\\\\\\\\Trae\\\\\\\\Html Write\\\\\\\\.claude\\\\\\\\worktrees\\\\\\\\awesome-yalow-b5e977\\\\\\\\src\\\\\\\\landscape-slide.html\")",
+      "Bash(git add *)"
+    ]
+  }
+}
