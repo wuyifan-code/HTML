@@ -1007,9 +1007,46 @@ function createBridgeScript(bridgeToken: string): string {
         const element = queryByHftId(hftId);
         if (!element || !isEditableElement(element)) return;
 
+        // 遍历祖先:对被 CSS 隐藏的容器,直接操作 DOM 类来展开(如幻灯片)
+        var ancestor = element.parentElement;
+        while (ancestor && ancestor !== document.body) {
+          if (window.getComputedStyle(ancestor).display === "none") {
+            // 通过 data-slide 属性识别幻灯片,直接切换 is-active 类
+            var slideIndex = ancestor.getAttribute("data-slide");
+            if (slideIndex && ancestor.parentElement) {
+              var deck = ancestor.parentElement;
+              var allSlides = deck.querySelectorAll('section[data-slide], [class*="slide"][data-slide]');
+              for (var i = 0; i < allSlides.length; i++) {
+                var isTarget = allSlides[i].getAttribute("data-slide") === slideIndex;
+                allSlides[i].classList.toggle("is-active", isTarget);
+                allSlides[i].setAttribute("aria-hidden", isTarget ? "false" : "true");
+              }
+              // 同步导航圆点
+              var allDots = document.querySelectorAll(".nav-dots button[data-target]");
+              for (var j = 0; j < allDots.length; j++) {
+                var match = allDots[j].getAttribute("data-target") === slideIndex;
+                allDots[j].classList.toggle("active", match);
+                if (match) {
+                  allDots[j].setAttribute("aria-current", "step");
+                } else {
+                  allDots[j].removeAttribute("aria-current");
+                }
+              }
+              break;
+            }
+            // 通用回退:移除隐藏属性
+            ancestor.removeAttribute("hidden");
+            ancestor.setAttribute("aria-hidden", "false");
+            if (window.getComputedStyle(ancestor).display === "none") {
+              ancestor.style.display = "block";
+            }
+          }
+          ancestor = ancestor.parentElement;
+        }
+
         openContainingModal(element);
         element.scrollIntoView({ block: "center", inline: "center", behavior: "smooth" });
-        selectElement(element, true);
+        selectElement(element, false);
       }
 
       document.addEventListener("mouseover", (event) => {
