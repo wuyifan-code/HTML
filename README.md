@@ -23,20 +23,13 @@ HTML FineTune 是一个本地运行的 HTML 可视化微调工作台。它把源
 
 ## 截图 / GIF
 
-当前仓库还没有提交正式演示图。建议在后续补充以下资源，并放到 `docs/screenshots/`：
+<p align="center">
+  <img src="docs/screenshots/html-finetune-demo.gif" alt="HTML FineTune 工作台演示" width="920" />
+</p>
 
-| 资源 | 建议文件名 | 展示内容 |
-| --- | --- | --- |
-| 主界面截图 | `docs/screenshots/main-workspace.png` | 三栏布局、Canvas、Inspector 和状态栏 |
-| 选中元素动图 | `docs/screenshots/select-and-edit.gif` | 从结构树选中元素并修改样式 |
-| 颜色选择器截图 | `docs/screenshots/color-picker.png` | 主题化颜色 UI、RGB 输入、预设色 |
-| 导入导出流程动图 | `docs/screenshots/import-export.gif` | 导入 HTML、编辑、导出干净 HTML |
-
-示例写法：
-
-```md
-![HTML FineTune 主界面](docs/screenshots/main-workspace.png)
-```
+<p align="center">
+  <sub>源码编辑、结构树定位、Canvas 实时预览、Inspector 微调和多视口检查。</sub>
+</p>
 
 ## 技术栈
 
@@ -176,7 +169,7 @@ src/
 - **复杂脚本页面**：导入页面中的原始脚本可能与 iframe 沙箱、桥接脚本或页面自身状态产生交互问题。
 - **远端字体加载**：Google Fonts 等远端字体首次加载时可能出现短暂字体回退。
 - **历史记录内存**：历史栈保存完整 HTML 字符串，长时间编辑大文档会增加内存占用。
-- **截图资源**：README 暂未内置正式截图或 GIF，需要后续补充。
+- **截图资源**：README 已包含基础演示 GIF，更完整的交互录屏仍待补充。
 
 ## Roadmap
 
@@ -187,7 +180,7 @@ src/
 - [ ] 批量样式操作和多选元素
 - [ ] 组件级复制、粘贴和模板收藏
 - [ ] 导出前可视化校验报告
-- [ ] README 截图与演示 GIF
+- [ ] 补充更多 README 场景截图和完整交互录屏
 - [ ] Playwright 端到端测试
 - [ ] 暗色模式和更多主题
 
