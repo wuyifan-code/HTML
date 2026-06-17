@@ -34,7 +34,17 @@ export function parseHtmlDocument(html: string): Document {
   const parser = new DOMParser();
   const hasHtmlShell = /<html[\s>]/i.test(html);
   const source = hasHtmlShell ? html : wrapFragment(html);
-  return parser.parseFromString(source, "text/html");
+  const documentRef = parser.parseFromString(source, "text/html");
+
+  // 检查 DOMParser 是否返回了 <parsererror>（畸形 HTML）
+  const parserError = documentRef.querySelector("parsererror");
+  if (parserError) {
+    throw new Error(
+      `HTML 解析错误: ${parserError.textContent?.slice(0, 120) ?? "未知错误"}`
+    );
+  }
+
+  return documentRef;
 }
 
 // 单条目解析缓存：读操作频繁且 html 字符串在短时间内不变，缓存可避免重复解析。

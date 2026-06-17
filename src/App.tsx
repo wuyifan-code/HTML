@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, lazy, Suspense } from "react";
-import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
+import type { CSSProperties } from "react";
 import { Header } from "./components/Header";
 import { HtmlInputPanel } from "./components/HtmlInputPanel";
 import { PreviewFrame } from "./components/PreviewFrame";
 import { StyleEditorPanel } from "./components/StyleEditorPanel";
 import { useEditorHistory } from "./hooks/useEditorHistory";
+import { usePanelResize } from "./hooks/usePanelResize";
 import { sampleHtml } from "./sampleHtml";
 import type {
   EditableStyleKey,
@@ -21,6 +22,7 @@ import type {
 } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
 import { copyHtmlToClipboard } from "./utils/clipboard";
+import { assertCleanExport, getExportWarnings } from "./utils/exportValidation";
 import { buildEditableDomTree } from "./utils/domTree";
 import {
   deleteHtmlElementByHftId,
@@ -44,12 +46,8 @@ const ExportPreviewDialog = lazy(() =>
 );
 
 const initialHtml = injectEditableIds(sampleHtml).html;
-const MIN_SOURCE_WIDTH = 280;
-const MIN_INSPECTOR_WIDTH = 286;
-const MIN_PREVIEW_WIDTH = 520;
 const DEFAULT_SOURCE_WIDTH = 292;
 const DEFAULT_INSPECTOR_WIDTH = 318;
-const RESIZER_WIDTH = 12;
 
 type StyleClipboard = Pick<SelectedElementSnapshot, "styles" | "effects">;
 
@@ -234,20 +232,38 @@ export default function App() {
 
   const handleImport = useCallback(
     (file: File) => {
+      if (!file.name.toLowerCase().endsWith(".html") && !file.name.toLowerCase().endsWith(".htm")) {
+        setStatusMessage("仅支持 .html / .htm 文件");
+        return;
+      }
+
+      if (file.size > 5 * 1024 * 1024) {
+        setStatusMessage("文件过大（上限 5MB），请减小后再试");
+        return;
+      }
+
       const reader = new FileReader();
       reader.onload = () => {
-        const nextHtml = injectEditableIds(String(reader.result ?? "")).html;
-        latestHtmlRef.current = nextHtml;
-        reset({
-          html: nextHtml,
-          selectedId: null,
-        });
-        setSelectedElement(null);
-        setModalState({ found: false, open: false, label: "" });
-        setModalCommand(null);
-        setHasImportedHtml(true);
-        setStatusMessage(`已导入 ${file.name}`);
-        setReloadNonce((n) => n + 1);
+        const rawHtml = String(reader.result ?? "");
+        try {
+          const { html: nextHtml } = injectEditableIds(rawHtml);
+          latestHtmlRef.current = nextHtml;
+          reset({
+            html: nextHtml,
+            selectedId: null,
+          });
+          setSelectedElement(null);
+          setModalState({ found: false, open: false, label: "" });
+          setModalCommand(null);
+          setHasImportedHtml(true);
+          setStatusMessage(`已导入 ${file.name}（${(file.size / 1024).toFixed(1)} KB）`);
+          setReloadNonce((n) => n + 1);
+        } catch {
+          setStatusMessage("导入失败：HTML 格式异常，请检查文件内容");
+        }
+      };
+      reader.onerror = () => {
+        setStatusMessage("文件读取失败，请检查文件权限或编码");
       };
       reader.readAsText(file);
     },
@@ -265,7 +281,14 @@ export default function App() {
   }, []);
 
   const handleExport = useCallback(() => {
-    setExportPreviewHtml(cleanHtmlForExport(latestHtmlRef.current));
+    const cleanHtml = cleanHtmlForExport(latestHtmlRef.current);
+    assertCleanExport(cleanHtml);
+    const warnings = getExportWarnings(cleanHtml);
+    if (warnings.length > 0) {
+      setStatusMessage(`导出含 ${warnings.length} 项警告，请检查控制台`);
+      warnings.forEach((w) => console.warn(`[导出] ${w.message}`));
+    }
+    setExportPreviewHtml(cleanHtml);
     setStatusMessage("已生成导出前预览");
   }, []);
 
@@ -342,50 +365,14 @@ export default function App() {
     setStatusMessage(sourcePanelPlacement === "side" ? "源码区已移到底部" : "源码区已回到左侧");
   }, [sourcePanelPlacement]);
 
-  const startPanelResize = useCallback(
-    (panel: "source" | "inspector") => (event: ReactPointerEvent<HTMLButtonElement>) => {
-      if (sourcePanelPlacement !== "side") return;
-      const workspace = workspaceRef.current;
-      if (!workspace) return;
-
-      event.preventDefault();
-      const rect = workspace.getBoundingClientRect();
-      const startSourceWidth = sourceWidth;
-      const startInspectorWidth = inspectorWidth;
-
-      const handlePointerMove = (moveEvent: PointerEvent) => {
-        const availableWidth = rect.width - RESIZER_WIDTH * 2;
-
-        if (panel === "source") {
-          const nextWidth = clamp(
-            moveEvent.clientX - rect.left,
-            MIN_SOURCE_WIDTH,
-            Math.max(MIN_SOURCE_WIDTH, availableWidth - startInspectorWidth - MIN_PREVIEW_WIDTH)
-          );
-          setSourceWidth(nextWidth);
-          return;
-        }
-
-        const nextWidth = clamp(
-          rect.right - moveEvent.clientX,
-          MIN_INSPECTOR_WIDTH,
-          Math.max(MIN_INSPECTOR_WIDTH, availableWidth - startSourceWidth - MIN_PREVIEW_WIDTH)
-        );
-        setInspectorWidth(nextWidth);
-      };
-
-      const handlePointerUp = () => {
-        document.body.classList.remove("is-resizing-panels");
-        window.removeEventListener("pointermove", handlePointerMove);
-        window.removeEventListener("pointerup", handlePointerUp);
-      };
-
-      document.body.classList.add("is-resizing-panels");
-      window.addEventListener("pointermove", handlePointerMove);
-      window.addEventListener("pointerup", handlePointerUp);
-    },
-    [inspectorWidth, sourcePanelPlacement, sourceWidth]
-  );
+  const { startPanelResize } = usePanelResize({
+    workspaceRef,
+    sourceWidth,
+    inspectorWidth,
+    setSourceWidth,
+    setInspectorWidth,
+    sourcePanelPlacement,
+  });
 
   const handleSelectFromTree = useCallback((hftId: string) => {
     const treeSnapshot = buildElementSnapshotFromHtml(latestHtmlRef.current, hftId);
@@ -503,6 +490,18 @@ export default function App() {
     return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [handleRedo, handleUndo]);
 
+  // 侦听 iframe 超时等自定义状态消息
+  useEffect(() => {
+    const handleStatusEvent = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      if (typeof detail === "string") {
+        setStatusMessage(detail);
+      }
+    };
+    window.addEventListener("hft-status", handleStatusEvent);
+    return () => window.removeEventListener("hft-status", handleStatusEvent);
+  }, []);
+
   useEffect(() => {
     if (!state.selectedId) {
       setSelectedElement(null);
@@ -518,6 +517,9 @@ export default function App() {
         { record: false }
       );
       setSelectedElement(null);
+    } else {
+      // html 变化后重建 selectedElement 快照，避免快照过期
+      setSelectedElement(buildElementSnapshotFromHtml(state.html, state.selectedId));
     }
   }, [commit, state.html, state.selectedId]);
 
@@ -777,8 +779,4 @@ function withRelatedStyleUpdates(
   }
 
   return styles;
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(Math.max(value, min), max);
 }

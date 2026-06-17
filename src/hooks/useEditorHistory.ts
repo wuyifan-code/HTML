@@ -39,6 +39,16 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     }
   }, []);
 
+  // 组件卸载时清理防抖计时器
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        window.clearTimeout(debounceTimerRef.current);
+        debounceTimerRef.current = null;
+      }
+    };
+  }, []);
+
   const flushDebouncedHistory = useCallback(() => {
     clearDebounce();
 

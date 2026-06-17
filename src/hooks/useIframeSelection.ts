@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { ElementQuickAction, ModalState, PreviewMessage, SelectedElementSnapshot } from "../types/editor";
+import type { ElementQuickAction, ModalState, SelectedElementSnapshot } from "../types/editor";
+import {
+  MSG_ELEMENT_SELECTED,
+  MSG_ELEMENT_ACTION,
+  MSG_PREVIEW_READY,
+  MSG_MODAL_STATE,
+  isTrustedMessage,
+} from "../types/messages";
 
 export interface ContentDimensions {
   contentWidth: number;
   contentHeight: number;
 }
+
+const IFRAME_TIMEOUT_MS = 15000;
 
 export function useIframeSelection(
   bridgeToken: string,
@@ -18,6 +27,8 @@ export function useIframeSelection(
   const onElementActionRef = useRef(onElementAction);
   const [isReady, setIsReady] = useState(false);
   const [contentDimensions, setContentDimensions] = useState<ContentDimensions | null>(null);
+  const [hasIframeError, setHasIframeError] = useState(false);
+  const readyTimeoutRef = useRef<number | null>(null);
 
   useEffect(() => {
     onElementSelectedRef.current = onElementSelected;
@@ -25,51 +36,83 @@ export function useIframeSelection(
     onElementActionRef.current = onElementAction;
   }, [onElementAction, onElementSelected, onModalStateChange]);
 
+  const clearReadyTimeout = useCallback(() => {
+    if (readyTimeoutRef.current !== null) {
+      window.clearTimeout(readyTimeoutRef.current);
+      readyTimeoutRef.current = null;
+    }
+  }, []);
+
+  const startReadyTimeout = useCallback(() => {
+    clearReadyTimeout();
+    readyTimeoutRef.current = window.setTimeout(() => {
+      setHasIframeError(true);
+      window.dispatchEvent(new CustomEvent("hft-status", { detail: "预览加载超时，请检查 HTML 内容" }));
+    }, IFRAME_TIMEOUT_MS);
+  }, [clearReadyTimeout]);
+
   const markRendering = useCallback(() => {
     setIsReady(false);
     setContentDimensions(null);
-  }, []);
+    setHasIframeError(false);
+    startReadyTimeout();
+  }, [startReadyTimeout]);
 
   const markReady = useCallback(() => {
+    setHasIframeError(false);
     setIsReady(true);
-  }, []);
+    clearReadyTimeout();
+  }, [clearReadyTimeout]);
+
+  useEffect(() => clearReadyTimeout, [clearReadyTimeout]);
 
   useEffect(() => {
-    const handleMessage = (event: MessageEvent<PreviewMessage>) => {
-      if (!event.data?.type?.startsWith("HTML_FINETUNE_")) return;
-      if (event.data?.token !== bridgeToken) return;
-
-      if (event.data?.type === "HTML_FINETUNE_ELEMENT_SELECTED") {
-        onElementSelectedRef.current(event.data.payload);
+    const handleMessage = (event: MessageEvent) => {
+      // 通过 token + origin 校验来源
+      if (!isTrustedMessage(event, bridgeToken)) {
+        // 连 type 前缀都不匹配的，直接忽略
+        if (typeof event.data?.type !== "string" || !event.data.type.startsWith("HTML_FINETUNE_")) return;
+        return;
       }
 
-      if (event.data?.type === "HTML_FINETUNE_ELEMENT_ACTION") {
-        onElementActionRef.current?.(event.data.payload.hftId, event.data.payload.action);
-      }
+      const data = event.data;
 
-      if (event.data?.type === "HTML_FINETUNE_PREVIEW_READY") {
-        setIsReady(true);
-        if (event.data.payload?.contentWidth && event.data.payload?.contentHeight) {
-          setContentDimensions({
-            contentWidth: event.data.payload.contentWidth,
-            contentHeight: event.data.payload.contentHeight,
-          });
-        }
-      }
+      switch (data.type) {
+        case MSG_ELEMENT_SELECTED:
+          onElementSelectedRef.current(data.payload);
+          break;
 
-      if (event.data?.type === "HTML_FINETUNE_MODAL_STATE") {
-        onModalStateChangeRef.current?.(event.data.payload);
+        case MSG_ELEMENT_ACTION:
+          onElementActionRef.current?.(data.payload.hftId, data.payload.action);
+          break;
+
+        case MSG_PREVIEW_READY:
+          setHasIframeError(false);
+          setIsReady(true);
+          clearReadyTimeout();
+          if (data.payload?.contentWidth && data.payload?.contentHeight) {
+            setContentDimensions({
+              contentWidth: data.payload.contentWidth,
+              contentHeight: data.payload.contentHeight,
+            });
+          }
+          break;
+
+        case MSG_MODAL_STATE:
+          onModalStateChangeRef.current?.(data.payload);
+          break;
       }
     };
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [bridgeToken]);
+  }, [bridgeToken, clearReadyTimeout]);
 
   return {
     iframeRef,
     isReady,
     contentDimensions,
+    hasIframeError,
     markReady,
     markRendering,
   };

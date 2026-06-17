@@ -1,6 +1,7 @@
 import type { DomTreeNode } from "../types/editor";
 import { HFT_ID_ATTRIBUTE, isEditableElement } from "./editableElement";
 import { parseHtmlReadOnly } from "./injectEditableIds";
+import { normalizeText, truncate } from "./string";
 
 const MAX_LABEL_LENGTH = 48;
 
@@ -53,13 +54,4 @@ function getNodeText(element: Element): string {
   }
 
   return normalizeText(element.textContent ?? "");
-}
-
-function normalizeText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength - 1)}…`;
 }

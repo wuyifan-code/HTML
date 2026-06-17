@@ -260,7 +260,7 @@ function getHoverStyleElement(documentRef: Document, shouldCreate: boolean): HTM
   return styleElement;
 }
 
-function parseHoverRules(cssText: string): Array<{ hftId: string; color: string }> {
+export function parseHoverRules(cssText: string): Array<{ hftId: string; color: string }> {
   const rules: Array<{ hftId: string; color: string }> = [];
   const pattern = new RegExp(
     `\\[${HFT_ID_ATTRIBUTE}="([^"]+)"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}`,
@@ -278,7 +278,7 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function cssEscape(value: string): string {
+export function cssEscape(value: string): string {
   if (typeof CSS !== "undefined" && CSS.escape) {
     return CSS.escape(value);
   }

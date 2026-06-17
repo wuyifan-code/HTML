@@ -116,6 +116,49 @@ export function syncRemoteFontLibraryLinks(documentRef: Document): void {
   documentRef.head.appendChild(stylesheet);
 }
 
+/**
+ * 字符串级字体库注入（Pretext 技术应用）
+ *
+ * 替代 DOMParser 方案，直接以字符串操作注入字体库 `<link>` 标签。
+ * 避免对大 HTML 文档的全解析 + 序列化开销。
+ *
+ * 传统方式: DOMParser → 查询/操作 DOM → serializeDocument
+ * Pretext方式: 正则检查 → 字符串拼接（零解析开销）
+ */
+export function buildFontLibraryLinkTags(): string {
+  const parts: string[] = [];
+
+  FONT_LIBRARY_PRECONNECT_ORIGINS.forEach((origin) => {
+    const crossorigin = origin.includes("gstatic") ? ' crossorigin="anonymous"' : "";
+    parts.push(
+      `<link rel="preconnect" href="${origin}"${crossorigin} ${FONT_LIBRARY_ATTRIBUTE}="preconnect" />`
+    );
+  });
+
+  parts.push(
+    `<link rel="stylesheet" href="${FONT_LIBRARY_STYLESHEET}" ${FONT_LIBRARY_ATTRIBUTE}="stylesheet" />`
+  );
+
+  return parts.join("\n    ");
+}
+
+/**
+ * 正则版远程字体检测（零 DOM 解析）
+ *
+ * 在 HTML 字符串中搜索 font-family 属性值，匹配远程字体名称。
+ * 用于替代 documentUsesRemoteFont 的 DOM 查询方式。
+ */
+export function htmlMayUseRemoteFont(html: string): boolean {
+  const remoteFamilyNames = FONT_SELECT_OPTIONS.filter((opt) => opt.remote).flatMap((opt) => opt.familyNames);
+  if (remoteFamilyNames.length === 0) return false;
+
+  const decodedHtml = decodeFontFamilyEntities(html);
+  const declarations = decodedHtml.match(/font-family\s*:\s*[^;}]+/gi);
+  if (!declarations) return false;
+
+  return declarations.some((declaration) => isRemoteFontValue(declaration));
+}
+
 export function getFontLibraryScriptConfig() {
   return {
     attribute: FONT_LIBRARY_ATTRIBUTE,
@@ -146,4 +189,10 @@ function isManagedFontLink(link: HTMLLinkElement): boolean {
 
 function normalizeFontName(value: string): string {
   return value.toLowerCase().replace(/["']/g, "").replace(/\s+/g, " ").trim();
+}
+
+function decodeFontFamilyEntities(value: string): string {
+  return value
+    .replace(/&quot;|&#34;|&#x22;/gi, "\"")
+    .replace(/&apos;|&#39;|&#x27;/gi, "'");
 }

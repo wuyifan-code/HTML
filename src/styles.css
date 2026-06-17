@@ -1061,6 +1061,7 @@ textarea:focus-visible {
   overflow: auto;
   padding: 18px;
   background: #edf3f2;
+  position: relative;
 }
 
 .preview-viewport {
@@ -1079,6 +1080,20 @@ textarea:focus-visible {
   display: block;
   border: 0;
   background: var(--surface);
+}
+
+.iframe-error-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(246, 249, 248, 0.92);
+  color: #b54708;
+  font-size: 13px;
+  font-weight: 650;
+  text-align: center;
+  z-index: 5;
 }
 
 .preview-viewport-desktop {
@@ -1476,6 +1491,43 @@ textarea:focus-visible {
   border-radius: 999px;
   background: var(--mint);
   flex: 0 0 auto;
+}
+
+/* ---- Pretext Measure Badge ---- */
+
+.pretext-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 9px;
+  border: 1px solid #dbe8e5;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #f6fffd 0%, #edf8f5 100%);
+  color: var(--mint-strong);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
+  cursor: help;
+}
+
+.pretext-badge svg {
+  flex: 0 0 auto;
+  color: var(--mint);
+}
+
+.pretext-badge strong {
+  font-weight: 780;
+}
+
+.pretext-badge-warn {
+  color: var(--warning);
+}
+
+.inspector-group .pretext-badge {
+  margin-top: -4px;
+  margin-bottom: 8px;
 }
 
 .custom-select-dropdown::-webkit-scrollbar {

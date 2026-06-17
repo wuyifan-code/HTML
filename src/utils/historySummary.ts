@@ -1,6 +1,7 @@
 import type { EditorDocumentState, HistorySummary } from "../types/editor";
 import { HFT_ID_ATTRIBUTE } from "./editableElement";
 import { parseHtmlReadOnly } from "./injectEditableIds";
+import { normalizeText, truncate } from "./string";
 
 export interface HistoryDisplayItem {
   index: number;
@@ -173,15 +174,6 @@ function describeElement(element?: Element | null): string {
       : "";
   const text = normalizeText(element.textContent ?? "");
   return truncate(`${tag}${id}${className}${text ? ` - ${text}` : ""}`, 72);
-}
-
-function normalizeText(value: string): string {
-  return value.replace(/\s+/g, " ").trim();
-}
-
-function truncate(value: string, maxLength: number): string {
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength - 1)}...`;
 }
 
 function getTextChangeSnippet(previousText: string, nextText: string): string {

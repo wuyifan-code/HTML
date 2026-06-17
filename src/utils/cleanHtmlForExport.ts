@@ -4,7 +4,7 @@ import {
   HFT_ID_ATTRIBUTE,
   HFT_SELECTED_ATTRIBUTE,
 } from "./editableElement";
-import { serializeDocument } from "./domPath";
+import { serializeDocument, parseHoverRules, cssEscape } from "./domPath";
 import { FONT_LIBRARY_ATTRIBUTE, syncRemoteFontLibraryLinks } from "./fontLibrary";
 import { parseHtmlDocument } from "./injectEditableIds";
 
@@ -69,26 +69,4 @@ function convertHoverRulesForExport(documentRef: Document): void {
 
   styleElement.removeAttribute("data-html-finetune-hover-rules");
   styleElement.textContent = `\n${exportedRules.join("\n")}\n`;
-}
-
-function parseHoverRules(cssText: string): Array<{ hftId: string; color: string }> {
-  const rules: Array<{ hftId: string; color: string }> = [];
-  const pattern = new RegExp(
-    `\\[${HFT_ID_ATTRIBUTE}="([^"]+)"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}`,
-    "gi"
-  );
-
-  for (const match of cssText.matchAll(pattern)) {
-    rules.push({ hftId: match[1], color: match[2].trim() });
-  }
-
-  return rules;
-}
-
-function cssEscape(value: string): string {
-  if (typeof CSS !== "undefined" && CSS.escape) {
-    return CSS.escape(value);
-  }
-
-  return value.replace(/"/g, '\\"');
 }

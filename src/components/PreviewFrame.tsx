@@ -12,7 +12,13 @@ import type {
   SelectedElementSnapshot,
 } from "../types/editor";
 import { createEditableElementScriptConfig } from "../utils/editableElement";
-import { getFontLibraryScriptConfig, syncRemoteFontLibraryLinks } from "../utils/fontLibrary";
+import { getFontLibraryScriptConfig, buildFontLibraryLinkTags, htmlMayUseRemoteFont } from "../utils/fontLibrary";
+import {
+  createPatchElementMessage,
+  createSelectElementMessage,
+  createModalCommandMessage,
+  sendMessageToIframeLax,
+} from "../utils/iframeMessages";
 
 interface PreviewFrameProps {
   html: string;
@@ -48,9 +54,8 @@ function PreviewFrameComponent({
   onReadyChange,
 }: PreviewFrameProps) {
   const bridgeTokenRef = useRef(createBridgeToken());
-  const targetOriginRef = useRef("*");
   const lastSelectCommandIdRef = useRef<number | null>(null);
-  const { iframeRef, isReady, contentDimensions, markReady, markRendering } = useIframeSelection(
+  const { iframeRef, isReady, contentDimensions, markReady, markRendering, hasIframeError } = useIframeSelection(
     bridgeTokenRef.current,
     onElementSelected,
     onModalStateChange,
@@ -74,8 +79,9 @@ function PreviewFrameComponent({
 
   // 自适应 viewport 尺寸:匹配内容宽高比,不缩放 iframe 内部渲染
   const adaptiveViewport = useMemo(() => {
-    if (!autoFit || !contentDimensions) return null;
+    if (!autoFit || !contentDimensions || viewportMode === "fit") return null;
     const preset = viewportDimensions[viewportMode];
+    if (preset.width <= 0 || preset.height <= 0 || contentDimensions.contentHeight <= 0) return null;
     const contentRatio = contentDimensions.contentWidth / contentDimensions.contentHeight;
     const presetRatio = preset.width / preset.height;
     if (contentRatio > presetRatio) {
@@ -93,6 +99,14 @@ function PreviewFrameComponent({
       ratio: String(contentRatio),
     };
   }, [autoFit, contentDimensions, viewportMode]);
+
+  const readoutViewport = adaptiveViewport ??
+    (viewportMode === "fit" && contentDimensions
+      ? {
+          width: Math.round(contentDimensions.contentWidth),
+          height: Math.round(contentDimensions.contentHeight),
+        }
+      : viewportSize);
 
   const displayZoom = autoFit ? 1 : zoom;
 
@@ -127,28 +141,18 @@ function PreviewFrameComponent({
   // 增量补丁:文本/样式/属性就地应用到 iframe,不触发整文档重建。
   useEffect(() => {
     if (!patchCommand || !isReady) return;
-      iframeRef.current?.contentWindow?.postMessage(
-        {
-          type: "HTML_FINETUNE_PATCH_ELEMENT",
-          hftId: patchCommand.hftId,
-          patch: patchCommand.patch,
-          token: bridgeTokenRef.current,
-        },
-        targetOriginRef.current
-      );
+    sendMessageToIframeLax(
+      iframeRef.current,
+      createPatchElementMessage(patchCommand.hftId, patchCommand.patch as unknown as Record<string, unknown>, bridgeTokenRef.current)
+    );
   }, [iframeRef, isReady, patchCommand]);
 
   useEffect(() => {
     if (!modalCommand || !isReady) return;
-
-      iframeRef.current?.contentWindow?.postMessage(
-        {
-          type: "HTML_FINETUNE_MODAL_COMMAND",
-          action: modalCommand.action,
-          token: bridgeTokenRef.current,
-        },
-        targetOriginRef.current
-      );
+    sendMessageToIframeLax(
+      iframeRef.current,
+      createModalCommandMessage(modalCommand.action, bridgeTokenRef.current)
+    );
   }, [iframeRef, isReady, modalCommand]);
 
   useEffect(() => {
@@ -161,15 +165,10 @@ function PreviewFrameComponent({
       lastSelectCommandIdRef.current = pendingCommand.id;
     }
 
-      iframeRef.current?.contentWindow?.postMessage(
-        {
-          type: "HTML_FINETUNE_SELECT_ELEMENT",
-          hftId,
-          notify: Boolean(pendingCommand),
-          token: bridgeTokenRef.current,
-        },
-        targetOriginRef.current
-      );
+    sendMessageToIframeLax(
+      iframeRef.current,
+      createSelectElementMessage(hftId, Boolean(pendingCommand), bridgeTokenRef.current)
+    );
   }, [iframeRef, isReady, selectCommand, selectedId]);
 
   return (
@@ -221,9 +220,9 @@ function PreviewFrameComponent({
           </div>
           <div className="preview-readouts" aria-label="画布读数">
             <div className="canvas-size-control" aria-label="当前画布尺寸">
-              <span>{adaptiveViewport ? adaptiveViewport.width : viewportSize.width}</span>
+              <span>{readoutViewport.width}</span>
               <small>x</small>
-              <span>{adaptiveViewport ? adaptiveViewport.height : viewportSize.height}</span>
+              <span>{readoutViewport.height}</span>
               <Lock size={13} strokeWidth={1.75} />
             </div>
             <div className="zoom-control-cluster" aria-label="缩放控制">
@@ -291,8 +290,14 @@ function PreviewFrameComponent({
             sandbox="allow-scripts"
             srcDoc={srcDoc}
             onLoad={markReady}
+            onError={markRendering}
             style={viewportMode === "fit" ? { width: "100%", height: "100%" } : undefined}
           />
+          {hasIframeError ? (
+            <div className="iframe-error-overlay">
+              <span>预览加载失败，请检查 HTML 内容</span>
+            </div>
+          ) : null}
         </div>
       </div>
     </section>
@@ -542,12 +547,17 @@ function wrapFragment(fragment: string): string {
   return `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>${fragment}</body></html>`;
 }
 
+/**
+ * 字符串级字体库注入（Pretext 技术）
+ *
+ * 传统方式用 DOMParser 解析全文 → DOM 操作 → 序列化。
+ * Pretext 方式：正则检查 + 字符串拼接，O(n) 降至常数级开销。
+ */
 function withRemoteFontLibraryLinks(html: string): string {
   try {
-    const parser = new DOMParser();
-    const documentRef = parser.parseFromString(html, "text/html");
-    syncRemoteFontLibraryLinks(documentRef);
-    return `<!doctype html>\n${documentRef.documentElement.outerHTML}`;
+    if (!htmlMayUseRemoteFont(html)) return html;
+    const links = buildFontLibraryLinkTags();
+    return insertBeforeClosingTag(html, "head", links);
   } catch {
     return html;
   }
