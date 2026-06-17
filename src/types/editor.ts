@@ -92,6 +92,17 @@ export interface DomTreeNode {
   id: string;
 }
 
+export interface AiTreeAnnotation {
+  hftId: string;
+  label: string;
+  role: string;
+  issues: string[];
+  suggestion: string;
+  confidence: number;
+}
+
+export type AiAnalysisStatus = "idle" | "running" | "ready" | "error";
+
 export interface ModalState {
   found: boolean;
   open: boolean;

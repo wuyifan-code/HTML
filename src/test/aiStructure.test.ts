@@ -1,0 +1,140 @@
+import { describe, expect, it } from "vitest";
+import {
+  AI_PROVIDER_DEFINITIONS,
+  buildAiStructurePayload,
+  getAiProviderIcon,
+  normalizeAiStructureResponse,
+  normalizeAiModelOptions,
+} from "../utils/aiStructure";
+import { buildEditableDomTree } from "../utils/domTree";
+import { injectEditableIds } from "../utils/injectEditableIds";
+
+describe("AI provider definitions", () => {
+  it("covers mainstream direct and OpenAI-compatible providers", () => {
+    const providerIds = AI_PROVIDER_DEFINITIONS.map((provider) => provider.id);
+
+    expect(providerIds).toEqual(
+      expect.arrayContaining([
+        "google",
+        "openai",
+        "anthropic",
+        "deepseek",
+        "qwen",
+        "kimi",
+        "zhipu",
+        "volcengine",
+        "qianfan",
+        "minimax",
+        "mistral",
+        "xai",
+        "groq",
+        "together",
+        "openrouter",
+        "siliconflow",
+      ])
+    );
+    expect(new Set(providerIds).size).toBe(providerIds.length);
+  });
+});
+
+describe("buildAiStructurePayload", () => {
+  it("summarizes slide and SVG text nodes for AI structure scans", () => {
+    const { html } = injectEditableIds(`
+      <section class="slide" data-slide="12">
+        <h2>国内案例二</h2>
+        <svg viewBox="0 0 400 240"><text x="20" y="40">40.9%</text></svg>
+      </section>
+    `);
+    const tree = buildEditableDomTree(html);
+    const payload = buildAiStructurePayload(html, tree);
+
+    expect(payload.nodes.some((node) => node.slide === "第 12 页")).toBe(true);
+    expect(payload.nodes.some((node) => node.tagName === "text" && node.roleHint === "chart-value")).toBe(true);
+  });
+});
+
+describe("normalizeAiModelOptions", () => {
+  it("normalizes Gemini listModels responses and keeps generateContent models", () => {
+    const google = AI_PROVIDER_DEFINITIONS.find((provider) => provider.id === "google");
+    expect(google).toBeTruthy();
+
+    const models = normalizeAiModelOptions(google!, {
+      models: [
+        {
+          name: "models/gemma-4-26b-a4b-it",
+          displayName: "Gemma 4 26B",
+          supportedGenerationMethods: ["generateContent"],
+        },
+        {
+          name: "models/text-embedding-004",
+          displayName: "Embedding",
+          supportedGenerationMethods: ["embedContent"],
+        },
+      ],
+    });
+
+    expect(models).toHaveLength(1);
+    expect(models[0]).toMatchObject({
+      value: "gemma-4-26b-a4b-it",
+      label: "Gemma 4 26B",
+      source: "remote",
+    });
+  });
+
+  it("normalizes OpenAI-compatible model lists and filters non-chat models", () => {
+    const openrouter = AI_PROVIDER_DEFINITIONS.find((provider) => provider.id === "openrouter");
+    expect(openrouter).toBeTruthy();
+
+    const models = normalizeAiModelOptions(openrouter!, {
+      data: [
+        {
+          id: "openai/gpt-4o-mini",
+          name: "GPT-4o mini",
+          context_length: 128000,
+          architecture: { input_modalities: ["text"], output_modalities: ["text"] },
+        },
+        {
+          id: "openai/text-embedding-3-small",
+          name: "Embedding",
+          architecture: { input_modalities: ["text"], output_modalities: ["embeddings"] },
+        },
+      ],
+    });
+
+    expect(models).toHaveLength(1);
+    expect(models[0]).toMatchObject({
+      value: "openai/gpt-4o-mini",
+      label: "GPT-4o mini",
+      contextLength: 128000,
+    });
+  });
+});
+
+describe("getAiProviderIcon", () => {
+  it("returns branded badges for every configured provider", () => {
+    AI_PROVIDER_DEFINITIONS.forEach((provider) => {
+      const icon = getAiProviderIcon(provider.id);
+      expect(icon.label).not.toBe("");
+      expect(icon.title).not.toBe("");
+      expect(icon.tone).not.toBe("generic");
+    });
+  });
+});
+
+describe("normalizeAiStructureResponse", () => {
+  it("parses fenced JSON and ignores unknown hft ids", () => {
+    const result = normalizeAiStructureResponse(
+      '```json\n{"annotations":[{"hftId":"hft-1","label":"第 12 页 · 占比","role":"chart-value","issues":["crowded-chart"],"confidence":0.8},{"hftId":"missing","label":"bad"}]}\n```',
+      new Set(["hft-1"])
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      hftId: "hft-1",
+      label: "第 12 页 · 占比",
+      role: "chart-value",
+      issues: ["crowded-chart"],
+      confidence: 0.8,
+    });
+  });
+});

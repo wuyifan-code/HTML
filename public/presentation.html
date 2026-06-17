@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="author" content="陈雁">
+<meta name="description" content="综合调研把半熟知识组织成可行动的判断，面向大一新生讲清如何在没有教科书的地方挖掘真知。">
+<meta name="keywords" content="综合调研,大一新生,问题链,数据可视化,生成式调研">
+<meta name="generator" content="Kami">
+<title>综合调研：在没有教科书的地方挖掘真知</title>
+<style>
+  @font-face {
+    font-family: "TsangerJinKai02";
+    src: url("assets/fonts/TsangerJinKai02-W04.ttf") format("truetype");
+    font-weight: 400;
+  }
+  @font-face {
+    font-family: "TsangerJinKai02";
+    src: url("assets/fonts/TsangerJinKai02-W05.ttf") format("truetype");
+    font-weight: 500;
+  }
+  @font-face {
+    font-family: "JetBrains Mono";
+    src: url("assets/fonts/JetBrainsMono.woff2") format("woff2");
+    font-weight: 400;
+  }
+
+  @page {
+    size: 280mm 158mm;
+    margin: 0;
+    background: #F5F4ED;
+  }
+
+  * { box-sizing: border-box; }
+
+  :root {
+    --paper: #F5F4ED;
+    --ink: #141413;
+    --brown: #504E49;
+    --stone: #6B6A64;
+    --soft-line: #DEDCD2;
+    --pale: #ECD9D5;
+    --pale-light: #F0E4E0;
+    --clay: #A86145;
+    --light-clay: #C7836A;
+    --clay-soft: #D9B7A8;
+    --red: #B52A22;
+    --deep-red: #7E1B16;
+    --ivory: #FAF9F5;
+    --serif: "TsangerJinKai02", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", "STSong", Georgia, serif;
+    --mono: "JetBrains Mono", "SF Mono", Consolas, monospace;
+  }
+
+  html,
+  body {
+    width: 100%;
+    min-height: 100%;
+    margin: 0;
+  }
+
+  html { background: #DEDCD2; }
+
+  body {
+    color: var(--ink);
+    background: #DEDCD2;
+    font-family: var(--serif);
+    letter-spacing: 0.06em;
+  }
+
+  .deck {
+    background: var(--paper);
+  }
+
+  .slide {
+    width: 280mm;
+    height: 158mm;
+    padding: 16mm 20mm;
+    position: relative;
+    overflow: hidden;
+    break-after: page;
+    background: var(--paper);
+  }
+
+  .slide:last-child { break-after: auto; }
+
+  .slide::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border: 1px solid var(--soft-line);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .stage {
+    position: relative;
+    z-index: 3;
+    height: calc(100% - clamp(42px, 7vh, 70px));
+  }
+
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
+    font-weight: 400;
+  }
+
+  h1 {
+    max-width: 760px;
+    font-size: clamp(42px, 5vw, 66px);
+    line-height: 1.08;
+    letter-spacing: 0.075em;
+    font-weight: 500;
+  }
+
+  h2 {
+    max-width: 820px;
+    font-size: clamp(29px, 3.25vw, 44px);
+    line-height: 1.18;
+    letter-spacing: 0.055em;
+    font-weight: 500;
+  }
+
+  h3 {
+    color: var(--clay);
+    font-size: clamp(18px, 1.9vw, 26px);
+    line-height: 1.28;
+    letter-spacing: 0.05em;
+    font-weight: 500;
+  }
+
+  .eyebrow {
+    display: block;
+    margin-bottom: clamp(8px, 1.25vh, 14px);
+    color: var(--stone);
+    font-family: var(--mono);
+    font-size: clamp(10px, 1.1vw, 13px);
+    line-height: 1.35;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+  }
+
+  .lead {
+    max-width: 740px;
+    margin-top: clamp(16px, 2.4vh, 26px);
+    color: var(--brown);
+    font-size: clamp(17px, 1.7vw, 23px);
+    line-height: 1.62;
+  }
+
+  .note,
+  .sentence {
+    color: var(--brown);
+    font-size: clamp(15px, 1.45vw, 20px);
+    line-height: 1.55;
+  }
+
+  .red { color: var(--red); }
+
+  .footer {
+    position: absolute;
+    left: clamp(42px, 7.1%, 78px);
+    right: clamp(42px, 7.1%, 78px);
+    bottom: clamp(22px, 5.3%, 36px);
+    z-index: 10;
+    display: grid;
+    grid-template-columns: 1fr minmax(160px, 22%) 1fr;
+    align-items: center;
+    color: var(--stone);
+    font-family: var(--mono);
+    font-size: clamp(9px, 0.95vw, 12px);
+    line-height: 1.2;
+    letter-spacing: 0.14em;
+    pointer-events: none;
+  }
+
+  .footer span:last-child {
+    grid-column: 3;
+    text-align: right;
+  }
+
+  .nav-dots {
+    position: absolute;
+    left: 50%;
+    bottom: clamp(22px, 5.25%, 36px);
+    transform: translateX(-50%);
+    z-index: 12;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(4px, 0.55vw, 7px);
+  }
+
+  .nav-dots button {
+    width: clamp(5px, 0.48vw, 7px);
+    height: clamp(5px, 0.48vw, 7px);
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #D7D1C8;
+    cursor: pointer;
+    appearance: none;
+  }
+
+  .nav-dots button:hover,
+  .nav-dots button:focus-visible {
+    background: var(--clay);
+    outline: 1px solid var(--clay);
+    outline-offset: 4px;
+  }
+
+  .nav-dots button.active {
+    width: clamp(16px, 1.35vw, 21px);
+    background: var(--red);
+  }
+
+  .negative {
+    position: absolute;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .neg-pale {
+    background: var(--pale);
+  }
+
+  .neg-clay {
+    background: var(--clay-soft);
+  }
+
+  .neg-side {
+    top: 0;
+    right: 0;
+    width: 32%;
+    height: 100%;
+  }
+
+  .neg-left {
+    top: 0;
+    left: 0;
+    width: 31%;
+    height: 100%;
+  }
+
+  .neg-bottom {
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 34%;
+  }
+
+  .neg-top {
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 30%;
+  }
+
+  .stamp-circle {
+    position: absolute;
+    z-index: 2;
+    width: clamp(130px, 17vw, 220px);
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background: var(--pale);
+    pointer-events: none;
+  }
+
+  .stamp-circle.small {
+    width: clamp(70px, 8vw, 116px);
+    background: var(--pale-light);
+  }
+
+  .logo-mark {
+    position: absolute;
+    z-index: 3;
+    width: clamp(130px, 15vw, 190px);
+    aspect-ratio: 1;
+    object-fit: cover;
+    border-radius: 50%;
+    clip-path: circle(49% at 50% 50%);
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(280px, 0.9fr);
+    gap: clamp(38px, 6vw, 72px);
+    align-items: center;
+    height: 100%;
+  }
+
+  .layout.reverse {
+    grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1fr);
+  }
+
+  .top-chart {
+    display: grid;
+    grid-template-rows: auto minmax(260px, 1fr);
+    gap: clamp(22px, 4vh, 38px);
+    height: 100%;
+  }
+
+  .text-zone,
+  .visual-zone,
+  .chart-zone {
+    position: relative;
+    min-width: 0;
+    z-index: 3;
+  }
+
+  .visual-zone {
+    min-height: 330px;
+  }
+
+  .visual-zone.free,
+  .chart-zone.free {
+    min-height: 360px;
+  }
+
+  .soft-card,
+  .metric,
+  .source-note,
+  .quote-box {
+    border-radius: 14px;
+  }
+
+  .soft-card {
+    padding: clamp(18px, 2.4vw, 28px);
+    background: var(--ivory);
+    border: 1px solid var(--soft-line);
+  }
+
+  .two {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(26px, 4vw, 48px);
+    margin-top: clamp(28px, 5vh, 46px);
+    max-width: 850px;
+  }
+
+  .item {
+    padding-top: clamp(12px, 2vh, 17px);
+    border-top: 1px solid var(--soft-line);
+  }
+
+  .item h3 {
+    margin-bottom: clamp(8px, 1.35vh, 13px);
+  }
+
+  .stack {
+    margin-top: clamp(24px, 4.2vh, 38px);
+    max-width: 780px;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: clamp(78px, 8vw, 104px) 1fr;
+    gap: clamp(18px, 2.8vw, 28px);
+    padding: clamp(12px, 2vh, 18px) 0;
+    border-top: 1px solid var(--soft-line);
+  }
+
+  .row:first-child { border-top: 0; }
+
+  .tag {
+    color: var(--clay);
+    font-family: var(--mono);
+    font-size: clamp(12px, 1.18vw, 16px);
+    line-height: 1.45;
+    letter-spacing: 0.12em;
+  }
+
+  .metric-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(20px, 3.8vw, 42px);
+    margin-top: clamp(28px, 4.8vh, 44px);
+  }
+
+  .metric {
+    padding: clamp(15px, 2.2vw, 22px);
+    background: var(--ivory);
+    border: 1px solid var(--soft-line);
+  }
+
+  .metric .value {
+    display: block;
+    color: var(--clay);
+    font-family: var(--mono);
+    font-size: clamp(29px, 3.55vw, 46px);
+    line-height: 1;
+    letter-spacing: 0;
+  }
+
+  .metric .label {
+    display: block;
+    margin-top: clamp(10px, 1.6vh, 16px);
+    color: var(--stone);
+    font-size: clamp(13px, 1.25vw, 18px);
+    line-height: 1.45;
+  }
+
+  .source-note {
+    position: absolute;
+    z-index: 5;
+    right: clamp(42px, 7.1%, 78px);
+    bottom: clamp(60px, 10%, 82px);
+    max-width: 390px;
+    padding: 8px 12px;
+    color: var(--stone);
+    background: var(--ivory);
+    border: 1px solid var(--soft-line);
+    font-family: var(--mono);
+    font-size: clamp(8px, 0.8vw, 10px);
+    line-height: 1.55;
+    letter-spacing: 0.08em;
+  }
+
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .curve path,
+  .curve line {
+    fill: none;
+    stroke: var(--clay);
+    stroke-width: 3.1;
+    stroke-linecap: round;
+  }
+
+  .curve .thin {
+    stroke-width: 1.2;
+    stroke: var(--soft-line);
+  }
+
+  .curve circle {
+    fill: var(--pale);
+    stroke: var(--clay);
+    stroke-width: 1.2;
+  }
+
+  .curve circle.active {
+    fill: var(--red);
+    stroke: var(--deep-red);
+  }
+
+  .curve text,
+  .chart text {
+    font-family: var(--serif);
+    fill: var(--ink);
+    letter-spacing: 0.04em;
+  }
+
+  .curve .muted,
+  .chart .muted {
+    fill: var(--stone);
+    font-size: 16px;
+  }
+
+  .chart .mono {
+    font-family: var(--mono);
+    letter-spacing: 0.08em;
+  }
+
+  .chart .big {
+    fill: var(--clay);
+    font-family: var(--mono);
+    font-size: 40px;
+    letter-spacing: 0;
+  }
+
+  .chart .red-fill {
+    fill: var(--red);
+  }
+
+  .chart .clay-fill {
+    fill: var(--clay);
+  }
+
+  .chart .pale-fill {
+    fill: var(--pale);
+  }
+
+  .chart .paper-fill {
+    fill: var(--paper);
+  }
+
+  .chart .line {
+    stroke: var(--clay);
+    stroke-width: 2.2;
+    fill: none;
+    stroke-linecap: round;
+  }
+
+  .chart .line-red {
+    stroke: var(--red);
+  }
+
+  .chart .hairline {
+    stroke: var(--soft-line);
+    stroke-width: 1.2;
+    fill: none;
+    stroke-linecap: round;
+  }
+
+  .chart .red-dot {
+    fill: var(--red);
+  }
+
+  .chart .pale-dot {
+    fill: var(--pale);
+    stroke: var(--clay);
+    stroke-width: 1.2;
+  }
+
+  .breath-note {
+    color: var(--stone);
+    font-family: var(--mono);
+    font-size: clamp(10px, 0.95vw, 13px);
+    line-height: 1.6;
+    letter-spacing: 0.12em;
+  }
+
+  .inline-points {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: clamp(18px, 3vh, 28px);
+    max-width: 650px;
+  }
+
+  .inline-points span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
+    border: 1px solid var(--soft-line);
+    border-radius: 14px;
+    background: var(--ivory);
+    color: var(--brown);
+    font-size: clamp(13px, 1.15vw, 16px);
+    line-height: 1.25;
+  }
+
+  .inline-points span::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--red);
+  }
+
+  .loose-figure {
+    position: absolute;
+    inset: auto clamp(52px, 8%, 86px) clamp(82px, 14%, 108px) auto;
+    width: min(45%, 470px);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .freshman-sparks {
+    position: absolute;
+    z-index: 3;
+    left: 27%;
+    right: 8%;
+    bottom: 27%;
+    height: 76px;
+    pointer-events: none;
+  }
+
+  .cover .stage {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 620px;
+  }
+
+  .cover h1 {
+    max-width: 560px;
+  }
+
+  .cover-title {
+    padding-left: clamp(18px, 2.5vw, 28px);
+    border-left: 4px solid var(--red);
+  }
+
+  .cover .sub {
+    max-width: 750px;
+    margin-top: clamp(22px, 3.8vh, 34px);
+    color: var(--clay);
+    font-size: clamp(20px, 2.2vw, 28px);
+    line-height: 1.55;
+  }
+
+  .speaker {
+    margin-top: clamp(52px, 9vh, 84px);
+    color: var(--brown);
+    font-size: clamp(15px, 1.45vw, 19px);
+    line-height: 1.5;
+  }
+
+  .quote-slide .stage,
+  .closing .stage {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    max-width: 730px;
+  }
+
+  .quote {
+    max-width: 690px;
+    padding-left: clamp(20px, 2.4vw, 28px);
+    border-left: 4px solid var(--red);
+    color: var(--ink);
+    font-size: clamp(32px, 3.9vw, 48px);
+    line-height: 1.28;
+    letter-spacing: 0.065em;
+  }
+
+  .quote-small {
+    max-width: 650px;
+    margin-top: clamp(26px, 5vh, 38px);
+    color: var(--brown);
+    font-size: clamp(17px, 1.75vw, 23px);
+    line-height: 1.62;
+  }
+
+  .write-mark {
+    position: absolute;
+    right: clamp(18px, 4vw, 54px);
+    top: 50%;
+    z-index: 1;
+    color: var(--pale);
+    font-family: var(--serif);
+    font-size: clamp(300px, 35vw, 520px);
+    line-height: 0.82;
+    letter-spacing: 0;
+    transform: translateY(-50%);
+  }
+
+  .write-slide h2,
+  .write-slide .lead,
+  .write-slide .two {
+    max-width: 720px;
+  }
+
+  .student-list {
+    position: relative;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: clamp(16px, 2.3vw, 26px);
+    margin-top: clamp(30px, 5.2vh, 48px);
+  }
+
+  .year-card {
+    min-height: 176px;
+    padding: clamp(16px, 2.2vw, 24px);
+    border: 1px solid var(--soft-line);
+    border-radius: 14px;
+    background: var(--ivory);
+  }
+
+  .year-card strong {
+    display: block;
+    color: var(--clay);
+    font-family: var(--mono);
+    font-size: clamp(18px, 2vw, 27px);
+    font-weight: 400;
+    letter-spacing: 0.06em;
+  }
+
+  .year-card p {
+    margin-top: 14px;
+    color: var(--brown);
+    font-size: clamp(14px, 1.35vw, 18px);
+    line-height: 1.55;
+  }
+
+  .closing h2 {
+    max-width: 780px;
+    font-size: clamp(36px, 4.7vw, 58px);
+    line-height: 1.2;
+  }
+
+  .closing .tail {
+    max-width: 680px;
+    margin-top: clamp(32px, 6vh, 48px);
+    color: var(--brown);
+    font-size: clamp(18px, 1.85vw, 24px);
+    line-height: 1.65;
+  }
+
+  .closing .final-line {
+    max-width: 560px;
+    color: var(--ink);
+  }
+
+  .closing .final-line .red {
+    color: var(--red);
+  }
+
+  @media screen {
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    body {
+      display: grid;
+      place-items: center;
+      padding: 2vh 2vw;
+      padding: 2dvh 2vw;
+    }
+
+    .deck {
+      position: relative;
+      width: min(96vw, 170.13vh);
+      width: min(96vw, 170.13dvh);
+      max-height: 96vh;
+      max-height: 96dvh;
+      aspect-ratio: 280 / 158;
+      overflow: hidden;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: none;
+      width: 100%;
+      height: 100%;
+      padding: clamp(42px, 5.7%, 66px) clamp(54px, 7.1%, 82px);
+      break-after: auto;
+    }
+
+    .slide.is-active {
+      display: block;
+    }
+  }
+
+  @media print {
+    html,
+    body {
+      width: auto;
+      height: auto;
+      overflow: visible;
+      background: var(--paper);
+    }
+
+    .deck { width: auto; }
+
+    .slide {
+      display: block;
+      position: relative;
+      width: 280mm;
+      height: 158mm;
+      padding: 16mm 20mm;
+    }
+  }
+
+  @media (max-height: 650px) {
+    .stage { height: calc(100% - 48px); }
+    .lead,
+    .quote-small { line-height: 1.48; }
+    .two,
+    .stack,
+    .metric-row,
+    .student-list { margin-top: clamp(18px, 3vh, 28px); }
+    .visual-zone.free,
+    .chart-zone.free { min-height: 300px; }
+  }
+</style>
+</head>
+<body>
+<main class="deck" aria-live="polite">
+
+  <section class="slide cover is-active" id="slide-01" data-slide="1" aria-hidden="false">
+    <div class="negative neg-pale neg-side"></div>
+    <span class="stamp-circle" style="right:8%;top:16%;"></span>
+    <span class="stamp-circle small" style="right:24%;bottom:18%;"></span>
+    <img class="logo-mark" src="assets/guizhou-university-logo.jpg" alt="" aria-hidden="true" style="right:10%;top:18%;">
+    <div class="stage">
+      <span class="eyebrow">Modern Thinking Tools · Synthesis</span>
+      <div class="cover-title">
+        <h1>综合调研：在没有教科书的地方挖掘真知</h1>
+        <p class="sub">标准答案只能允许你入场，综合调研才能帮你超车。</p>
+      </div>
+      <p class="speaker">分享人：贵州大学经济学院 陈雁</p>
+    </div>
+    <div class="footer"><span>01</span><span>2026</span></div>
+  </section>
+
+  <section class="slide" id="slide-02" data-slide="2" aria-hidden="true">
+    <div class="negative neg-pale neg-side"></div>
+    <div class="stage layout">
+      <div class="text-zone">
+        <span class="eyebrow">02 · 半熟知识</span>
+        <h2>真正有用的知识，常常还没有进入教科书。</h2>
+        <p class="lead">边缘知识或半熟知识已经有研究和材料支撑，足够可靠，可以拿来下注；但又没有熟到行内尽人皆知。</p>
+        <div class="inline-points">
+          <span>公开材料</span>
+          <span>尚未定型</span>
+          <span>可下注判断</span>
+        </div>
+      </div>
+      <div class="visual-zone free">
+        <svg class="chart curve" viewBox="0 0 540 380" aria-hidden="true">
+          <path class="hairline" d="M64 288 C166 156 252 306 366 156 C430 72 474 92 500 116"></path>
+          <path d="M64 288 C166 156 252 306 366 156 C430 72 474 92 500 116"></path>
+          <circle class="pale-dot" cx="64" cy="288" r="12"></circle>
+          <circle class="pale-dot" cx="206" cy="222" r="10"></circle>
+          <circle class="pale-dot" cx="366" cy="156" r="10"></circle>
+          <circle class="red-dot" cx="500" cy="116" r="13"></circle>
+          <text x="30" y="330" font-size="22">材料</text>
+          <text class="muted" x="28" y="358">公开、分散</text>
+          <text x="164" y="204" font-size="22">组织</text>
+          <text class="muted" x="146" y="250">把事实放回问题</text>
+          <text x="326" y="138" font-size="22">压缩</text>
+          <text class="muted" x="300" y="184">共识、争议、边界</text>
+          <text x="446" y="96" font-size="24">判断</text>
+          <text class="muted" x="388" y="148">能改变行动</text>
+        </svg>
+        <p class="breath-note">不是资料越多越好，而是资料之间的关系被看见。</p>
+      </div>
+    </div>
+    <div class="footer"><span>半熟知识</span><span>02</span></div>
+  </section>
+
+  <section class="slide" id="slide-03" data-slide="3" aria-hidden="true">
+    <div class="stage layout">
+      <div class="text-zone">
+        <span class="eyebrow">03 · 问题链</span>
+        <h2>综合调研要追问的不是“都有些什么”，而是“所以呢”。</h2>
+        <p class="lead">搜索给出材料，总结把材料说短，分析拆开结构；综合调研把拆开的东西重新组织起来，形成一个新的整体。</p>
+        <div class="stack">
+          <div class="row"><span class="tag">01</span><p class="sentence">我知道这些事实，因此能得出什么结论？</p></div>
+          <div class="row"><span class="tag">02</span><p class="sentence">这个结论支持什么立场，又限制在哪些边界内？</p></div>
+          <div class="row"><span class="tag">03</span><p class="sentence">下一步的行动、判断或决策应该怎样变化？</p></div>
+        </div>
+      </div>
+      <div class="visual-zone free">
+        <svg class="curve" viewBox="0 0 520 420" aria-hidden="true">
+          <path class="thin" d="M58 350 C156 246 166 122 286 82 C396 46 454 110 430 190"></path>
+          <path d="M52 330 C142 220 162 118 274 88 C376 60 458 102 434 186 C406 288 288 260 230 328 C196 368 132 374 80 350"></path>
+          <circle cx="52" cy="330" r="10"></circle>
+          <circle cx="158" cy="190" r="10"></circle>
+          <circle cx="274" cy="88" r="10"></circle>
+          <circle cx="434" cy="186" r="10"></circle>
+          <circle class="active" cx="230" cy="328" r="12"></circle>
+          <text x="16" y="374" font-size="24">搜索</text>
+          <text class="muted" x="12" y="402">都有些什么</text>
+          <text x="122" y="176" font-size="24">总结</text>
+          <text x="242" y="66" font-size="24">分析</text>
+          <text x="398" y="168" font-size="24">结构</text>
+          <text x="188" y="306" font-size="28">综合</text>
+          <text class="muted" x="166" y="356">所以呢</text>
+        </svg>
+      </div>
+    </div>
+    <div class="footer"><span>Synthesis</span><span>03</span></div>
+  </section>
+
+  <section class="slide write-slide" id="slide-04" data-slide="4" aria-hidden="true">
+    <div class="negative neg-clay neg-side"></div>
+    <div class="write-mark" aria-hidden="true">写</div>
+    <div class="stage">
+      <span class="eyebrow">04 · 写作即思考</span>
+      <h2>不写下来，你分不清自己是真懂还是假懂。</h2>
+      <p class="lead">综合调研要求形成报告。写作不是思考之后的包装，而是定义概念、筛掉废话、安排层级、说明边界、给出判断的过程。</p>
+      <div class="two">
+        <div class="item"><h3>模糊感会被显影</h3><p class="note">想法停留在脑中时，漏洞会躲在语气里；一旦写成段落，因果、证据和边界都会暴露出来。</p></div>
+        <div class="item"><h3>报告是交付物</h3><p class="note">知识工作者最终交付的不是阅读量，而是一个能指导行动的判断模型。</p></div>
+      </div>
+    </div>
+    <div class="footer"><span>Writing</span><span>04</span></div>
+  </section>
+
+  <section class="slide quote-slide" id="slide-05" data-slide="5" aria-hidden="true">
+    <div class="negative neg-clay neg-left"></div>
+    <span class="stamp-circle" style="left:11%;top:18%;"></span>
+    <img class="logo-mark" src="assets/guizhou-university-logo.jpg" alt="" aria-hidden="true" style="left:12%;top:20%;">
+    <div class="stage" style="margin-left:28%;">
+      <span class="eyebrow">05 · 三级任务</span>
+      <p class="quote">初级谋求定位，中级谋求结构化，高级谋求生成。</p>
+      <p class="quote-small">这不是三种写法，而是三种认知任务。层级越高，越需要把材料之间的关系看出来。</p>
+    </div>
+    <div class="footer"><span>Level Map</span><span>05</span></div>
+  </section>
+
+  <section class="slide" id="slide-06" data-slide="6" aria-hidden="true">
+    <div class="negative neg-pale neg-left"></div>
+    <div class="stage layout" style="grid-template-columns:minmax(0,1.08fr) minmax(280px,.78fr);">
+      <div class="text-zone" style="margin-left:11%;">
+        <span class="eyebrow">06 · 定位式调研</span>
+        <h2>初级调研先让你抵达“当前科学理解”。</h2>
+        <p class="lead">它通常可以在一小时或一天之内完成，目标不是一夜成为专家，而是在明天五分钟发言时把事情说对。</p>
+        <div class="stack">
+          <div class="row"><span class="tag">压问题</span><p class="sentence">把“我想了解 X”改成概念定义、因果机制或现实应用。</p></div>
+          <div class="row"><span class="tag">找支撑</span><p class="sentence">优先使用论文、主流媒体报道和权威机构报告。</p></div>
+          <div class="row"><span class="tag">分层次</span><p class="sentence">区分共识、争议和常见误区，再压成一两分钟能讲清的话。</p></div>
+        </div>
+      </div>
+      <div class="visual-zone free">
+        <svg class="chart curve" viewBox="0 0 430 420" aria-hidden="true">
+          <path class="hairline" d="M96 78 C210 110 132 212 238 244 C314 266 300 332 360 354"></path>
+          <path d="M96 78 C210 110 132 212 238 244 C314 266 300 332 360 354"></path>
+          <circle class="red-dot" cx="96" cy="78" r="13"></circle>
+          <circle class="pale-dot" cx="190" cy="172" r="11"></circle>
+          <circle class="pale-dot" cx="238" cy="244" r="11"></circle>
+          <circle class="pale-dot" cx="360" cy="354" r="11"></circle>
+          <text x="56" y="54" class="big red-fill">1h</text>
+          <text x="54" y="106" class="muted">把大主题压成真问题</text>
+          <text x="154" y="158" font-size="23">来源</text>
+          <text x="204" y="230" font-size="23">层次</text>
+          <text x="304" y="342" class="big">5min</text>
+          <text x="250" y="386" class="muted">明天能讲清</text>
+        </svg>
+      </div>
+    </div>
+    <div class="footer"><span>Positioning Research</span><span>06</span></div>
+  </section>
+
+  <section class="slide" id="slide-07" data-slide="7" aria-hidden="true">
+    <div class="stage layout reverse">
+      <div class="visual-zone free">
+        <svg class="curve" viewBox="0 0 520 360" aria-hidden="true">
+          <path class="thin" d="M70 286 C150 98 294 300 430 68"></path>
+          <path d="M58 282 C110 156 196 122 250 202 C304 282 374 138 448 70"></path>
+          <circle cx="58" cy="282" r="10"></circle>
+          <circle cx="162" cy="142" r="10"></circle>
+          <circle cx="250" cy="202" r="10"></circle>
+          <circle class="active" cx="448" cy="70" r="12"></circle>
+          <text x="18" y="326" font-size="22">大主题</text>
+          <text x="124" y="126" font-size="22">真问题</text>
+          <text x="214" y="236" font-size="22">来源</text>
+          <text x="392" y="52" font-size="25">判断</text>
+          <text class="muted" x="320" y="104">AI 的价值不是替你想，而是逼你问准</text>
+        </svg>
+      </div>
+      <div class="text-zone">
+        <span class="eyebrow">07 · AI 时代的升级</span>
+        <h2>AI 不只是帮你找资料，更应该逼你把问题问准。</h2>
+        <p class="lead">深度研究工具的真正用处，是把一个泛泛的话题压成可回答的问题，再要求它交代来源、争议、误区和可讲述的结论。</p>
+      </div>
+    </div>
+    <div class="footer"><span>AI Research Assistant</span><span>07</span></div>
+  </section>
+
+  <section class="slide" id="slide-08" data-slide="8" aria-hidden="true">
+    <div class="negative neg-pale neg-top"></div>
+    <div class="stage top-chart">
+      <div>
+        <span class="eyebrow">08 · 国内案例一</span>
+        <h2>生成式 AI 的扩散，说明问题问法正在改变信息密度。</h2>
+        <p class="lead">文心一言公开后，用户规模从 1 亿、2 亿到 3 亿，变化的不只是工具数量，而是学生获得第一手材料的速度。</p>
+      </div>
+      <div class="chart-zone free">
+        <svg class="chart" viewBox="0 0 980 350" aria-hidden="true">
+          <path class="hairline" d="M118 238 C244 224 318 196 426 188 C552 178 614 132 732 120 C800 112 842 94 884 68"></path>
+          <path class="line" d="M118 238 C244 224 318 196 426 188 C552 178 614 132 732 120 C800 112 842 94 884 68"></path>
+          <circle cx="228" cy="232" r="38" fill="#ECD9D5"></circle>
+          <circle cx="492" cy="174" r="44" fill="#F0E4E0"></circle>
+          <circle cx="752" cy="114" r="50" fill="#ECD9D5"></circle>
+          <circle class="pale-dot" cx="118" cy="238" r="8"></circle>
+          <circle class="pale-dot" cx="426" cy="188" r="9"></circle>
+          <circle class="pale-dot" cx="732" cy="120" r="9"></circle>
+          <circle class="red-dot" cx="884" cy="68" r="10"></circle>
+          <text x="74" y="288" class="mono muted">2023.08 公测</text>
+          <text x="356" y="236" class="mono muted">2023.12</text>
+          <text x="658" y="168" class="mono muted">2024.04</text>
+          <text x="824" y="104" class="mono muted">2024.06</text>
+          <text x="196" y="226" class="big">1亿</text>
+          <text x="460" y="168" class="big">2亿</text>
+          <text x="720" y="108" class="big red-fill">3亿</text>
+          <path d="M116 318 C324 296 560 326 832 286" class="hairline"></path>
+          <circle class="red-dot" cx="832" cy="286" r="5"></circle>
+          <text x="108" y="334" class="muted">工具扩散越快，提问质量越成为真正的门槛。</text>
+        </svg>
+      </div>
+    </div>
+    <p class="source-note">来源：WSJ 报道 2024-04 用户超 2 亿；Reuters 报道 2024-06 达 3 亿。</p>
+    <div class="footer"><span>Domestic Case · AI</span><span>08</span></div>
+  </section>
+
+  <section class="slide quote-slide" id="slide-09" data-slide="9" aria-hidden="true">
+    <div class="negative neg-clay neg-side"></div>
+    <span class="stamp-circle small" style="right:20%;top:22%;"></span>
+    <img class="logo-mark" src="assets/guizhou-university-logo.jpg" alt="" aria-hidden="true" style="right:10%;top:22%;">
+    <div class="stage">
+      <span class="eyebrow">09 · 结构化调研</span>
+      <p class="quote">中级调研读懂的不是资料堆，而是一个领域正在争论什么。</p>
+      <p class="quote-small">它需要几个月甚至一年，把理解推进到内行水平。你开始知道谁在说话、谁掌握话语权、分歧卡在哪里。</p>
+    </div>
+    <div class="footer"><span>Structured Research</span><span>09</span></div>
+  </section>
+
+  <section class="slide" id="slide-10" data-slide="10" aria-hidden="true">
+    <div class="stage layout reverse">
+      <div class="visual-zone free">
+        <svg class="curve" viewBox="0 0 520 420" aria-hidden="true">
+          <path d="M100 100 C180 40 324 62 396 142 C468 222 384 338 260 334 C136 330 52 218 100 100"></path>
+          <circle cx="100" cy="100" r="10"></circle>
+          <circle cx="242" cy="70" r="10"></circle>
+          <circle cx="396" cy="142" r="10"></circle>
+          <circle cx="384" cy="282" r="10"></circle>
+          <circle class="active" cx="260" cy="334" r="12"></circle>
+          <circle cx="86" cy="236" r="10"></circle>
+          <text x="60" y="82" font-size="22">作者</text>
+          <text x="202" y="52" font-size="22">门派</text>
+          <text x="362" y="124" font-size="22">证据</text>
+          <text x="348" y="320" font-size="22">方法</text>
+          <text x="212" y="374" font-size="25">话语权</text>
+          <text x="48" y="274" font-size="22">争论</text>
+        </svg>
+      </div>
+      <div class="text-zone">
+        <span class="eyebrow">10 · 认识人</span>
+        <h2>入门的标志，是能说清这个领域有哪些人、哪些派别。</h2>
+        <p class="lead">以议题为中心读文献，但进入领域的体感往往从“认识人”开始：他们主张什么、反对什么、正在争夺什么。</p>
+        <div class="stack">
+          <div class="row"><span class="tag">硬功夫</span><p class="sentence">读主流作者的书和论文，知道每一派的理由、证据、方法和盲点。</p></div>
+          <div class="row"><span class="tag">真观点</span><p class="sentence">最好能把反对派的意见总结到让对方也认可，然后再表明你的判断。</p></div>
+        </div>
+      </div>
+    </div>
+    <div class="footer"><span>Issue Map</span><span>10</span></div>
+  </section>
+
+  <section class="slide" id="slide-11" data-slide="11" aria-hidden="true">
+    <div class="negative neg-pale neg-left"></div>
+    <div class="stage top-chart">
+      <div style="margin-left:28%;">
+        <span class="eyebrow">11 · 中国经济阅读实验</span>
+        <h2>材料被重新拆分到议题之下，微妙分歧才显现出来。</h2>
+      </div>
+      <div class="chart-zone free">
+        <svg class="chart" viewBox="0 0 980 360" aria-hidden="true">
+          <circle cx="126" cy="104" r="54" fill="#ECD9D5"></circle>
+          <text x="84" y="98" class="big">66</text>
+          <text x="58" y="138" class="muted">关于中国经济的新书</text>
+          <path d="M190 104 C304 86 338 126 446 124" stroke="#A86145" stroke-width="6" fill="none" stroke-linecap="round"></path>
+          <path d="M188 128 C312 148 340 194 446 202" stroke="#C7836A" stroke-width="5.5" fill="none" stroke-linecap="round"></path>
+          <path d="M182 154 C300 210 338 274 446 282" stroke="#ECD9D5" stroke-width="8" fill="none" stroke-linecap="round"></path>
+          <circle class="pale-dot" cx="446" cy="124" r="9"></circle>
+          <circle class="pale-dot" cx="446" cy="202" r="9"></circle>
+          <circle class="pale-dot" cx="446" cy="282" r="9"></circle>
+          <text x="474" y="132" font-size="22">产业</text>
+          <text x="474" y="210" font-size="22">财政</text>
+          <text x="474" y="290" font-size="22">区域</text>
+          <path d="M560 128 C654 110 706 86 808 78" stroke="#A86145" stroke-width="4.5" fill="none" stroke-linecap="round"></path>
+          <path d="M560 206 C656 202 714 196 808 188" stroke="#C7836A" stroke-width="4.5" fill="none" stroke-linecap="round"></path>
+          <path d="M560 284 C660 294 710 306 808 308" stroke="#ECD9D5" stroke-width="7" fill="none" stroke-linecap="round"></path>
+          <circle cx="842" cy="80" r="42" fill="#F0E4E0"></circle>
+          <text x="824" y="86" class="big red-fill">9</text>
+          <text x="794" y="134" class="muted">个议题文档</text>
+          <text x="820" y="230" class="big">1+</text>
+          <text x="784" y="264" class="muted">一年多精读</text>
+        </svg>
+      </div>
+    </div>
+    <div class="footer"><span>China Economy Notes</span><span>11</span></div>
+  </section>
+
+  <section class="slide" id="slide-12" data-slide="12" aria-hidden="true">
+    <div class="negative neg-clay neg-bottom" style="height:25%;"></div>
+    <div class="stage top-chart">
+      <div>
+        <span class="eyebrow">12 · 国内案例二</span>
+        <h2>新能源汽车数据不是“很厉害”四个字，而是一组可压缩的判断。</h2>
+        <p class="lead">产量、销量、渗透率并排放在一起，才能看见产业变化已经从“增长”进入“结构改写”。</p>
+      </div>
+      <div class="chart-zone free">
+        <svg class="chart" viewBox="0 0 980 330" aria-hidden="true">
+          <line x1="104" y1="248" x2="878" y2="248" stroke="#DEDCD2" stroke-width="1.2"></line>
+          <rect x="148" y="112" width="92" height="136" rx="14" fill="#ECD9D5"></rect>
+          <rect x="338" y="114" width="92" height="134" rx="14" fill="#D9B7A8"></rect>
+          <circle cx="700" cy="166" r="68" fill="#F0E4E0"></circle>
+          <path d="M700 98 A68 68 0 0 1 764 188" fill="none" stroke="#B52A22" stroke-width="16" stroke-linecap="round"></path>
+          <path d="M496 222 C564 202 606 176 632 162" class="hairline"></path>
+          <circle class="pale-dot" cx="148" cy="248" r="7"></circle>
+          <circle class="pale-dot" cx="338" cy="248" r="7"></circle>
+          <circle class="red-dot" cx="764" cy="188" r="8"></circle>
+          <text x="156" y="86" class="mono muted">产量</text>
+          <text x="116" y="108" class="big" style="font-size:34px;">1288.8</text>
+          <text x="174" y="276" class="muted">万辆</text>
+          <text x="346" y="86" class="mono muted">销量</text>
+          <text x="306" y="108" class="big" style="font-size:34px;">1286.6</text>
+          <text x="364" y="276" class="muted">万辆</text>
+          <text x="640" y="168" class="red-fill mono" style="font-size:35px;letter-spacing:0;">40.9%</text>
+          <text x="626" y="206" class="muted">新车销量占比</text>
+          <text x="138" y="306" class="muted">公开数据 → 结构判断：新能源车已不只是增量市场。</text>
+        </svg>
+      </div>
+    </div>
+    <p class="source-note">来源：中汽协数据，上海证券报/证券时报 2025-01-14。</p>
+    <div class="footer"><span>Domestic Case · NEV</span><span>12</span></div>
+  </section>
+
+  <section class="slide quote-slide" id="slide-13" data-slide="13" aria-hidden="true">
+    <div class="negative neg-pale neg-side"></div>
+    <span class="stamp-circle" style="right:10%;top:21%;"></span>
+    <img class="logo-mark" src="assets/guizhou-university-logo.jpg" alt="" aria-hidden="true" style="right:12%;top:23%;">
+    <div class="stage">
+      <span class="eyebrow">13 · 生成式调研</span>
+      <p class="quote">高级调研的目标已经不是理解，而是从材料中读出新问题。</p>
+      <p class="quote-small">整合式综述和荟萃分析本身就是研究方法。真相有时不在任何一份材料里，而在材料之间。</p>
+    </div>
+    <div class="footer"><span>Generative Research</span><span>13</span></div>
+  </section>
+
+  <section class="slide" id="slide-14" data-slide="14" aria-hidden="true">
+    <div class="stage layout">
+      <div class="text-zone">
+        <span class="eyebrow">14 · John Snow + 国内类比</span>
+        <h2>1854 年的霍乱发现，来自三组材料被放到一起。</h2>
+        <p class="lead">约翰·斯诺把死者名单、街道地图和抽水泵位置叠合起来。今天看铁路，也不是一个数字，而是客流、货流和高铁占比一起看。</p>
+      </div>
+      <div class="visual-zone free">
+        <svg class="chart curve" viewBox="0 0 540 420" aria-hidden="true">
+          <circle cx="88" cy="72" r="30" fill="#ECD9D5"></circle>
+          <circle cx="266" cy="72" r="30" fill="#F0E4E0"></circle>
+          <circle cx="444" cy="72" r="30" fill="#D9B7A8"></circle>
+          <text x="50" y="68" class="big" style="font-size:30px;">43.12</text>
+          <text x="38" y="112" class="muted">亿人次客运</text>
+          <text x="228" y="68" class="big" style="font-size:30px;">32.72</text>
+          <text x="216" y="112" class="muted">亿人次动车组</text>
+          <text x="406" y="68" class="big" style="font-size:30px;">51.75</text>
+          <text x="408" y="112" class="muted">亿吨货运</text>
+          <path class="hairline" d="M56 286 C118 216 180 218 222 282 C262 342 354 326 468 172"></path>
+          <path d="M56 286 C118 216 180 218 222 282 C262 342 354 326 468 172"></path>
+          <circle cx="56" cy="286" r="9"></circle>
+          <circle cx="164" cy="218" r="9"></circle>
+          <circle cx="222" cy="282" r="9"></circle>
+          <circle cx="354" cy="326" r="9"></circle>
+          <circle class="active" cx="468" cy="172" r="11"></circle>
+          <text x="20" y="326" font-size="20">名单</text>
+          <text x="126" y="200" font-size="20">地图</text>
+          <text x="196" y="322" font-size="20">水泵</text>
+          <text x="306" y="366" font-size="20">病例点</text>
+          <text x="404" y="154" font-size="20">机制</text>
+        </svg>
+      </div>
+    </div>
+    <p class="source-note">来源：国家铁路局，2024 年 1-12 月全国铁路客货运量。</p>
+    <div class="footer"><span>Evidence Between Materials</span><span>14</span></div>
+  </section>
+
+  <section class="slide" id="slide-15" data-slide="15" aria-hidden="true">
+    <div class="stage layout">
+      <div class="text-zone">
+        <span class="eyebrow">15 · 优化闭环</span>
+        <h2>综合调研是成本最低的研究方式，但必须形成闭环。</h2>
+        <p class="lead">你不一定要做实验，也不一定要发问卷。你从现成材料中挖掘自己的东西，再用写作检验和修正它。</p>
+        <div class="stack">
+          <div class="row"><span class="tag">输入</span><p class="sentence">公开材料、半熟知识、不同作者的证据与争论。</p></div>
+          <div class="row"><span class="tag">处理</span><p class="sentence">定义概念、筛掉废话、重排层级、说明边界。</p></div>
+          <div class="row"><span class="tag">输出</span><p class="sentence">留下个人印记的图式、模型、洞察或叙事。</p></div>
+        </div>
+      </div>
+      <div class="visual-zone free">
+        <svg class="curve" viewBox="0 0 500 420" aria-hidden="true">
+          <path class="thin" d="M250 52 C384 52 442 142 430 236 C416 346 300 392 184 348 C76 306 48 196 96 112 C126 70 180 52 250 52"></path>
+          <path d="M250 52 C384 52 442 142 430 236 C416 346 300 392 184 348 C76 306 48 196 96 112 C126 70 180 52 250 52"></path>
+          <circle cx="250" cy="52" r="10"></circle>
+          <circle cx="430" cy="236" r="10"></circle>
+          <circle class="active" cx="184" cy="348" r="12"></circle>
+          <circle cx="96" cy="112" r="10"></circle>
+          <text x="216" y="30" font-size="24">立题</text>
+          <text x="394" y="224" font-size="24">找材料</text>
+          <text x="132" y="390" font-size="24">写报告</text>
+          <text x="52" y="100" font-size="24">给判断</text>
+          <text class="muted" x="178" y="210">优化闭环不是流程图，而是一轮又一轮修正</text>
+        </svg>
+      </div>
+    </div>
+    <div class="footer"><span>Research Loop</span><span>15</span></div>
+  </section>
+
+  <section class="slide" id="slide-16" data-slide="16" aria-hidden="true">
+    <div class="negative neg-clay neg-top"></div>
+    <div class="stage top-chart">
+      <div>
+        <span class="eyebrow">16 · 国内案例三</span>
+        <h2>铁路数据看似宏大，综合调研要把它压成一条判断链。</h2>
+        <p class="lead">客运、动车组客运、货运不是三个孤立数字。它们共同说明：一个基础设施系统同时承载人的流动、货的流动和区域连接。</p>
+      </div>
+      <div class="chart-zone free">
+        <svg class="chart" viewBox="0 0 980 330" aria-hidden="true">
+          <path d="M126 236 C250 166 344 250 476 172 C600 98 710 128 850 78" class="hairline"></path>
+          <path d="M126 236 C250 166 344 250 476 172 C600 98 710 128 850 78" class="line"></path>
+          <circle cx="126" cy="236" r="34" fill="#ECD9D5"></circle>
+          <circle cx="476" cy="172" r="38" fill="#F0E4E0"></circle>
+          <circle cx="850" cy="78" r="32" fill="#D9B7A8"></circle>
+          <circle class="red-dot" cx="850" cy="78" r="7"></circle>
+          <text x="88" y="226" class="big" style="font-size:34px;">43.12</text>
+          <text x="72" y="276" class="muted">客运 亿人次</text>
+          <text x="438" y="162" class="big" style="font-size:34px;">51.75</text>
+          <text x="430" y="212" class="muted">货运 亿吨</text>
+          <text x="824" y="68" class="big red-fill" style="font-size:34px;">4.8</text>
+          <text x="800" y="118" class="muted">万公里高铁</text>
+          <path d="M162 304 C370 286 610 318 826 274" class="hairline"></path>
+          <circle class="red-dot" cx="826" cy="274" r="5"></circle>
+          <text x="108" y="320" class="muted">事实 → 关系 → 判断：基础设施重排了时间、距离和市场。</text>
+        </svg>
+      </div>
+    </div>
+    <p class="source-note">来源：国家铁路局；高铁营业里程 2024 年约 4.8 万公里。</p>
+    <div class="footer"><span>Domestic Case · Rail</span><span>16</span></div>
+  </section>
+
+  <section class="slide" id="slide-17" data-slide="17" aria-hidden="true">
+    <div class="negative neg-pale neg-left"></div>
+    <div class="stage" style="margin-left:24%;">
+      <span class="eyebrow">17 · 给大一新生</span>
+      <h2>大学四年，不要只把自己训练成会背答案的人。</h2>
+      <p class="lead">你真正要练的是：看见问题、拆开材料、组织判断、写出自己的立场。专业课会给你入口，综合调研给你方向盘。</p>
+      <div class="student-list">
+        <div class="year-card"><strong>大一</strong><p>先把概念问清楚，学会区分常识、观点和证据。</p></div>
+        <div class="year-card"><strong>大二</strong><p>开始追踪一个议题，知道谁在说话，为什么争论。</p></div>
+        <div class="year-card"><strong>大三</strong><p>把材料重新组织，形成自己的解释框架。</p></div>
+        <div class="year-card"><strong>大四</strong><p>用论文、报告和项目证明：你能独立判断。</p></div>
+      </div>
+      <svg class="freshman-sparks chart" viewBox="0 0 760 90" aria-hidden="true">
+        <path d="M40 54 C170 22 246 72 376 42 C510 12 596 50 720 26" class="hairline"></path>
+        <circle class="red-dot" cx="40" cy="54" r="5"></circle>
+        <circle class="pale-dot" cx="246" cy="72" r="5"></circle>
+        <circle class="red-dot" cx="376" cy="42" r="6"></circle>
+        <circle class="pale-dot" cx="596" cy="50" r="5"></circle>
+        <circle class="red-dot" cx="720" cy="26" r="5"></circle>
+      </svg>
+    </div>
+    <div class="footer"><span>Freshman Compass</span><span>17</span></div>
+  </section>
+
+  <section class="slide closing" id="slide-18" data-slide="18" aria-hidden="true">
+    <div class="negative neg-clay neg-side"></div>
+    <span class="stamp-circle" style="right:9%;top:16%;"></span>
+    <span class="stamp-circle small" style="right:24%;bottom:18%;"></span>
+    <img class="logo-mark" src="assets/guizhou-university-logo.jpg" alt="" aria-hidden="true" style="right:11%;top:18%;">
+    <div class="stage">
+      <span class="eyebrow">18 · 结尾</span>
+      <h2 class="final-line">别把大学读成<span class="red">标准答案</span>的流水线。</h2>
+      <p class="tail">四年之后，你要带走的不是一本写满的笔记，而是一套能替你开路的判断力。</p>
+    </div>
+    <div class="footer"><span>贵州大学经济学院 陈雁</span><span>END</span></div>
+  </section>
+
+</main>
+
+<script>
+  (function () {
+    const slides = Array.from(document.querySelectorAll(".slide"));
+    const total = slides.length;
+    let current = 0;
+
+    function clampIndex(index) {
+      return Math.max(0, Math.min(total - 1, index));
+    }
+
+    function idFor(index) {
+      return "slide-" + String(index + 1).padStart(2, "0");
+    }
+
+    function indexFromHash() {
+      const match = window.location.hash.match(/^#slide-(\d{1,2})$/);
+      if (!match) return 0;
+      const parsed = Number(match[1]) - 1;
+      return Number.isFinite(parsed) ? clampIndex(parsed) : 0;
+    }
+
+    function buildDots() {
+      slides.forEach((slide, slideIndex) => {
+        const nav = document.createElement("nav");
+        nav.className = "nav-dots";
+        nav.setAttribute("aria-label", "第 " + (slideIndex + 1) + " / " + total + " 页");
+        for (let i = 0; i < total; i += 1) {
+          const button = document.createElement("button");
+          button.type = "button";
+          button.dataset.target = String(i + 1);
+          button.setAttribute("aria-label", "跳转到第 " + (i + 1) + " 页");
+          nav.appendChild(button);
+        }
+        slide.appendChild(nav);
+      });
+    }
+
+    function syncDots(index) {
+      document.querySelectorAll(".nav-dots button").forEach((button) => {
+        const isActive = Number(button.dataset.target) === index + 1;
+        button.classList.toggle("active", isActive);
+        if (isActive) {
+          button.setAttribute("aria-current", "step");
+        } else {
+          button.removeAttribute("aria-current");
+        }
+      });
+    }
+
+    function show(index, updateHash) {
+      current = clampIndex(index);
+      slides.forEach((slide, slideIndex) => {
+        const isActive = slideIndex === current;
+        slide.classList.toggle("is-active", isActive);
+        slide.setAttribute("aria-hidden", isActive ? "false" : "true");
+      });
+      syncDots(current);
+      const nextHash = "#" + idFor(current);
+      if (updateHash !== false && window.location.hash !== nextHash) {
+        history.replaceState(null, "", nextHash);
+      }
+    }
+
+    function go(delta) {
+      show(current + delta, true);
+    }
+
+    buildDots();
+
+    document.addEventListener("click", (event) => {
+      const button = event.target.closest(".nav-dots button");
+      if (!button) return;
+      show(Number(button.dataset.target) - 1, true);
+    });
+
+    document.addEventListener("keydown", (event) => {
+      const tag = event.target.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || event.target.isContentEditable) return;
+      const nextKeys = ["ArrowRight", "ArrowDown", "PageDown", " ", "Enter"];
+      const prevKeys = ["ArrowLeft", "ArrowUp", "PageUp", "Backspace"];
+      if (nextKeys.includes(event.key)) {
+        event.preventDefault();
+        go(1);
+      } else if (prevKeys.includes(event.key)) {
+        event.preventDefault();
+        go(-1);
+      } else if (event.key === "Home") {
+        event.preventDefault();
+        show(0, true);
+      } else if (event.key === "End") {
+        event.preventDefault();
+        show(total - 1, true);
+      }
+    });
+
+    window.addEventListener("hashchange", () => show(indexFromHash(), false));
+    show(indexFromHash(), true);
+  }());
+</script>
+</body>
+</html>

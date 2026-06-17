@@ -19,6 +19,8 @@ import type {
   EditableAttributes,
   ElementQuickAction,
   SourcePanelPlacement,
+  AiAnalysisStatus,
+  AiTreeAnnotation,
 } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
 import { copyHtmlToClipboard } from "./utils/clipboard";
@@ -35,6 +37,7 @@ import {
   updateHtmlElementByHftId,
 } from "./utils/domPath";
 import { exportHtml } from "./utils/exportHtml";
+import { exportPdfFromHtml, exportPptxFromHtml, type DocumentExportFormat } from "./utils/exportDocument";
 import { buildDisplayItemsFromSummaries } from "./utils/historySummary";
 import { injectEditableIds } from "./utils/injectEditableIds";
 import {
@@ -44,6 +47,17 @@ import {
   isRootSvgElement,
   isSvgImageElement,
 } from "./utils/editableElement";
+import {
+  AI_PROVIDER_DEFINITIONS,
+  AI_PROVIDER_MAP,
+  analyzeStructureWithAi,
+  buildPresetAiModelOptions,
+  fetchAiModelOptions,
+  mergeAiModelOptions,
+  type AiModelFetchStatus,
+  type AiModelOption,
+  type AiProviderId,
+} from "./utils/aiStructure";
 
 const HistoryPanel = lazy(() =>
   import("./components/HistoryPanel").then((m) => ({ default: m.HistoryPanel }))
@@ -55,8 +69,34 @@ const ExportPreviewDialog = lazy(() =>
 const initialHtml = injectEditableIds(sampleHtml).html;
 const DEFAULT_SOURCE_WIDTH = 292;
 const DEFAULT_INSPECTOR_WIDTH = 318;
+const AI_KEY_STORAGE = "html-finetune.ai-provider-keys";
+const AI_LEGACY_GEMMA_KEY_STORAGE = "html-finetune.gemma-api-key";
+const DEFAULT_AI_PROVIDER: AiProviderId = "google";
 
 type StyleClipboard = Pick<SelectedElementSnapshot, "styles" | "effects">;
+
+function loadStoredAiKeys(): Record<string, string> {
+  const rawKeys = window.localStorage.getItem(AI_KEY_STORAGE);
+  if (rawKeys) {
+    try {
+      const parsed = JSON.parse(rawKeys) as Record<string, unknown>;
+      return Object.fromEntries(
+        Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string")
+      );
+    } catch {
+      window.localStorage.removeItem(AI_KEY_STORAGE);
+    }
+  }
+
+  const legacyGemmaKey = window.localStorage.getItem(AI_LEGACY_GEMMA_KEY_STORAGE);
+  return legacyGemmaKey ? { google: legacyGemmaKey } : {};
+}
+
+function getInitialAiModelOptions(): Record<string, AiModelOption[]> {
+  return Object.fromEntries(
+    AI_PROVIDER_DEFINITIONS.map((provider) => [provider.id, buildPresetAiModelOptions(provider)])
+  );
+}
 
 export default function App() {
   const history = useEditorHistory({ html: initialHtml, selectedId: null });
@@ -89,16 +129,52 @@ export default function App() {
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [exportPreviewHtml, setExportPreviewHtml] = useState<string | null>(null);
+  const [exportingFormat, setExportingFormat] = useState<DocumentExportFormat | null>(null);
   const [sourcePanelPlacement, setSourcePanelPlacement] = useState<SourcePanelPlacement>("side");
   const [sourceWidth, setSourceWidth] = useState(DEFAULT_SOURCE_WIDTH);
   const [inspectorWidth, setInspectorWidth] = useState(DEFAULT_INSPECTOR_WIDTH);
   const [isPreviewReady, setIsPreviewReady] = useState(false);
   const [hasImportedHtml, setHasImportedHtml] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AiProviderId>(DEFAULT_AI_PROVIDER);
+  const [aiApiKeys, setAiApiKeys] = useState<Record<string, string>>(() => loadStoredAiKeys());
+  const [rememberAiKeys, setRememberAiKeys] = useState<Record<string, boolean>>(() =>
+    Object.fromEntries(Object.keys(loadStoredAiKeys()).map((providerId) => [providerId, true]))
+  );
+  const [aiModels, setAiModels] = useState<Record<string, string>>(() =>
+    Object.fromEntries(AI_PROVIDER_DEFINITIONS.map((provider) => [provider.id, provider.defaultModel]))
+  );
+  const [aiModelOptions, setAiModelOptions] = useState<Record<string, AiModelOption[]>>(() => getInitialAiModelOptions());
+  const [aiModelFetchStatus, setAiModelFetchStatus] = useState<AiModelFetchStatus>("idle");
+  const [aiModelFetchError, setAiModelFetchError] = useState("");
+  const [aiAnalysisStatus, setAiAnalysisStatus] = useState<AiAnalysisStatus>("idle");
+  const [aiAnalysisError, setAiAnalysisError] = useState("");
+  const [aiAnnotations, setAiAnnotations] = useState<Record<string, AiTreeAnnotation>>({});
   const workspaceRef = useRef<HTMLElement | null>(null);
+  const aiModelFetchRequestRef = useRef(0);
+  const currentAiProvider = AI_PROVIDER_MAP[aiProvider] ?? AI_PROVIDER_MAP[DEFAULT_AI_PROVIDER];
+  const currentAiKey = aiApiKeys[aiProvider] || "";
+  const currentAiRememberKey = Boolean(rememberAiKeys[aiProvider]);
+  const currentAiModel = aiModels[aiProvider] || currentAiProvider.defaultModel;
+  const currentAiModelOptions = aiModelOptions[aiProvider] || buildPresetAiModelOptions(currentAiProvider);
+  const domTree = useMemo(() => buildEditableDomTree(state.html), [state.html]);
 
   useEffect(() => {
     latestHtmlRef.current = state.html;
   }, [state.html]);
+
+  useEffect(() => {
+    const storedKeys = Object.fromEntries(
+      Object.entries(aiApiKeys)
+        .map(([providerId, key]) => [providerId, key.trim()] as const)
+        .filter(([providerId, key]) => rememberAiKeys[providerId] && key)
+    );
+    if (Object.keys(storedKeys).length > 0) {
+      window.localStorage.setItem(AI_KEY_STORAGE, JSON.stringify(storedKeys));
+    } else {
+      window.localStorage.removeItem(AI_KEY_STORAGE);
+    }
+    window.localStorage.removeItem(AI_LEGACY_GEMMA_KEY_STORAGE);
+  }, [aiApiKeys, rememberAiKeys]);
 
   const updateSelectedElement = useCallback(
     (nextElement: SelectedElementSnapshot) => {
@@ -305,6 +381,96 @@ export default function App() {
     setExportPreviewHtml(null);
     setStatusMessage("已导出干净 HTML");
   }, [exportPreviewHtml]);
+
+  const runAiExportPreflight = useCallback(async () => {
+    const existingAnnotations = Object.values(aiAnnotations);
+    if (existingAnnotations.length > 0) {
+      return { annotations: existingAnnotations, source: "cached" as const };
+    }
+
+    if (!currentAiKey.trim() || !currentAiModel.trim()) {
+      return { annotations: [] as AiTreeAnnotation[], source: "skipped" as const };
+    }
+
+    setSourceView("tree");
+    setAiAnalysisStatus("running");
+    setAiAnalysisError("");
+    const annotations = await analyzeStructureWithAi({
+      providerId: aiProvider,
+      apiKey: currentAiKey,
+      model: currentAiModel,
+      html: latestHtmlRef.current,
+      domTree,
+    });
+    const nextAnnotations = Object.fromEntries(annotations.map((annotation) => [annotation.hftId, annotation]));
+    setAiAnnotations(nextAnnotations);
+    setAiAnalysisStatus("ready");
+    return { annotations, source: "fresh" as const };
+  }, [aiAnnotations, aiProvider, currentAiKey, currentAiModel, domTree]);
+
+  const handleDocumentExport = useCallback(
+    async (format: DocumentExportFormat) => {
+      if (exportingFormat) return;
+
+      const label = format === "pdf" ? "PDF" : "PPTX";
+      setExportingFormat(format);
+      setSourceView("tree");
+
+      try {
+        const cleanHtml = cleanHtmlForExport(latestHtmlRef.current);
+        assertCleanExport(cleanHtml);
+        const warnings = getExportWarnings(cleanHtml);
+        if (warnings.length > 0) {
+          warnings.forEach((w) => console.warn(`[Export] ${w.message}`));
+        }
+
+        setStatusMessage(`正在进行 AI 导出预检，然后生成 ${label}`);
+        let annotations: AiTreeAnnotation[] = [];
+        try {
+          const preflight = await runAiExportPreflight();
+          annotations = preflight.annotations;
+        } catch (error) {
+          const message = error instanceof Error ? error.message : "AI 导出预检失败";
+          setAiAnalysisStatus("error");
+          setAiAnalysisError(message);
+          setStatusMessage(`AI 预检失败，继续生成 ${label}`);
+        }
+
+        const riskCount = annotations.filter((annotation) =>
+          annotation.issues.some((issue) => issue.trim().length > 0)
+        ).length;
+        if (riskCount > 0) {
+          setStatusMessage(`AI 预检发现 ${riskCount} 个风险点，正在生成 ${label}`);
+        } else if (annotations.length > 0) {
+          setStatusMessage(`AI 预检通过，正在生成 ${label}`);
+        } else {
+          setStatusMessage(`未配置 AI 预检，正在生成 ${label}`);
+        }
+
+        const pageCount =
+          format === "pdf" ? await exportPdfFromHtml(cleanHtml) : await exportPptxFromHtml(cleanHtml);
+        setStatusMessage(
+          riskCount > 0
+            ? `已导出 ${pageCount} 页 ${label}，AI 标注了 ${riskCount} 个风险点`
+            : `已导出 ${pageCount} 页 ${label}`
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : `${label} 导出失败`;
+        setStatusMessage(message);
+      } finally {
+        setExportingFormat(null);
+      }
+    },
+    [exportingFormat, runAiExportPreflight]
+  );
+
+  const handleExportPdf = useCallback(() => {
+    void handleDocumentExport("pdf");
+  }, [handleDocumentExport]);
+
+  const handleExportPptx = useCallback(() => {
+    void handleDocumentExport("pptx");
+  }, [handleDocumentExport]);
 
   const handleCopyExportPreview = useCallback(async () => {
     if (!exportPreviewHtml) return;
@@ -543,7 +709,165 @@ export default function App() {
     };
   }, [selectedElement]);
 
-  const domTree = useMemo(() => buildEditableDomTree(state.html), [state.html]);
+  useEffect(() => {
+    setAiAnnotations({});
+    setAiAnalysisStatus("idle");
+    setAiAnalysisError("");
+  }, [state.html]);
+
+  const fetchModelsForProvider = useCallback(
+    async (providerId: AiProviderId, apiKey: string, mode: "auto" | "manual", signal?: AbortSignal) => {
+      const provider = AI_PROVIDER_MAP[providerId] ?? AI_PROVIDER_MAP[DEFAULT_AI_PROVIDER];
+      const trimmedKey = apiKey.trim();
+      const fallbackOptions = buildPresetAiModelOptions(provider);
+      if (!trimmedKey) {
+        setAiModelOptions((options) => ({
+          ...options,
+          [provider.id]: fallbackOptions,
+        }));
+        setAiModelFetchStatus("idle");
+        setAiModelFetchError("");
+        return;
+      }
+
+      const requestId = aiModelFetchRequestRef.current + 1;
+      aiModelFetchRequestRef.current = requestId;
+      setAiModelFetchStatus("loading");
+      setAiModelFetchError("");
+
+      try {
+        const remoteOptions = await fetchAiModelOptions({
+          providerId: provider.id,
+          apiKey: trimmedKey,
+          signal,
+        });
+        if (signal?.aborted || requestId !== aiModelFetchRequestRef.current) return;
+
+        const nextOptions = mergeAiModelOptions(remoteOptions, fallbackOptions);
+        setAiModelOptions((options) => ({
+          ...options,
+          [provider.id]: nextOptions,
+        }));
+        setAiModelFetchStatus("ready");
+        setAiModels((models) => {
+          const currentModel = models[provider.id] || provider.defaultModel;
+          const hasCurrentModel = nextOptions.some((option) => option.value === currentModel);
+          if (currentModel && (hasCurrentModel || currentModel !== provider.defaultModel)) return models;
+          return {
+            ...models,
+            [provider.id]: nextOptions[0]?.value || provider.defaultModel,
+          };
+        });
+        setStatusMessage(`${provider.shortLabel} 已获取 ${remoteOptions.length} 个模型`);
+      } catch (error) {
+        if (signal?.aborted || requestId !== aiModelFetchRequestRef.current) return;
+        const message = error instanceof Error ? error.message : "模型列表获取失败";
+        setAiModelOptions((options) => ({
+          ...options,
+          [provider.id]: fallbackOptions,
+        }));
+        setAiModelFetchStatus("error");
+        setAiModelFetchError(message);
+        if (mode === "manual") setStatusMessage(message);
+      }
+    },
+    []
+  );
+
+  useEffect(() => {
+    const trimmedKey = currentAiKey.trim();
+    if (trimmedKey.length < 8) {
+      setAiModelFetchStatus("idle");
+      setAiModelFetchError("");
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = window.setTimeout(() => {
+      void fetchModelsForProvider(aiProvider, trimmedKey, "auto", controller.signal);
+    }, 700);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      controller.abort();
+    };
+  }, [aiProvider, currentAiKey, fetchModelsForProvider]);
+
+  const handleAnalyzeStructure = useCallback(async () => {
+    setSourceView("tree");
+    setAiAnalysisStatus("running");
+    setAiAnalysisError("");
+    try {
+      const annotations = await analyzeStructureWithAi({
+        providerId: aiProvider,
+        apiKey: currentAiKey,
+        model: currentAiModel,
+        html: latestHtmlRef.current,
+        domTree,
+      });
+      const nextAnnotations = Object.fromEntries(annotations.map((annotation) => [annotation.hftId, annotation]));
+      setAiAnnotations(nextAnnotations);
+      setAiAnalysisStatus("ready");
+      setStatusMessage(`${currentAiProvider.shortLabel} 已标注 ${annotations.length} 个结构节点`);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "AI 扫描失败";
+      setAiAnalysisStatus("error");
+      setAiAnalysisError(message);
+      setStatusMessage(message);
+    }
+  }, [aiProvider, currentAiKey, currentAiModel, currentAiProvider.shortLabel, domTree]);
+
+  const handleAiProviderChange = useCallback((providerId: AiProviderId) => {
+    const provider = AI_PROVIDER_MAP[providerId] ?? AI_PROVIDER_MAP[DEFAULT_AI_PROVIDER];
+    setAiProvider(provider.id);
+    setAiModels((models) => ({
+      ...models,
+      [provider.id]: models[provider.id] || provider.defaultModel,
+    }));
+    setAiAnalysisError("");
+  }, []);
+
+  const handleAiApiKeyChange = useCallback(
+    (value: string) => {
+      setAiApiKeys((keys) => ({
+        ...keys,
+        [aiProvider]: value,
+      }));
+    },
+    [aiProvider]
+  );
+
+  const handleAiRememberKeyChange = useCallback(
+    (value: boolean) => {
+      setRememberAiKeys((keys) => ({
+        ...keys,
+        [aiProvider]: value,
+      }));
+    },
+    [aiProvider]
+  );
+
+  const handleAiModelChange = useCallback(
+    (value: string) => {
+      setAiModels((models) => ({
+        ...models,
+        [aiProvider]: value,
+      }));
+    },
+    [aiProvider]
+  );
+
+  const handleRefreshAiModels = useCallback(() => {
+    void fetchModelsForProvider(aiProvider, currentAiKey, "manual");
+  }, [aiProvider, currentAiKey, fetchModelsForProvider]);
+
+  const handleClearAiAnnotations = useCallback(() => {
+    setAiAnnotations({});
+    setAiAnalysisStatus("idle");
+    setAiAnalysisError("");
+    setStatusMessage("已清空 AI 结构标注");
+  }, []);
+
   const historyItems = useMemo(
     () => buildDisplayItemsFromSummaries(summaries, currentIndex),
     [currentIndex, summaries]
@@ -576,6 +900,9 @@ export default function App() {
         onImport={handleImport}
         onCopy={handleCopy}
         onExport={handleExport}
+        onExportPdf={handleExportPdf}
+        onExportPptx={handleExportPptx}
+        exportingFormat={exportingFormat}
       />
       {isHistoryOpen && !isFocusPreview ? (
         <Suspense fallback={null}>
@@ -616,10 +943,28 @@ export default function App() {
         <HtmlInputPanel
           value={state.html}
           domTree={domTree}
+          aiAnnotations={aiAnnotations}
+          aiStatus={aiAnalysisStatus}
+          aiError={aiAnalysisError}
+          aiProvider={aiProvider}
+          aiProviders={AI_PROVIDER_DEFINITIONS}
+          aiApiKey={currentAiKey}
+          aiRememberKey={currentAiRememberKey}
+          aiModel={currentAiModel}
+          aiModelOptions={currentAiModelOptions}
+          aiModelFetchStatus={aiModelFetchStatus}
+          aiModelFetchError={aiModelFetchError}
           selectedId={state.selectedId}
           onChange={handleHtmlChange}
           onImport={handleImport}
           onSelectElement={handleSelectFromTree}
+          onAiProviderChange={handleAiProviderChange}
+          onAiApiKeyChange={handleAiApiKeyChange}
+          onAiRememberKeyChange={handleAiRememberKeyChange}
+          onAiModelChange={handleAiModelChange}
+          onRefreshAiModels={handleRefreshAiModels}
+          onAnalyzeStructure={handleAnalyzeStructure}
+          onClearAiAnnotations={handleClearAiAnnotations}
           isCollapsed={isSourceCollapsed}
           onToggleCollapse={() => setIsSourceCollapsed((value) => !value)}
           placement={sourcePanelPlacement}

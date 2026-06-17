@@ -5,6 +5,7 @@ interface HeaderProps {
   canRedo: boolean;
   hasModal: boolean;
   isModalOpen: boolean;
+  exportingFormat: "pdf" | "pptx" | null;
   onUndo: () => void;
   onRedo: () => void;
   onToggleHistory: () => void;
@@ -13,6 +14,8 @@ interface HeaderProps {
   onImport: (file: File) => void;
   onCopy: () => void;
   onExport: () => void;
+  onExportPdf: () => void;
+  onExportPptx: () => void;
 }
 
 export function Header({
@@ -20,6 +23,7 @@ export function Header({
   canRedo,
   hasModal,
   isModalOpen,
+  exportingFormat,
   onUndo,
   onRedo,
   onToggleHistory,
@@ -28,6 +32,8 @@ export function Header({
   onImport,
   onCopy,
   onExport,
+  onExportPdf,
+  onExportPptx,
 }: HeaderProps) {
   return (
     <header className="app-header">
@@ -53,6 +59,9 @@ export function Header({
         onImport={onImport}
         onCopy={onCopy}
         onExport={onExport}
+        onExportPdf={onExportPdf}
+        onExportPptx={onExportPptx}
+        exportingFormat={exportingFormat}
       />
     </header>
   );
