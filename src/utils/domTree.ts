@@ -1,5 +1,13 @@
 import type { DomTreeNode } from "../types/editor";
-import { HFT_ID_ATTRIBUTE, isEditableElement } from "./editableElement";
+import {
+  HFT_ID_ATTRIBUTE,
+  getElementClassName,
+  getNormalizedTagName,
+  isEditableElement,
+  isEditableSvgTextElement,
+  isRootSvgElement,
+  isSvgImageElement,
+} from "./editableElement";
 import { parseHtmlReadOnly } from "./injectEditableIds";
 import { normalizeText, truncate } from "./string";
 
@@ -25,7 +33,7 @@ function walkElement(element: Element, depth: number, nodes: DomTreeNode[]): voi
         label: createNodeLabel(element, text),
         text,
         depth,
-        className: typeof element.className === "string" ? element.className : "",
+        className: getElementClassName(element),
         id: element.id || "",
       });
     }
@@ -37,11 +45,12 @@ function walkElement(element: Element, depth: number, nodes: DomTreeNode[]): voi
 }
 
 function createNodeLabel(element: Element, text: string): string {
-  const tagName = element.tagName.toLowerCase();
+  const tagName = getNormalizedTagName(element);
   const id = element.id ? `#${element.id}` : "";
+  const rawClassName = getElementClassName(element);
   const className =
-    typeof element.className === "string" && element.className.trim()
-      ? `.${element.className.trim().split(/\s+/).slice(0, 2).join(".")}`
+    rawClassName.trim()
+      ? `.${rawClassName.trim().split(/\s+/).slice(0, 2).join(".")}`
       : "";
   const preview = text ? ` ${truncate(text, MAX_LABEL_LENGTH)}` : "";
 
@@ -51,6 +60,23 @@ function createNodeLabel(element: Element, text: string): string {
 function getNodeText(element: Element): string {
   if (element instanceof HTMLImageElement) {
     return normalizeText(element.getAttribute("alt") || element.getAttribute("src") || "图片");
+  }
+  if (isEditableSvgTextElement(element)) {
+    return normalizeText(element.textContent ?? "");
+  }
+  if (isSvgImageElement(element)) {
+    return normalizeText(
+      element.getAttribute("href") ||
+        element.getAttribute("xlink:href") ||
+        element.getAttribute("aria-label") ||
+        "svg image"
+    );
+  }
+  if (isRootSvgElement(element)) {
+    const svgTitle = element.querySelector("title")?.textContent;
+    const ariaLabel = element.getAttribute("aria-label");
+    const className = getElementClassName(element);
+    return normalizeText(svgTitle || ariaLabel || `svg 图表${className ? ` · ${className}` : ""}`);
   }
 
   return normalizeText(element.textContent ?? "");

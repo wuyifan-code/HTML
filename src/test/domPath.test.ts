@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDomPath, hasElementWithHftId, serializeDocument } from "../utils/domPath";
+import { getDomPath, hasElementWithHftId, serializeDocument, updateHtmlElementByHftId } from "../utils/domPath";
 import { HFT_ID_ATTRIBUTE } from "../utils/editableElement";
 
 describe("getDomPath", () => {
@@ -34,5 +34,15 @@ describe("serializeDocument", () => {
     const result = serializeDocument(doc);
     expect(result).toMatch(/^<!doctype html>/i);
     expect(result).toContain("<p>hi</p>");
+  });
+});
+
+describe("updateHtmlElementByHftId", () => {
+  it("updates leaf SVG text content", () => {
+    const html = `<svg viewBox="0 0 400 240"><text ${HFT_ID_ATTRIBUTE}="hft-chart-label" x="20" y="40">40.9%</text></svg>`;
+    const result = updateHtmlElementByHftId(html, "hft-chart-label", { text: "41.0%" });
+
+    expect(result).toContain(">41.0%</text>");
+    expect(result).not.toContain(">40.9%</text>");
   });
 });

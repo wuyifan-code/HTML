@@ -138,7 +138,7 @@ export function StyleEditorPanelImpl({
             </fieldset>
           ) : null}
 
-          {!isImageElement(selectedElement) ? (
+          {!isMediaElement(selectedElement) ? (
             <fieldset className="inspector-group">
               <legend>排版</legend>
               <label className="field field-full">
@@ -253,6 +253,42 @@ export function StyleEditorPanelImpl({
                   onChange={(val) => onStyleChange("objectFit", val)}
                 />
               </label>
+            </fieldset>
+          ) : isSvgElement(selectedElement) ? (
+            <fieldset className="inspector-group">
+              <legend>SVG 图表</legend>
+              <label className="field field-full">
+                <span>viewBox</span>
+                <input
+                  type="text"
+                  placeholder="0 0 540 380"
+                  value={selectedElement.attributes.src}
+                  onChange={(event) => onAttributeChange("src", event.target.value)}
+                />
+              </label>
+              <label className="field field-full">
+                <span>描述标签</span>
+                <input
+                  type="text"
+                  placeholder="图表描述（aria-label）"
+                  value={selectedElement.attributes.alt}
+                  onChange={(event) => onAttributeChange("alt", event.target.value)}
+                />
+              </label>
+              <div className="field-grid two-col">
+                <NumericUnitField
+                  label="宽度"
+                  value={selectedElement.styles.width}
+                  min={0}
+                  onChange={(value) => onStyleChange("width", toPx(value))}
+                />
+                <NumericUnitField
+                  label="高度"
+                  value={selectedElement.styles.height}
+                  min={0}
+                  onChange={(value) => onStyleChange("height", toPx(value))}
+                />
+              </div>
             </fieldset>
           ) : null}
 
@@ -574,7 +610,15 @@ function isBlockLikeElement(element: SelectedElementSnapshot): boolean {
 }
 
 function isImageElement(element: SelectedElementSnapshot): boolean {
-  return element.tagName === "img";
+  return element.tagName === "img" || element.tagName === "image";
+}
+
+function isSvgElement(element: SelectedElementSnapshot): boolean {
+  return element.tagName === "svg";
+}
+
+function isMediaElement(element: SelectedElementSnapshot): boolean {
+  return isImageElement(element) || isSvgElement(element);
 }
 
 function interactionLabel(element: SelectedElementSnapshot): string {

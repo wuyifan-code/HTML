@@ -1,5 +1,5 @@
 import type { ElementUpdate } from "../types/editor";
-import { HFT_ID_ATTRIBUTE } from "./editableElement";
+import { HFT_ID_ATTRIBUTE, isEditableSvgTextElement, isRootSvgElement, isSvgImageElement } from "./editableElement";
 import { syncRemoteFontLibraryLinks } from "./fontLibrary";
 import { parseHtmlDocument } from "./injectEditableIds";
 
@@ -62,9 +62,10 @@ export function updateHtmlElement(html: string, path: string, update: ElementUpd
   return serializeDocument(documentRef);
 }
 
-export function queryElementByHftId(documentRef: Document, hftId: string): HTMLElement | null {
+export function queryElementByHftId(documentRef: Document, hftId: string): HTMLElement | SVGElement | null {
   const element = documentRef.querySelector(`[${HFT_ID_ATTRIBUTE}="${cssEscape(hftId)}"]`);
-  return element instanceof HTMLElement ? element : null;
+  if (!element) return null;
+  return element instanceof HTMLElement || element instanceof SVGElement ? element : null;
 }
 
 export function hasElementWithHftId(html: string, hftId: string): boolean {
@@ -126,7 +127,7 @@ export function duplicateHtmlElementByHftId(html: string, hftId: string): string
   }
 
   const clone = element.cloneNode(true);
-  if (clone instanceof HTMLElement) {
+  if (clone instanceof Element) {
     clone.removeAttribute(HFT_ID_ATTRIBUTE);
     clone.querySelectorAll(`[${HFT_ID_ATTRIBUTE}]`).forEach((child) => child.removeAttribute(HFT_ID_ATTRIBUTE));
   }
@@ -206,24 +207,33 @@ function toKebabCase(value: string): string {
   return value.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
 }
 
-function applyAttributeUpdates(element: HTMLElement, attributes: NonNullable<ElementUpdate["attributes"]>): void {
+function applyAttributeUpdates(element: Element, attributes: NonNullable<ElementUpdate["attributes"]>): void {
   Object.entries(attributes).forEach(([attribute, value]) => {
     if (typeof value !== "string") return;
 
-    if (attribute === "alt") {
-      element.setAttribute(attribute, value);
-      return;
+    let resolvedAttribute = attribute;
+    if (isRootSvgElement(element)) {
+      if (attribute === "src") resolvedAttribute = "viewBox";
+      else if (attribute === "alt") resolvedAttribute = "aria-label";
+    } else if (isSvgImageElement(element)) {
+      if (attribute === "src") resolvedAttribute = "href";
+      else if (attribute === "alt") resolvedAttribute = "aria-label";
     }
 
     if (value.trim()) {
-      element.setAttribute(attribute, value);
+      element.setAttribute(resolvedAttribute, value);
     } else {
-      element.removeAttribute(attribute);
+      element.removeAttribute(resolvedAttribute);
     }
   });
 }
 
-function updateTextOnlyElement(element: HTMLElement, text: string): void {
+function updateTextOnlyElement(element: Element, text: string): void {
+  if (isEditableSvgTextElement(element)) {
+    if (element.children.length === 0) element.textContent = text;
+    return;
+  }
+  if (element instanceof SVGElement) return;
   if (element.children.length > 0) return;
   element.textContent = text;
 }

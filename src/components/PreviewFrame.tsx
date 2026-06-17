@@ -582,6 +582,7 @@ function createBridgeScript(bridgeToken: string): string {
       const config = ${JSON.stringify(config)};
       const fontLibrary = ${JSON.stringify(fontLibrary)};
       const editableTags = new Set(config.editableTags.map((tag) => tag.toUpperCase()));
+      const editableSvgTextTags = new Set(config.editableSvgTextTags.map((tag) => tag.toUpperCase()));
       const editableBlockTags = new Set(config.editableBlockTags.map((tag) => tag.toUpperCase()));
       const editableMediaTags = new Set(config.editableMediaTags.map((tag) => tag.toUpperCase()));
       const nonEditableTags = new Set(config.nonEditableTags.map((tag) => tag.toUpperCase()));
@@ -604,15 +605,35 @@ function createBridgeScript(bridgeToken: string): string {
         });
       }
 
+      function isEditableSvgTextElement(element) {
+        return element instanceof SVGElement && editableSvgTextTags.has(element.tagName.toUpperCase());
+      }
+
+      function isRootSvgElement(element) {
+        return element instanceof SVGSVGElement || element.tagName.toUpperCase() === "SVG";
+      }
+
+      function isSvgImageElement(element) {
+        return element instanceof SVGElement && element.tagName.toUpperCase() === "IMAGE";
+      }
+
+      function getElementClassName(element) {
+        if (typeof element.className === "string") return element.className;
+        if (element.className && typeof element.className.baseVal === "string") return element.className.baseVal;
+        return element.getAttribute("class") || "";
+      }
+
       function isEditableElement(element) {
-        if (!element || !(element instanceof HTMLElement)) return false;
+        if (!element || !(element instanceof HTMLElement) && !(element instanceof SVGElement)) return false;
         if (element.closest("[data-html-finetune-ui='true']")) return false;
-        if (nonEditableTags.has(element.tagName)) return false;
-        if (editableMediaTags.has(element.tagName)) return true;
+        const tagName = element.tagName.toUpperCase();
+        if (nonEditableTags.has(tagName)) return false;
+        if (editableMediaTags.has(tagName)) return true;
         const text = (element.textContent || "").trim();
         if (!text) return false;
-        if (editableTags.has(element.tagName)) return true;
-        if (editableBlockTags.has(element.tagName)) return hasDirectText(element);
+        if (element instanceof SVGElement) return editableSvgTextTags.has(tagName);
+        if (editableTags.has(tagName)) return true;
+        if (editableBlockTags.has(tagName)) return hasDirectText(element);
         return false;
       }
 
@@ -662,8 +683,9 @@ function createBridgeScript(bridgeToken: string): string {
       }
 
       function describeLocation(element) {
-        const classes = element.className && typeof element.className === "string"
-          ? "." + element.className.trim().split(/\\s+/).filter(Boolean).join(".")
+        const className = getElementClassName(element);
+        const classes = className
+          ? "." + className.trim().split(/\\s+/).filter(Boolean).join(".")
           : "";
         const id = element.id ? "#" + element.id : "";
         return element.tagName.toLowerCase() + id + classes;
@@ -727,13 +749,32 @@ function createBridgeScript(bridgeToken: string): string {
             hoverBackgroundColor: ""
           },
           attributes: {
-            src: element instanceof HTMLImageElement ? element.getAttribute("src") || "" : "",
-            alt: element instanceof HTMLImageElement ? element.getAttribute("alt") || "" : ""
+            src: getElementSourceAttribute(element),
+            alt: getElementAltAttribute(element)
           },
           location: describeLocation(element),
           hasInlineStyle: Boolean(element.getAttribute("style")),
-          canEditText: !(element instanceof HTMLImageElement) && !element.querySelector("*")
+          canEditText: canEditElementText(element)
         };
+      }
+
+      function getElementSourceAttribute(element) {
+        if (element instanceof HTMLImageElement) return element.getAttribute("src") || "";
+        if (isRootSvgElement(element)) return element.getAttribute("viewBox") || "";
+        if (isSvgImageElement(element)) return element.getAttribute("href") || element.getAttribute("xlink:href") || "";
+        return "";
+      }
+
+      function getElementAltAttribute(element) {
+        if (element instanceof HTMLImageElement) return element.getAttribute("alt") || "";
+        if (element instanceof SVGElement) return element.getAttribute("aria-label") || "";
+        return "";
+      }
+
+      function canEditElementText(element) {
+        if (isEditableSvgTextElement(element)) return !element.querySelector("*");
+        if (element instanceof SVGElement || element instanceof HTMLImageElement) return false;
+        return !element.querySelector("*");
       }
 
       function selectElement(element, shouldNotify = true) {
@@ -853,7 +894,7 @@ function createBridgeScript(bridgeToken: string): string {
 
       function repositionFloatingToolbar() {
         const selected = document.querySelector("[" + config.selectedAttribute + "='true']");
-        if (selected && selected instanceof HTMLElement) {
+        if (selected && (selected instanceof HTMLElement || selected instanceof SVGElement)) {
           positionFloatingToolbar(selected);
         } else {
           hideFloatingToolbar();
@@ -910,9 +951,9 @@ function createBridgeScript(bridgeToken: string): string {
       // 增量补丁:文本/样式/属性就地应用,避免整文档重建。
       function patchElement(hftId, patch) {
         const element = queryByHftId(hftId);
-        if (!element || !(element instanceof HTMLElement)) return;
+        if (!element || !(element instanceof HTMLElement) && !(element instanceof SVGElement)) return;
 
-        if (typeof patch.text === "string" && element.children.length === 0) {
+        if (typeof patch.text === "string" && canEditElementText(element)) {
           element.textContent = patch.text;
         }
 
@@ -920,14 +961,11 @@ function createBridgeScript(bridgeToken: string): string {
           Object.keys(patch.attributes).forEach((attribute) => {
             const value = patch.attributes[attribute];
             if (typeof value !== "string") return;
-            if (attribute === "alt") {
-              element.setAttribute(attribute, value);
-              return;
-            }
+            const resolvedAttribute = resolveEditableAttribute(element, attribute);
             if (value.trim()) {
-              element.setAttribute(attribute, value);
+              element.setAttribute(resolvedAttribute, value);
             } else {
-              element.removeAttribute(attribute);
+              element.removeAttribute(resolvedAttribute);
             }
           });
         }
@@ -955,6 +993,18 @@ function createBridgeScript(bridgeToken: string): string {
         if (element.getAttribute(config.selectedAttribute) === "true") {
           positionFloatingToolbar(element);
         }
+      }
+
+      function resolveEditableAttribute(element, attribute) {
+        if (isRootSvgElement(element)) {
+          if (attribute === "src") return "viewBox";
+          if (attribute === "alt") return "aria-label";
+        }
+        if (isSvgImageElement(element)) {
+          if (attribute === "src") return "href";
+          if (attribute === "alt") return "aria-label";
+        }
+        return attribute;
       }
 
       function updateHoverBackgroundRule(element, color) {

@@ -21,4 +21,12 @@ describe("buildEditableDomTree", () => {
     expect(tree[0]).toHaveProperty("text");
     expect(tree[0]).toHaveProperty("depth");
   });
+
+  it("includes SVG chart text nodes with readable labels", () => {
+    const html = `<svg viewBox="0 0 400 240"><text x="20" y="40">40.9%</text></svg>`;
+    const { html: withIds } = injectEditableIds(html);
+    const tree = buildEditableDomTree(withIds);
+
+    expect(tree.some((node) => node.tagName === "text" && node.text === "40.9%")).toBe(true);
+  });
 });

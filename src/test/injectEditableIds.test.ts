@@ -26,6 +26,21 @@ describe("injectEditableIds", () => {
       expect(el.hasAttribute(HFT_ID_ATTRIBUTE)).toBe(false);
     });
   });
+
+  it("injects hft-id attributes on SVG chart text and image nodes", () => {
+    const html = `
+      <svg viewBox="0 0 400 240">
+        <text x="20" y="40">40.9%</text>
+        <image href="chart.png" x="80" y="60" width="120" height="90" />
+      </svg>
+    `;
+    const result = injectEditableIds(html);
+    const doc = new DOMParser().parseFromString(result.html, "text/html");
+
+    expect(doc.querySelector("svg")?.hasAttribute(HFT_ID_ATTRIBUTE)).toBe(true);
+    expect(doc.querySelector("text")?.hasAttribute(HFT_ID_ATTRIBUTE)).toBe(true);
+    expect(doc.querySelector("image")?.hasAttribute(HFT_ID_ATTRIBUTE)).toBe(true);
+  });
 });
 
 describe("parseHtmlReadOnly", () => {

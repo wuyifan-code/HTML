@@ -37,6 +37,13 @@ import {
 import { exportHtml } from "./utils/exportHtml";
 import { buildDisplayItemsFromSummaries } from "./utils/historySummary";
 import { injectEditableIds } from "./utils/injectEditableIds";
+import {
+  getElementClassName,
+  getNormalizedTagName,
+  isEditableSvgTextElement,
+  isRootSvgElement,
+  isSvgImageElement,
+} from "./utils/editableElement";
 
 const HistoryPanel = lazy(() =>
   import("./components/HistoryPanel").then((m) => ({ default: m.HistoryPanel }))
@@ -695,25 +702,25 @@ function buildElementSnapshotFromHtml(html: string, hftId: string): SelectedElem
   return {
     hftId,
     path: getDomPath(element),
-    tagName: element.tagName.toLowerCase(),
+    tagName: getNormalizedTagName(element),
     id: element.id || "",
-    className: typeof element.className === "string" ? element.className : "",
+    className: getElementClassName(element),
     text: element.textContent || "",
     styles: getInlineStyleSnapshot(element),
     effects: {
       hoverBackgroundColor: getHoverBackgroundColor(html, hftId),
     },
     attributes: {
-      src: element instanceof HTMLImageElement ? element.getAttribute("src") || "" : "",
-      alt: element instanceof HTMLImageElement ? element.getAttribute("alt") || "" : "",
+      src: getElementSourceAttribute(element),
+      alt: getElementAltAttribute(element),
     },
     location: describeElementLocation(element),
     hasInlineStyle: Boolean(element.getAttribute("style")),
-    canEditText: !(element instanceof HTMLImageElement) && element.children.length === 0,
+    canEditText: canEditElementText(element),
   };
 }
 
-function getInlineStyleSnapshot(element: HTMLElement): SelectedElementSnapshot["styles"] {
+function getInlineStyleSnapshot(element: HTMLElement | SVGElement): SelectedElementSnapshot["styles"] {
   const inline = element.style;
   return {
     fontFamily: inline.fontFamily,
@@ -742,13 +749,34 @@ function getInlineStyleSnapshot(element: HTMLElement): SelectedElementSnapshot["
   };
 }
 
-function describeElementLocation(element: HTMLElement): string {
-  const classes =
-    typeof element.className === "string" && element.className.trim()
-      ? `.${element.className.trim().split(/\s+/).filter(Boolean).join(".")}`
-      : "";
+function describeElementLocation(element: HTMLElement | SVGElement): string {
+  const className = getElementClassName(element);
+  const classes = className.trim()
+    ? `.${className.trim().split(/\s+/).filter(Boolean).join(".")}`
+    : "";
   const id = element.id ? `#${element.id}` : "";
-  return `${element.tagName.toLowerCase()}${id}${classes}`;
+  return `${getNormalizedTagName(element)}${id}${classes}`;
+}
+
+function getElementSourceAttribute(element: HTMLElement | SVGElement): string {
+  if (element instanceof HTMLImageElement) return element.getAttribute("src") || "";
+  if (isRootSvgElement(element)) return element.getAttribute("viewBox") || "";
+  if (isSvgImageElement(element)) {
+    return element.getAttribute("href") || element.getAttribute("xlink:href") || "";
+  }
+  return "";
+}
+
+function getElementAltAttribute(element: HTMLElement | SVGElement): string {
+  if (element instanceof HTMLImageElement) return element.getAttribute("alt") || "";
+  if (element instanceof SVGElement) return element.getAttribute("aria-label") || "";
+  return "";
+}
+
+function canEditElementText(element: HTMLElement | SVGElement): boolean {
+  if (isEditableSvgTextElement(element)) return element.children.length === 0;
+  if (element instanceof SVGElement || element instanceof HTMLImageElement) return false;
+  return element.children.length === 0;
 }
 
 function withElementEffects(element: SelectedElementSnapshot, html: string): SelectedElementSnapshot {
