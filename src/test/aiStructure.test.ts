@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   AI_PROVIDER_DEFINITIONS,
   buildAiStructurePayload,
@@ -122,6 +122,21 @@ describe("getAiProviderIcon", () => {
 });
 
 describe("normalizeAiStructureResponse", () => {
+  it("parses plain JSON", () => {
+    const result = normalizeAiStructureResponse(
+      '{"annotations":[{"hftId":"hft-1","label":"标题","role":"heading","confidence":0.9}]}',
+      new Set(["hft-1"])
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      hftId: "hft-1",
+      label: "标题",
+      role: "heading",
+      confidence: 0.9,
+    });
+  });
+
   it("parses fenced JSON and ignores unknown hft ids", () => {
     const result = normalizeAiStructureResponse(
       '```json\n{"annotations":[{"hftId":"hft-1","label":"第 12 页 · 占比","role":"chart-value","issues":["crowded-chart"],"confidence":0.8},{"hftId":"missing","label":"bad"}]}\n```',
@@ -136,5 +151,46 @@ describe("normalizeAiStructureResponse", () => {
       issues: ["crowded-chart"],
       confidence: 0.8,
     });
+  });
+
+  it("extracts and parses an object surrounded by explanatory text", () => {
+    const result = normalizeAiStructureResponse(
+      '下面是分析结果：\n{"annotations":[{"hftId":"hft-2","label":"图片","role":"image"}]}\n如需更多建议请继续。',
+      new Set(["hft-2"])
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ hftId: "hft-2", label: "图片", role: "image" });
+  });
+
+  it("repairs common AI JSON punctuation mistakes", () => {
+    const result = normalizeAiStructureResponse(
+      '{"annotations":[{"hftId":"hft-1","label":"标题",}{"hftId":"hft-2","label":"副标题","role":"heading",}]}',
+      new Set(["hft-1", "hft-2"])
+    );
+
+    expect(result).toHaveLength(2);
+    expect(result.map((item) => item.hftId)).toEqual(["hft-1", "hft-2"]);
+  });
+
+  it("throws a friendly error for unrecoverable invalid JSON", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
+
+    expect(() =>
+      normalizeAiStructureResponse(
+        '{"annotations":[{"hftId":"hft-1","label":"标题" "role":"heading"}]}',
+        new Set(["hft-1"])
+      )
+    ).toThrow("AI 返回的结构分析结果不是合法 JSON。请换一个模型重试，或降低页面复杂度后重新扫描。");
+    expect(consoleError).toHaveBeenCalledWith(
+      "[AI Structure] Failed to parse AI JSON response",
+      expect.objectContaining({
+        message: expect.any(String),
+        candidateStart: expect.stringContaining('"annotations"'),
+        candidateEnd: expect.stringContaining('"annotations"'),
+      })
+    );
+
+    consoleError.mockRestore();
   });
 });

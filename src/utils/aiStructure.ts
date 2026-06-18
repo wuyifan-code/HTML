@@ -899,7 +899,12 @@ function createSystemInstruction(): string {
   return [
     "You are an AI assistant embedded in HTML FineTune, a visual HTML editor.",
     "Analyze editable DOM tree nodes for a structure panel.",
-    "Return JSON only. Do not include markdown.",
+    "Return valid JSON only.",
+    "No markdown fences.",
+    "No trailing commas.",
+    "No comments.",
+    "No explanations.",
+    'Root object must be exactly {"annotations": [...]}.',
     "Use only hftId values from the provided input.",
     "Keep labels short and useful for designers editing imported HTML slides.",
     "Mark likely layout risks such as overlap-risk, overflow-risk, tiny-text, image-ratio, crowded-chart, or decorative.",
@@ -926,18 +931,65 @@ function createUserPrompt(payload: AiStructurePayload): string {
   });
 }
 
+const AI_STRUCTURE_INVALID_JSON_MESSAGE =
+  "AI 返回的结构分析结果不是合法 JSON。请换一个模型重试，或降低页面复杂度后重新扫描。";
+
 function parseJsonObject(text: string): unknown {
-  const trimmed = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const first = trimmed.indexOf("{");
-    const last = trimmed.lastIndexOf("}");
-    if (first >= 0 && last > first) {
-      return JSON.parse(trimmed.slice(first, last + 1));
+  const trimmed = stripMarkdownFence(text.trim());
+  const candidates = buildJsonParseCandidates(trimmed);
+
+  let lastError: unknown;
+  let lastCandidate = trimmed;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (error) {
+      lastError = error;
+      lastCandidate = candidate;
     }
-    throw new Error("AI 返回格式不是 JSON");
   }
+
+  logAiJsonParseFailure(lastError, lastCandidate);
+  throw new Error(AI_STRUCTURE_INVALID_JSON_MESSAGE);
+}
+
+function stripMarkdownFence(text: string): string {
+  return text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+}
+
+function buildJsonParseCandidates(text: string): string[] {
+  const candidates: string[] = [];
+  addCandidate(candidates, text);
+
+  const first = text.indexOf("{");
+  const last = text.lastIndexOf("}");
+  if (first >= 0 && last > first) addCandidate(candidates, text.slice(first, last + 1));
+
+  for (const candidate of [...candidates]) {
+    addCandidate(candidates, repairCommonAiJson(candidate));
+  }
+
+  return candidates;
+}
+
+function addCandidate(candidates: string[], candidate: string): void {
+  const normalized = candidate.trim();
+  if (normalized && !candidates.includes(normalized)) candidates.push(normalized);
+}
+
+function repairCommonAiJson(text: string): string {
+  return text
+    .replace(/,\s*([}\]])/g, "$1")
+    .replace(/}\s*(?=\{)/g, "},");
+}
+
+function logAiJsonParseFailure(error: unknown, candidate: string): void {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error("[AI Structure] Failed to parse AI JSON response", {
+    message,
+    candidateStart: candidate.slice(0, 1200),
+    candidateEnd: candidate.slice(-800),
+  });
 }
 
 function normalizeIssues(value: unknown): string[] {
