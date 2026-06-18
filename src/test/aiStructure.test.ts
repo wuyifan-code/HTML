@@ -163,9 +163,9 @@ describe("normalizeAiStructureResponse", () => {
     expect(result[0]).toMatchObject({ hftId: "hft-2", label: "图片", role: "image" });
   });
 
-  it("repairs common AI JSON punctuation mistakes", () => {
+  it("repairs missing commas between adjacent AI JSON objects", () => {
     const result = normalizeAiStructureResponse(
-      '{"annotations":[{"hftId":"hft-1","label":"标题",}{"hftId":"hft-2","label":"副标题","role":"heading",}]}',
+      '{"annotations":[{"hftId":"hft-1","label":"标题"}{"hftId":"hft-2","label":"副标题","role":"heading"}]}',
       new Set(["hft-1", "hft-2"])
     );
 
@@ -173,12 +173,12 @@ describe("normalizeAiStructureResponse", () => {
     expect(result.map((item) => item.hftId)).toEqual(["hft-1", "hft-2"]);
   });
 
-  it("throws a friendly error for unrecoverable invalid JSON", () => {
+  it("throws a friendly error for invalid JSON", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
     expect(() =>
       normalizeAiStructureResponse(
-        '{"annotations":[{"hftId":"hft-1","label":"标题" "role":"heading"}]}',
+        '{"annotations":[{"hftId":"hft-1","label":"标题",}]}',
         new Set(["hft-1"])
       )
     ).toThrow("AI 返回的结构分析结果不是合法 JSON。请换一个模型重试，或降低页面复杂度后重新扫描。");

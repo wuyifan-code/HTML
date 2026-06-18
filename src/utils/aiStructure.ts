@@ -978,9 +978,7 @@ function addCandidate(candidates: string[], candidate: string): void {
 }
 
 function repairCommonAiJson(text: string): string {
-  return text
-    .replace(/,\s*([}\]])/g, "$1")
-    .replace(/}\s*(?=\{)/g, "},");
+  return text.replace(/}\s*(?=\{)/g, "},");
 }
 
 function logAiJsonParseFailure(error: unknown, candidate: string): void {
