@@ -899,7 +899,12 @@ function createSystemInstruction(): string {
   return [
     "You are an AI assistant embedded in HTML FineTune, a visual HTML editor.",
     "Analyze editable DOM tree nodes for a structure panel.",
-    "Return JSON only. Do not include markdown.",
+    "Return valid JSON only.",
+    "No markdown fences.",
+    "No trailing commas.",
+    "No comments.",
+    "No explanations.",
+    'Root object must be exactly {"annotations": [...]}.',
     "Use only hftId values from the provided input.",
     "Keep labels short and useful for designers editing imported HTML slides.",
     "Mark likely layout risks such as overlap-risk, overflow-risk, tiny-text, image-ratio, crowded-chart, or decorative.",
@@ -926,18 +931,37 @@ function createUserPrompt(payload: AiStructurePayload): string {
   });
 }
 
+const AI_STRUCTURE_INVALID_JSON_MESSAGE =
+  "AI 返回的结构分析结果不是合法 JSON。请换一个模型重试，或降低页面复杂度后重新扫描。";
+
 function parseJsonObject(text: string): unknown {
   const trimmed = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const first = trimmed.indexOf("{");
-    const last = trimmed.lastIndexOf("}");
-    if (first >= 0 && last > first) {
-      return JSON.parse(trimmed.slice(first, last + 1));
-    }
-    throw new Error("AI 返回格式不是 JSON");
+  const first = trimmed.indexOf("{");
+  const last = trimmed.lastIndexOf("}");
+  const candidates = [trimmed];
+  if (first >= 0 && last > first) {
+    const objectCandidate = trimmed.slice(first, last + 1);
+    if (objectCandidate !== trimmed) candidates.push(objectCandidate);
   }
+
+  let lastError: unknown;
+  let lastCandidate = trimmed;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (error) {
+      lastError = error;
+      lastCandidate = candidate;
+    }
+  }
+
+  const message = lastError instanceof Error ? lastError.message : String(lastError);
+  console.error("[AI Structure] Failed to parse AI JSON response", {
+    message,
+    candidateStart: lastCandidate.slice(0, 1200),
+    candidateEnd: lastCandidate.slice(-800),
+  });
+  throw new Error(AI_STRUCTURE_INVALID_JSON_MESSAGE);
 }
 
 function normalizeIssues(value: unknown): string[] {
