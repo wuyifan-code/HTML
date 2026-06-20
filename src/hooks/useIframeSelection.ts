@@ -5,6 +5,7 @@ import {
   MSG_ELEMENT_ACTION,
   MSG_PREVIEW_READY,
   MSG_MODAL_STATE,
+  MSG_DRAG_COMMIT,
   isTrustedMessage,
 } from "../types/messages";
 
@@ -19,12 +20,14 @@ export function useIframeSelection(
   bridgeToken: string,
   onElementSelected: (element: SelectedElementSnapshot) => void,
   onModalStateChange?: (state: ModalState) => void,
-  onElementAction?: (hftId: string, action: ElementQuickAction) => void
+  onElementAction?: (hftId: string, action: ElementQuickAction) => void,
+  onElementDragged?: (hftId: string, position: string, top: string, left: string) => void
 ) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const onElementSelectedRef = useRef(onElementSelected);
   const onModalStateChangeRef = useRef(onModalStateChange);
   const onElementActionRef = useRef(onElementAction);
+  const onElementDraggedRef = useRef(onElementDragged);
   const [isReady, setIsReady] = useState(false);
   const [contentDimensions, setContentDimensions] = useState<ContentDimensions | null>(null);
   const [hasIframeError, setHasIframeError] = useState(false);
@@ -34,7 +37,8 @@ export function useIframeSelection(
     onElementSelectedRef.current = onElementSelected;
     onModalStateChangeRef.current = onModalStateChange;
     onElementActionRef.current = onElementAction;
-  }, [onElementAction, onElementSelected, onModalStateChange]);
+    onElementDraggedRef.current = onElementDragged;
+  }, [onElementAction, onElementSelected, onModalStateChange, onElementDragged]);
 
   const clearReadyTimeout = useCallback(() => {
     if (readyTimeoutRef.current !== null) {
@@ -101,6 +105,20 @@ export function useIframeSelection(
         case MSG_MODAL_STATE:
           onModalStateChangeRef.current?.(data.payload);
           break;
+
+        case MSG_DRAG_COMMIT: {
+          const payload = data.payload;
+          if (
+            payload &&
+            typeof payload.hftId === "string" &&
+            typeof payload.position === "string" &&
+            typeof payload.top === "string" &&
+            typeof payload.left === "string"
+          ) {
+            onElementDraggedRef.current?.(payload.hftId, payload.position, payload.top, payload.left);
+          }
+          break;
+        }
       }
     };
 

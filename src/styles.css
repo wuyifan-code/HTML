@@ -233,6 +233,61 @@ textarea:focus-visible {
   gap: 6px;
 }
 
+/* Modal toggle: when弹窗已打开,按钮高亮表示"当前在弹窗态" */
+.toolbar-modal-button-active {
+  color: var(--mint-strong);
+  background: var(--mint-soft);
+  border-color: #bde9e2;
+  box-shadow: 0 0 0 1px rgba(25, 169, 151, 0.16) inset;
+}
+
+.toolbar-modal-button-active:hover {
+  background: #d6f3ee;
+  border-color: #9bded3;
+}
+
+/* NumericUnitField: 空值(自动继承)用虚线边框 + 斜体灰 placeholder,
+   跟"显式 0"在视觉上明确区分 — 占位"自动"传达"未设置/继承父级"语义。 */
+.unit-input input.unit-input-empty {
+  border-style: dashed;
+  border-color: rgba(148, 163, 184, 0.55);
+  color: #94a3b8;
+  font-style: italic;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+  background: rgba(148, 163, 184, 0.04);
+}
+
+.unit-input input.unit-input-empty::placeholder {
+  font-style: italic;
+  color: #94a3b8;
+  opacity: 1;
+  font-size: 12px;
+  letter-spacing: 0.02em;
+}
+
+.unit-input input.unit-input-empty:hover {
+  border-color: #19a997;
+  background: rgba(25, 169, 151, 0.04);
+}
+
+.unit-input input.unit-input-empty:focus {
+  border-style: solid;
+  border-color: #19a997;
+  color: var(--ink);
+  font-style: normal;
+  font-size: inherit;
+  letter-spacing: normal;
+  background: #fff;
+}
+
+/* 行高字段的占位 ("normal 或 1.5") 单独样式 — 语义上不属于"未设置" */
+.unit-input input.line-height-input::placeholder {
+  font-style: italic;
+  color: #94a3b8;
+  font-size: 12px;
+}
+
 .export-format-button {
   min-width: 70px;
 }
@@ -1314,6 +1369,44 @@ textarea:focus-visible {
   line-height: 1.35;
 }
 
+.ai-tree-error strong,
+.ai-model-fetch-error strong {
+  display: block;
+  font-weight: 650;
+}
+
+.ai-error-details {
+  margin-top: 4px;
+}
+
+.ai-error-details summary {
+  cursor: pointer;
+  font-size: 10.5px;
+  color: inherit;
+  opacity: 0.85;
+  user-select: none;
+}
+
+.ai-error-details summary:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.ai-error-detail {
+  margin: 4px 0 0;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #0f172a;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10.5px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 180px;
+  overflow: auto;
+}
+
 .ai-model-fetch-error {
   padding: 5px 7px;
   border-radius: 7px;
@@ -1373,10 +1466,11 @@ textarea:focus-visible {
 .dom-tree-node {
   --tree-indent: 0px;
   position: relative;
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   min-height: 32px;
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr) auto;
   align-items: center;
   gap: 9px;
   padding-left: calc(10px + var(--tree-indent));
@@ -1528,6 +1622,69 @@ textarea:focus-visible {
 
 .dom-tree-compact .dom-tree-node {
   min-height: 28px;
+}
+
+/* 新:折叠树行布局 (chevron + node 按钮) */
+.dom-tree-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+  min-height: 32px;
+}
+
+.dom-tree-row-active > .dom-tree-node {
+  /* active 状态由 node 自己的 .dom-tree-node-active 处理 */
+}
+
+.dom-tree-chevron {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  margin-left: 2px;
+  transition:
+    background var(--motion-fast),
+    color var(--motion-fast);
+}
+
+.dom-tree-chevron:hover {
+  background: var(--surface-muted);
+  color: var(--ink);
+}
+
+.dom-tree-chevron-placeholder {
+  flex: 0 0 18px;
+  width: 18px;
+  height: 18px;
+  margin-left: 2px;
+}
+
+.dom-tree-collapsed-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 22px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--surface-muted);
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 10px;
+  font-weight: 720;
+  margin-left: 4px;
+}
+
+.dom-tree-node-active .dom-tree-collapsed-count {
+  background: rgba(255, 255, 255, 0.7);
+  color: var(--mint-strong);
 }
 
 .panel-footer {

@@ -176,6 +176,7 @@ export function StyleEditorPanelImpl({
                   <input
                     type="text"
                     placeholder="normal 或 1.5"
+                    className={!selectedElement.styles.lineHeight ? "line-height-input" : undefined}
                     value={selectedElement.styles.lineHeight || ""}
                     onChange={(event) => onStyleChange("lineHeight", event.target.value)}
                   />
@@ -547,18 +548,32 @@ interface NumericUnitFieldProps {
 }
 
 function NumericUnitField({ label, value, min, max, step = 1, onChange }: NumericUnitFieldProps) {
+  // 区分"未设置"(空/自动继承)与"显式 0"两类状态。
+  // 用 text + 数字过滤,避免 number input 在 placeholder 上行为不一致。
+  const trimmed = (value ?? "").trim();
+  const isAuto = !trimmed;
+  const display = isAuto ? "" : parseNumber(value);
+
   return (
     <label className="field">
       <span>{label}</span>
       <div className="unit-input">
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           min={min}
           max={max}
           step={step}
-          placeholder="0"
-          value={parseNumber(value)}
-          onChange={(event) => onChange(event.target.value)}
+          placeholder="自动"
+          className={isAuto ? "unit-input-empty" : undefined}
+          value={display}
+          onChange={(event) => {
+            const next = event.target.value;
+            // 允许清空 (用户按删除键),允许正负小数
+            if (next === "" || /^-?\d*\.?\d*$/.test(next)) {
+              onChange(next);
+            }
+          }}
         />
         <small>px</small>
       </div>

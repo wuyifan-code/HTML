@@ -17,6 +17,8 @@ export const MSG_ELEMENT_ACTION = "HTML_FINETUNE_ELEMENT_ACTION" as const;
 export const MSG_PREVIEW_READY = "HTML_FINETUNE_PREVIEW_READY" as const;
 /** iframe → 主应用：弹窗状态变化 */
 export const MSG_MODAL_STATE = "HTML_FINETUNE_MODAL_STATE" as const;
+/** iframe → 主应用：选中文字元素被拖动并落点 */
+export const MSG_DRAG_COMMIT = "HTML_FINETUNE_DRAG_COMMIT" as const;
 
 /** 主应用 → iframe：增量更新元素 */
 export const MSG_PATCH_ELEMENT = "HTML_FINETUNE_PATCH_ELEMENT" as const;
@@ -30,6 +32,7 @@ export const ALL_MESSAGE_TYPES = [
   MSG_ELEMENT_ACTION,
   MSG_PREVIEW_READY,
   MSG_MODAL_STATE,
+  MSG_DRAG_COMMIT,
   MSG_PATCH_ELEMENT,
   MSG_SELECT_ELEMENT,
   MSG_MODAL_COMMAND,
@@ -93,11 +96,23 @@ export interface ModalStateMessage {
   token?: string;
 }
 
+export interface DragCommitMessage {
+  type: typeof MSG_DRAG_COMMIT;
+  payload: {
+    hftId: string;
+    position: string;
+    top: string;
+    left: string;
+  };
+  token?: string;
+}
+
 export type IframeToHostMessage =
   | ElementSelectedMessage
   | ElementActionMessage
   | PreviewReadyMessage
-  | ModalStateMessage;
+  | ModalStateMessage
+  | DragCommitMessage;
 
 // ─── 运行时类型守卫 ─────────────────────────────────────────
 
@@ -121,6 +136,7 @@ export function isValidIframeToHostMessage(data: unknown): data is IframeToHostM
     MSG_ELEMENT_ACTION,
     MSG_PREVIEW_READY,
     MSG_MODAL_STATE,
+    MSG_DRAG_COMMIT,
   ];
   return inboundTypes.includes(msg.type as string);
 }

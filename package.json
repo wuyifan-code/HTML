@@ -4,11 +4,14 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "predev": "node scripts/bundle-vendors.mjs",
+    "dev": "node scripts/dev-runner.mjs",
+    "prebuild": "node scripts/bundle-vendors.mjs",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "bundle:vendors": "node scripts/bundle-vendors.mjs"
   },
   "dependencies": {
     "@chenglou/pretext": "^0.0.8",
@@ -29,7 +32,12 @@
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
     "canvas": "^3.2.3",
+    "esbuild": "^0.28.1",
     "jsdom": "^29.1.1",
+    "jszip": "^3.10.1",
+    "pdf-parse": "^2.4.5",
+    "playwright": "^1.61.0",
+    "pngjs": "^7.0.0",
     "typescript": "^5.8.3",
     "vite": "^8.0.16",
     "vitest": "^4.1.9"

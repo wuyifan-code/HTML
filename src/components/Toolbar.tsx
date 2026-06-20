@@ -83,24 +83,22 @@ export function Toolbar({
 
       <div className="toolbar-group" aria-label="页面功能">
         <button
-          className="ghost-button toolbar-button compact-toolbar-button toolbar-modal-button"
+          className={
+            "ghost-button toolbar-button compact-toolbar-button toolbar-modal-button" +
+            (hasModal && isModalOpen ? " toolbar-modal-button-active" : "")
+          }
           type="button"
-          onClick={onOpenModal}
-          disabled={!hasModal || isModalOpen}
-          title="打开预览中的弹窗"
+          onClick={isModalOpen ? onCloseModal : onOpenModal}
+          disabled={!hasModal}
+          title={isModalOpen ? "关闭预览中的弹窗" : "打开预览中的弹窗"}
+          aria-pressed={hasModal && isModalOpen}
         >
-          <MessageSquare size={16} strokeWidth={1.75} />
-          <span className="button-label">打开弹窗</span>
-        </button>
-        <button
-          className="ghost-button toolbar-button compact-toolbar-button toolbar-modal-button"
-          type="button"
-          onClick={onCloseModal}
-          disabled={!hasModal || !isModalOpen}
-          title="关闭预览中的弹窗"
-        >
-          <X size={16} strokeWidth={1.75} />
-          <span className="button-label">关闭弹窗</span>
+          {isModalOpen ? (
+            <X size={16} strokeWidth={1.75} />
+          ) : (
+            <MessageSquare size={16} strokeWidth={1.75} />
+          )}
+          <span className="button-label">{isModalOpen ? "关闭弹窗" : "打开弹窗"}</span>
         </button>
         <label className="ghost-button toolbar-button compact-toolbar-button file-button" title="导入 .html 文件">
           <FileUp size={16} strokeWidth={1.75} />

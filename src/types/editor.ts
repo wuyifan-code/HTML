@@ -25,6 +25,12 @@ export type EditableStyleKey =
 
 export type EditableStyles = Record<EditableStyleKey, string>;
 
+/**
+ * 允许写入的"位置/几何"样式。
+ * 当前不由 Inspector 暴露,但拖拽落点会写入这些键。
+ */
+export type GeometryStyleKey = "position" | "top" | "left" | "right" | "bottom";
+
 export interface EditableEffects {
   hoverBackgroundColor: string;
 }
@@ -49,9 +55,13 @@ export interface SelectedElementSnapshot {
   canEditText: boolean;
 }
 
+/**
+ * ElementUpdate.styles 同时接受 Inspector 可编辑样式与几何样式(position/top/left/...)
+ * 因为 updateHtmlElementByHftId 底层对 styles 做"原样写入",只需保证 value 是字符串即可。
+ */
 export interface ElementUpdate {
   text?: string;
-  styles?: Partial<EditableStyles>;
+  styles?: Partial<EditableStyles & Record<GeometryStyleKey, string>>;
   effects?: Partial<EditableEffects>;
   attributes?: Partial<EditableAttributes>;
 }

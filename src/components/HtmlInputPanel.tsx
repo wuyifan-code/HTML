@@ -1,4 +1,4 @@
-import { memo, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType, CSSProperties } from "react";
 import ClaudeLogo from "@lobehub/icons/es/Claude/components/Color";
 import DeepSeekLogo from "@lobehub/icons/es/DeepSeek/components/Color";
@@ -21,6 +21,7 @@ import ZhipuLogo from "@lobehub/icons/es/Zhipu/components/Color";
 import {
   Check,
   ChevronDown,
+  ChevronRight,
   Code2,
   FileUp,
   KeyRound,
@@ -766,8 +767,12 @@ function AiTreeControls({
           </button>
         ) : null}
       </div>
-      {modelFetchStatus === "error" && modelFetchError ? <div className="ai-model-fetch-error">{modelFetchError}</div> : null}
-      {status === "error" && error ? <div className="ai-tree-error">{error}</div> : null}
+      {modelFetchStatus === "error" && modelFetchError ? (
+        <AiErrorBlock message={modelFetchError} className="ai-model-fetch-error" />
+      ) : null}
+      {status === "error" && error ? (
+        <AiErrorBlock message={error} className="ai-tree-error" />
+      ) : null}
     </div>
   );
 }
@@ -803,48 +808,187 @@ function DomTreeList({
 }) {
   const baseDepth = nodes[0]?.depth ?? 0;
 
+  // 1. 算每个节点的直接子节点数,O(n)
+  const childCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (let i = 0; i < nodes.length; i++) {
+      const me = nodes[i];
+      for (let j = i + 1; j < nodes.length; j++) {
+        if (nodes[j].depth <= me.depth) break;
+        if (nodes[j].depth === me.depth + 1) {
+          map.set(me.hftId, (map.get(me.hftId) ?? 0) + 1);
+        }
+      }
+    }
+    return map;
+  }, [nodes]);
+
+  // 2. 默认折叠: depth > 2 的非叶子节点(避免初次打开 31 个全展开的视觉冲击)
+  const [collapsed, setCollapsed] = useState<Set<string>>(() => {
+    const init = new Set<string>();
+    for (let i = 0; i < nodes.length; i++) {
+      const me = nodes[i];
+      const childCount = childCountMap.get(me.hftId) ?? 0;
+      if (childCount > 0 && me.depth - baseDepth > 2) {
+        init.add(me.hftId);
+      }
+    }
+    return init;
+  });
+
+  const toggleCollapse = useCallback((hftId: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(hftId)) next.delete(hftId);
+      else next.add(hftId);
+      return next;
+    });
+  }, []);
+
+  // 3. 一次 pass 算"实际需要渲染的节点列表" (跳过被折叠祖先挡住的)
+  const visibleRows = useMemo(() => {
+    type Row = {
+      node: DomTreeNode;
+      visibleDepth: number;
+      hasChildren: boolean;
+      isCollapsed: boolean;
+      hiddenCount: number; // 如果是折叠根,显示"还有 N 个"
+    };
+    const rows: Row[] = [];
+    const collapsedStack: DomTreeNode[] = [];
+    const hiddenAccumulator: number[] = []; // 每个折叠根的"被隐藏后代数"
+
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
+
+      // pop 掉比当前节点浅的栈
+      while (
+        collapsedStack.length > 0 &&
+        collapsedStack[collapsedStack.length - 1].depth >= node.depth
+      ) {
+        const popped = collapsedStack.pop()!;
+        // 把隐藏数绑回给该折叠根 (只会触发一次,在 pop 那个节点自身那行)
+        const lastRow = rows[rows.length - 1];
+        if (lastRow && lastRow.node.hftId === popped.hftId) {
+          lastRow.hiddenCount = hiddenAccumulator.pop() ?? 0;
+        }
+      }
+
+      // 当前是否在某个折叠子树内
+      if (collapsedStack.length > 0) {
+        // 累加到当前折叠根
+        if (hiddenAccumulator.length > 0) hiddenAccumulator[hiddenAccumulator.length - 1]++;
+        continue;
+      }
+
+      const visibleDepth = Math.min(
+        Math.max(node.depth - baseDepth, 0),
+        compact ? 3 : 8,
+      );
+      const childCount = childCountMap.get(node.hftId) ?? 0;
+      const hasChildren = childCount > 0;
+      const isCollapsed = collapsed.has(node.hftId);
+
+      rows.push({ node, visibleDepth, hasChildren, isCollapsed, hiddenCount: 0 });
+
+      if (isCollapsed) {
+        collapsedStack.push(node);
+        hiddenAccumulator.push(0);
+      }
+    }
+
+    // 处理最后留在栈里的折叠根
+    while (collapsedStack.length > 0) {
+      const popped = collapsedStack.pop()!;
+      const lastRow = rows[rows.length - 1];
+      if (lastRow && lastRow.node.hftId === popped.hftId) {
+        lastRow.hiddenCount = hiddenAccumulator.pop() ?? 0;
+      } else {
+        hiddenAccumulator.pop();
+      }
+    }
+
+    return rows;
+  }, [nodes, baseDepth, compact, collapsed, childCountMap]);
+
   return (
-    <div className={`dom-tree${compact ? " dom-tree-compact" : ""}`} role="tree" aria-label="可编辑元素结构">
-      {nodes.length === 0 ? (
+    <div
+      className={`dom-tree${compact ? " dom-tree-compact" : ""}`}
+      role="tree"
+      aria-label="可编辑元素结构"
+    >
+      {visibleRows.length === 0 ? (
         <div className="dom-tree-empty">{emptyText}</div>
       ) : (
-        nodes.map((node) => {
-          const visibleDepth = Math.min(Math.max(node.depth - baseDepth, 0), compact ? 3 : 8);
+        visibleRows.map(({ node, visibleDepth, hasChildren, isCollapsed, hiddenCount }) => {
           const annotation = aiAnnotations[node.hftId];
           const primaryLabel = annotation?.label || node.text || node.label;
           const issueLabel = annotation?.issues[0] ? issueText(annotation.issues[0]) : "";
           return (
-            <button
+            <div
               key={node.hftId}
               className={[
-                "dom-tree-node",
-                node.hftId === selectedId ? "dom-tree-node-active" : "",
-                annotation ? "dom-tree-node-ai" : "",
-                issueLabel ? "dom-tree-node-risk" : "",
+                "dom-tree-row",
+                node.hftId === selectedId ? "dom-tree-row-active" : "",
               ]
                 .filter(Boolean)
                 .join(" ")}
-              type="button"
               role="treeitem"
               aria-selected={node.hftId === selectedId}
               aria-level={visibleDepth + 1}
+              aria-expanded={hasChildren ? !isCollapsed : undefined}
               data-depth={visibleDepth}
-              style={{ "--tree-indent": `${visibleDepth * 12}px` } as CSSProperties}
-              title={annotation?.suggestion || annotation?.label || node.label}
-              onClick={() => onSelectElement(node.hftId)}
+              style={{ "--tree-indent": `${visibleDepth * 16}px` } as CSSProperties}
             >
-              <span className="dom-tree-tag">{node.tagName}</span>
-              <span className="dom-tree-copy">
-                <span className="dom-tree-label">{primaryLabel}</span>
-                {annotation ? (
-                  <span className="dom-tree-ai-line">
-                    <Sparkles size={11} strokeWidth={1.8} />
-                    <span>{annotation.role || "ai"}</span>
-                    {issueLabel ? <em>{issueLabel}</em> : null}
-                  </span>
+              {hasChildren ? (
+                <button
+                  type="button"
+                  className="dom-tree-chevron"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toggleCollapse(node.hftId);
+                  }}
+                  aria-label={isCollapsed ? "展开子元素" : "折叠子元素"}
+                  title={isCollapsed ? `展开 (${hiddenCount} 个隐藏)` : "折叠"}
+                >
+                  {isCollapsed ? (
+                    <ChevronRight size={12} strokeWidth={2} />
+                  ) : (
+                    <ChevronDown size={12} strokeWidth={2} />
+                  )}
+                </button>
+              ) : (
+                <span className="dom-tree-chevron-placeholder" aria-hidden="true" />
+              )}
+              <button
+                className={[
+                  "dom-tree-node",
+                  node.hftId === selectedId ? "dom-tree-node-active" : "",
+                  annotation ? "dom-tree-node-ai" : "",
+                  issueLabel ? "dom-tree-node-risk" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
+                type="button"
+                title={annotation?.suggestion || annotation?.label || node.label}
+                onClick={() => onSelectElement(node.hftId)}
+              >
+                <span className="dom-tree-tag">{node.tagName}</span>
+                <span className="dom-tree-copy">
+                  <span className="dom-tree-label">{primaryLabel}</span>
+                  {annotation ? (
+                    <span className="dom-tree-ai-line">
+                      <Sparkles size={11} strokeWidth={1.8} />
+                      <span>{annotation.role || "ai"}</span>
+                      {issueLabel ? <em>{issueLabel}</em> : null}
+                    </span>
+                  ) : null}
+                </span>
+                {isCollapsed && hiddenCount > 0 ? (
+                  <span className="dom-tree-collapsed-count">+{hiddenCount}</span>
                 ) : null}
-              </span>
-            </button>
+              </button>
+            </div>
           );
         })
       )}
@@ -862,4 +1006,39 @@ function issueText(issue: string): string {
     decorative: "装饰",
   };
   return labels[issue] ?? issue;
+}
+
+interface ErrorDisplay {
+  summary: string;
+  detail: string;
+}
+
+/**
+ * 错误信息用 "\n\n" 分隔首行(摘要)和后续 detail(URL、状态码、响应体)。
+ * 让错误区可以"首行粗体 + 折叠显示原始响应"。
+ */
+function splitErrorMessage(message: string): ErrorDisplay {
+  const separatorIndex = message.indexOf("\n\n");
+  if (separatorIndex < 0) {
+    return { summary: message.trim(), detail: "" };
+  }
+  return {
+    summary: message.slice(0, separatorIndex).trim(),
+    detail: message.slice(separatorIndex + 2).trim(),
+  };
+}
+
+function AiErrorBlock({ message, className }: { message: string; className: string }) {
+  const { summary, detail } = splitErrorMessage(message);
+  return (
+    <div className={className}>
+      <strong>{summary}</strong>
+      {detail ? (
+        <details className="ai-error-details">
+          <summary>显示原始响应</summary>
+          <pre className="ai-error-detail">{detail}</pre>
+        </details>
+      ) : null}
+    </div>
+  );
 }

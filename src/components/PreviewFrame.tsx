@@ -13,6 +13,7 @@ import type {
 } from "../types/editor";
 import { createEditableElementScriptConfig } from "../utils/editableElement";
 import { getFontLibraryScriptConfig, buildFontLibraryLinkTags, htmlMayUseRemoteFont } from "../utils/fontLibrary";
+import { DRAG_ACTIVATION_PX } from "../utils/dragMath";
 import {
   createPatchElementMessage,
   createSelectElementMessage,
@@ -34,6 +35,7 @@ interface PreviewFrameProps {
   onElementSelected: (element: SelectedElementSnapshot) => void;
   onModalStateChange: (state: ModalState) => void;
   onElementAction: (hftId: string, action: ElementQuickAction) => void;
+  onElementDragged: (hftId: string, position: string, top: string, left: string) => void;
   onReadyChange: (isReady: boolean) => void;
 }
 
@@ -51,6 +53,7 @@ function PreviewFrameComponent({
   onElementSelected,
   onModalStateChange,
   onElementAction,
+  onElementDragged,
   onReadyChange,
 }: PreviewFrameProps) {
   const bridgeTokenRef = useRef(createBridgeToken());
@@ -59,7 +62,8 @@ function PreviewFrameComponent({
     bridgeTokenRef.current,
     onElementSelected,
     onModalStateChange,
-    onElementAction
+    onElementAction,
+    onElementDragged
   );
   // srcDoc 仅在结构性变更(reloadNonce)时重建;文本/样式编辑通过 patchCommand 增量下发。
   const srcDoc = useMemo(
@@ -357,6 +361,13 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
       box-shadow: 0 0 0 6px rgba(25, 169, 151, 0.14) !important;
       border-radius: 6px !important;
     }
+    [data-html-finetune-dragging="true"] {
+      cursor: grabbing !important;
+      outline-style: dashed !important;
+    }
+    [data-html-finetune-dragging="true"]:active {
+      cursor: grabbing !important;
+    }
     #html-finetune-floating-toolbar {
       position: fixed !important;
       z-index: 2147483647 !important;
@@ -598,6 +609,124 @@ function createBridgeScript(bridgeToken: string): string {
       ];
       let selectionSequence = 0;
       let allowSlideNavigationEvent = false;
+      const DRAG_ACTIVATION_PX = ${JSON.stringify(DRAG_ACTIVATION_PX)};
+      const DRAGGING_ATTRIBUTE = "data-html-finetune-dragging";
+      let activeDrag = null;
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function computeDragPosition(input) {
+        const maxLeft = Math.max(0, input.frameWidth - input.elementWidth);
+        const maxTop = Math.max(0, input.frameHeight - input.elementHeight);
+        return {
+          left: clamp(input.startLeft + input.dx, 0, maxLeft),
+          top: clamp(input.startTop + input.dy, 0, maxTop),
+        };
+      }
+
+      function resolveSelectedEditableElement(target) {
+        if (!target || !(target instanceof Element)) return null;
+        if (target.closest("[data-html-finetune-ui='true']")) return null;
+        const direct = findEditableElement(target);
+        if (!direct) return null;
+        const selected = document.querySelector("[" + config.selectedAttribute + "='true']");
+        if (!selected || selected !== direct) return null;
+        if (direct instanceof SVGElement && editableSvgTextTags.has(direct.tagName.toUpperCase())) {
+          return null;
+        }
+        return direct instanceof HTMLElement ? direct : null;
+      }
+
+      function beginDragElement(element, downEvent) {
+        const rect = element.getBoundingClientRect();
+        const computed = window.getComputedStyle(element);
+        const originalPosition = computed.position;
+        if (!["relative", "absolute", "fixed"].includes(originalPosition)) {
+          element.style.setProperty("position", "absolute");
+        }
+        element.style.setProperty("top", rect.top + "px");
+        element.style.setProperty("left", rect.left + "px");
+        element.setAttribute(DRAGGING_ATTRIBUTE, "true");
+        try {
+          element.setPointerCapture(downEvent.pointerId);
+        } catch (e) {
+          // 某些浏览器在 SVG 上会抛错,忽略即可
+        }
+        hideFloatingToolbar();
+        activeDrag = {
+          element,
+          pointerId: downEvent.pointerId,
+          downClientX: downEvent.clientX,
+          downClientY: downEvent.clientY,
+          startLeft: rect.left,
+          startTop: rect.top,
+          elementWidth: rect.width,
+          elementHeight: rect.height,
+          activated: false,
+        };
+      }
+
+      function updateDragElement(moveEvent) {
+        if (!activeDrag || activeDrag.pointerId !== moveEvent.pointerId) return;
+        const dx = moveEvent.clientX - activeDrag.downClientX;
+        const dy = moveEvent.clientY - activeDrag.downClientY;
+        if (!activeDrag.activated) {
+          if (Math.hypot(dx, dy) < DRAG_ACTIVATION_PX) return;
+          activeDrag.activated = true;
+        }
+        const frame = getVisibleFrameBounds();
+        const next = computeDragPosition({
+          startLeft: activeDrag.startLeft,
+          startTop: activeDrag.startTop,
+          dx,
+          dy,
+          elementWidth: activeDrag.elementWidth,
+          elementHeight: activeDrag.elementHeight,
+          frameWidth: frame.width,
+          frameHeight: frame.height,
+        });
+        activeDrag.element.style.setProperty("left", next.left + "px");
+        activeDrag.element.style.setProperty("top", next.top + "px");
+      }
+
+      function endDragElement(upEvent) {
+        if (!activeDrag) return;
+        const drag = activeDrag;
+        activeDrag = null;
+        const element = drag.element;
+        element.removeAttribute(DRAGGING_ATTRIBUTE);
+        try {
+          element.releasePointerCapture(drag.pointerId);
+        } catch (e) {
+          // ignore
+        }
+        if (!drag.activated) {
+          positionFloatingToolbar(element);
+          return;
+        }
+        const top = element.style.top || "";
+        const left = element.style.left || "";
+        const position = element.style.position || "absolute";
+        const hftId = element.getAttribute(config.hftIdAttribute) || "";
+        if (hftId) {
+          window.parent.postMessage({
+            type: "HTML_FINETUNE_DRAG_COMMIT",
+            token: bridgeToken,
+            payload: { hftId, position, top, left }
+          }, "*");
+        }
+        positionFloatingToolbar(element);
+      }
+
+      function cancelDragElement() {
+        if (!activeDrag) return;
+        const element = activeDrag.element;
+        activeDrag = null;
+        element.removeAttribute(DRAGGING_ATTRIBUTE);
+        positionFloatingToolbar(element);
+      }
 
       function hasDirectText(element) {
         return Array.from(element.childNodes).some((node) => {
@@ -1435,6 +1564,35 @@ function createBridgeScript(bridgeToken: string): string {
         if (element) {
           element.removeAttribute(config.hoverAttribute);
         }
+      }, true);
+
+      document.addEventListener("pointerdown", (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest("[data-html-finetune-ui='true']")) {
+          return;
+        }
+        const element = resolveSelectedEditableElement(target);
+        if (!element) return;
+        event.preventDefault();
+        event.stopPropagation();
+        beginDragElement(element, event);
+      }, true);
+
+      document.addEventListener("pointermove", (event) => {
+        if (!activeDrag) return;
+        event.preventDefault();
+        updateDragElement(event);
+      }, true);
+
+      document.addEventListener("pointerup", (event) => {
+        if (!activeDrag) return;
+        event.preventDefault();
+        endDragElement(event);
+      }, true);
+
+      document.addEventListener("pointercancel", () => {
+        if (!activeDrag) return;
+        cancelDragElement();
       }, true);
 
       document.addEventListener("click", (event) => {

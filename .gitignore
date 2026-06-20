@@ -1,6 +1,16 @@
 node_modules/
 dist/
+dist-test/
 .vite/
 *.log
+logs/
 .DS_Store
 Thumbs.db
+
+# Git worktrees (project-local)
+.worktrees/
+worktrees/
+
+# Embedded git worktrees (other agents)
+.claude/worktrees/
+artifacts/

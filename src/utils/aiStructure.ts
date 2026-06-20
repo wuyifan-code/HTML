@@ -421,6 +421,9 @@ export async function analyzeStructureWithAi({
     });
     return normalizeAiStructureResponse(text, new Set(payload.nodes.map((node) => node.hftId)));
   } catch (error) {
+    if (error instanceof AiRequestError) {
+      throw new Error(`${error.message}\n\n${formatAiErrorDetail(error)}`);
+    }
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(`${provider.shortLabel} 扫描超过 2 分钟，请换轻量模型或减少页面内容后重试`);
     }
@@ -458,13 +461,42 @@ export async function fetchAiModelOptions({
       signal: controller.signal,
       headers: getModelListHeaders(provider, trimmedKey),
     });
-    const data = (await response.json()) as RawModelListResponse;
-    if (!response.ok) throw new Error(data.error?.message || `${provider.shortLabel} 模型列表获取失败`);
+    const rawText = await response.text();
+    if (!response.ok) {
+      throw new AiRequestError(
+        extractProviderErrorMessage(rawText) || `${provider.shortLabel} 模型列表获取失败`,
+        response.status,
+        response.url,
+        rawText
+      );
+    }
+    let data: RawModelListResponse;
+    try {
+      data = JSON.parse(rawText) as RawModelListResponse;
+    } catch {
+      throw new AiRequestError(
+        `${provider.shortLabel} 返回的不是合法 JSON`,
+        response.status,
+        response.url,
+        rawText
+      );
+    }
+    if (data.error?.message) {
+      throw new AiRequestError(
+        data.error.message,
+        response.status,
+        response.url,
+        rawText
+      );
+    }
 
     const models = normalizeAiModelOptions(provider, data);
     if (models.length === 0) throw new Error(`${provider.shortLabel} 没有返回可用文本模型`);
     return models;
   } catch (error) {
+    if (error instanceof AiRequestError) {
+      throw new Error(`${error.message}\n\n${formatAiErrorDetail(error)}`);
+    }
     if (error instanceof DOMException && error.name === "AbortError") {
       throw new Error(`${provider.shortLabel} 模型列表获取超时，可稍后重试或手动输入模型名`);
     }
@@ -764,8 +796,26 @@ async function requestGeminiText({
     }),
   });
 
-  const data = (await response.json()) as GeminiGenerateContentResponse;
-  if (!response.ok) throw new Error(data.error?.message || `${provider.shortLabel} 请求失败`);
+  const rawText = await response.text();
+  let data: GeminiGenerateContentResponse;
+  try {
+    data = JSON.parse(rawText) as GeminiGenerateContentResponse;
+  } catch {
+    throw new AiRequestError(
+      `${provider.shortLabel} 返回的不是合法 JSON`,
+      response.status,
+      response.url,
+      rawText
+    );
+  }
+  if (!response.ok) {
+    throw new AiRequestError(
+      data.error?.message || `${provider.shortLabel} 请求失败`,
+      response.status,
+      response.url,
+      rawText
+    );
+  }
   const text = data.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("\n").trim();
   if (!text) throw new Error(`${provider.shortLabel} 没有返回可解析结果`);
   return text;
@@ -800,8 +850,26 @@ async function requestOpenAiResponsesText({
     }),
   });
 
-  const data = (await response.json()) as OpenAiResponsesResponse;
-  if (!response.ok) throw new Error(data.error?.message || `${provider.shortLabel} 请求失败`);
+  const rawText = await response.text();
+  let data: OpenAiResponsesResponse;
+  try {
+    data = JSON.parse(rawText) as OpenAiResponsesResponse;
+  } catch {
+    throw new AiRequestError(
+      `${provider.shortLabel} 返回的不是合法 JSON`,
+      response.status,
+      response.url,
+      rawText
+    );
+  }
+  if (!response.ok) {
+    throw new AiRequestError(
+      data.error?.message || `${provider.shortLabel} 请求失败`,
+      response.status,
+      response.url,
+      rawText
+    );
+  }
   const text =
     data.output_text ||
     data.output
@@ -850,8 +918,26 @@ async function requestOpenAiChatText({
     }),
   });
 
-  const data = (await response.json()) as ChatCompletionResponse;
-  if (!response.ok) throw new Error(data.error?.message || `${provider.shortLabel} 请求失败`);
+  const rawText = await response.text();
+  let data: ChatCompletionResponse;
+  try {
+    data = JSON.parse(rawText) as ChatCompletionResponse;
+  } catch {
+    throw new AiRequestError(
+      `${provider.shortLabel} 返回的不是合法 JSON`,
+      response.status,
+      response.url,
+      rawText
+    );
+  }
+  if (!response.ok) {
+    throw new AiRequestError(
+      data.error?.message || `${provider.shortLabel} 请求失败`,
+      response.status,
+      response.url,
+      rawText
+    );
+  }
   const content = data.choices?.[0]?.message?.content;
   const text = Array.isArray(content) ? content.map((part) => part.text || "").join("\n").trim() : content?.trim();
   if (!text) throw new Error(`${provider.shortLabel} 没有返回可解析结果`);
@@ -888,8 +974,26 @@ async function requestAnthropicMessagesText({
     }),
   });
 
-  const data = (await response.json()) as AnthropicMessagesResponse;
-  if (!response.ok) throw new Error(data.error?.message || `${provider.shortLabel} 请求失败`);
+  const rawText = await response.text();
+  let data: AnthropicMessagesResponse;
+  try {
+    data = JSON.parse(rawText) as AnthropicMessagesResponse;
+  } catch {
+    throw new AiRequestError(
+      `${provider.shortLabel} 返回的不是合法 JSON`,
+      response.status,
+      response.url,
+      rawText
+    );
+  }
+  if (!response.ok) {
+    throw new AiRequestError(
+      data.error?.message || `${provider.shortLabel} 请求失败`,
+      response.status,
+      response.url,
+      rawText
+    );
+  }
   const text = data.content?.map((part) => part.text || "").join("\n").trim();
   if (!text) throw new Error(`${provider.shortLabel} 没有返回可解析结果`);
   return text;
@@ -899,11 +1003,39 @@ function createSystemInstruction(): string {
   return [
     "You are an AI assistant embedded in HTML FineTune, a visual HTML editor.",
     "Analyze editable DOM tree nodes for a structure panel.",
-    "Return JSON only. Do not include markdown.",
-    "Use only hftId values from the provided input.",
+    "STRICT OUTPUT RULES — failing any rule breaks the parser:",
+    "1. Return valid JSON only.",
+    "2. No markdown fences (do not wrap in ``` or ```json).",
+    "3. No trailing commas anywhere (not before }, not before ]).",
+    "4. No comments of any kind (no //, no /* */).",
+    "5. No explanations, no preamble, no postscript — JSON only.",
+    '6. Root object must be exactly {"annotations": [...]} — nothing else at the top level.',
+    "7. All string values must use double quotes, not single quotes.",
+    "8. All keys must be wrapped in double quotes.",
+    "9. Numeric values must be JSON numbers — never NaN, Infinity, or undefined.",
+    "10. Use only hftId values from the provided input.",
+    "11. Do not omit commas between array elements or object fields.",
+    "12. Do not return partial JSON; finish the complete root object before stopping.",
     "Keep labels short and useful for designers editing imported HTML slides.",
     "Mark likely layout risks such as overlap-risk, overflow-risk, tiny-text, image-ratio, crowded-chart, or decorative.",
   ].join("\n");
+}
+
+/**
+ * 从厂商响应 body 中提取错误 message,避免抛纯"Unexpected token ..."给用户。
+ */
+function extractProviderErrorMessage(rawText: string): string {
+  const trimmed = rawText.trim();
+  if (!trimmed) return "";
+  try {
+    const parsed = JSON.parse(trimmed) as { error?: { message?: string; msg?: string }; message?: string };
+    if (parsed.error?.message) return parsed.error.message;
+    if (parsed.error?.msg) return parsed.error.msg;
+    if (parsed.message) return parsed.message;
+  } catch {
+    // body 不是 JSON,直接返回原文前 200 字符
+  }
+  return trimmed.slice(0, 200);
 }
 
 function createUserPrompt(payload: AiStructurePayload): string {
@@ -926,18 +1058,153 @@ function createUserPrompt(payload: AiStructurePayload): string {
   });
 }
 
-function parseJsonObject(text: string): unknown {
-  const trimmed = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const first = trimmed.indexOf("{");
-    const last = trimmed.lastIndexOf("}");
-    if (first >= 0 && last > first) {
-      return JSON.parse(trimmed.slice(first, last + 1));
-    }
-    throw new Error("AI 返回格式不是 JSON");
+const AI_STRUCTURE_INVALID_JSON_MESSAGE =
+  "AI 返回的结构分析结果不是合法 JSON。请换一个模型重试，或降低页面复杂度后重新扫描。";
+
+/**
+ * 携带 HTTP 上下文(状态码、URL、响应体)的错误,
+ * 由各厂商 request 函数在网络/HTTP 失败时抛出。
+ * analyzeStructureWithAi / fetchAiModelOptions 在 catch 中再格式化追加到 message。
+ */
+export class AiRequestError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly url?: string,
+    public readonly responseText?: string
+  ) {
+    super(message);
+    this.name = "AiRequestError";
   }
+}
+
+/** 把对象/数组边界错误转换成 "[code] url\nbody" 的多行 detail */
+export function formatAiErrorDetail(error: AiRequestError, maxBodyLength = 800): string {
+  const statusLabel = error.status === undefined ? "?" : String(error.status);
+  const urlLabel = error.url ?? "?";
+  const body = (error.responseText ?? "").slice(0, maxBodyLength);
+  return `[${statusLabel}] ${urlLabel}\n${body}`;
+}
+
+function parseJsonObject(text: string): unknown {
+  const trimmed = text.trim();
+  const candidates = buildJsonParseCandidates(trimmed);
+
+  let lastError: unknown;
+  let lastCandidate = trimmed;
+  for (const candidate of candidates) {
+    try {
+      return JSON.parse(candidate);
+    } catch (error) {
+      lastError = error;
+      lastCandidate = candidate;
+    }
+  }
+
+  logAiJsonParseFailure(lastError, lastCandidate, text.length);
+  throw new Error(AI_STRUCTURE_INVALID_JSON_MESSAGE);
+}
+
+function stripMarkdownFence(text: string): string {
+  return text.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+}
+
+/**
+ * 从文本中提取首个括号平衡的 JSON 对象。
+ * 跟踪字符串状态与转义,避免被嵌套的 { } 误导。
+ */
+function extractFirstBalancedJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start < 0) return null;
+  let depth = 0;
+  let inString = false;
+  let escape = false;
+  for (let i = start; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) {
+        escape = false;
+      } else if (ch === "\\") {
+        escape = true;
+      } else if (ch === '"') {
+        inString = false;
+      }
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{") {
+      depth += 1;
+    } else if (ch === "}") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, i + 1);
+    }
+  }
+  return null;
+}
+
+function buildJsonParseCandidates(text: string): string[] {
+  const candidates: string[] = [];
+  addCandidate(candidates, text);
+  addCandidate(candidates, stripMarkdownFence(text));
+
+  const balanced = extractFirstBalancedJsonObject(text);
+  if (balanced) addCandidate(candidates, balanced);
+
+  for (const candidate of [...candidates]) {
+    addCandidate(candidates, repairLooseJson(candidate));
+  }
+
+  if (balanced) {
+    addCandidate(candidates, repairLooseJson(balanced));
+  }
+
+  return candidates;
+}
+
+function addCandidate(candidates: string[], candidate: string): void {
+  const normalized = candidate.trim();
+  if (normalized && !candidates.includes(normalized)) candidates.push(normalized);
+}
+
+/**
+ * 修补常见 LLM JSON 损坏:
+ *   1. 单行 / 多行注释删除
+ *   2. 数组/对象尾随逗号 `,]` `,}` 去除
+ *   3. `NaN` / `undefined` 字面量替换为 `null`
+ *   4. 相邻对象之间的缺逗号 `}{` 自动补 `},{`(沿用旧实现)
+ */
+function repairLooseJson(text: string): string {
+  let s = text;
+  // 1. 删除 // 单行注释
+  s = s.replace(/\/\/[^\n]*/g, "");
+  // 2. 删除 /* 多行注释 */
+  s = s.replace(/\/\*[\s\S]*?\*\//g, "");
+  // 3. 尾随逗号
+  s = s.replace(/,(\s*[\]}])/g, "$1");
+  // 4. NaN / undefined -> null
+  s = s.replace(/\bNaN\b/g, "null");
+  s = s.replace(/\bundefined\b/g, "null");
+  // 5. 缺逗号补齐(相邻对象 / 数组)
+  s = s.replace(/}\s*(?=\{)/g, "},");
+  s = s.replace(/]\s*(?=\[)/g, "],");
+  return s;
+}
+
+/** 兼容旧实现,保留导出供测试使用 */
+export function repairCommonAiJson(text: string): string {
+  return text.replace(/}\s*(?=\{)/g, "},");
+}
+
+function logAiJsonParseFailure(error: unknown, candidate: string, rawLength: number): void {
+  const message = error instanceof Error ? error.message : String(error);
+  // eslint-disable-next-line no-console
+  console.error("[AI Structure] Failed to parse AI JSON response", {
+    message,
+    candidateStart: candidate.slice(0, 1200),
+    candidateEnd: candidate.slice(-800),
+    rawLength,
+  });
 }
 
 function normalizeIssues(value: unknown): string[] {

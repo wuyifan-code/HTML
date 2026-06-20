@@ -37,7 +37,9 @@ import {
   updateHtmlElementByHftId,
 } from "./utils/domPath";
 import { exportHtml } from "./utils/exportHtml";
-import { exportPdfFromHtml, exportPptxFromHtml, type DocumentExportFormat } from "./utils/exportDocument";
+import { exportPdfFromHtml, formatPdfError } from "./utils/exportPdf";
+import { exportPptxFromHtml, formatPptxError } from "./utils/exportPptx";
+import type { DocumentExportFormat } from "./utils/exportErrors";
 import { buildDisplayItemsFromSummaries } from "./utils/historySummary";
 import { injectEditableIds } from "./utils/injectEditableIds";
 import {
@@ -455,7 +457,11 @@ export default function App() {
             : `已导出 ${pageCount} 页 ${label}`
         );
       } catch (error) {
-        const message = error instanceof Error ? error.message : `${label} 导出失败`;
+        // 调试: 把真实错误堆栈打到 console, 方便 e2e 抓取 + 用户排查
+        // eslint-disable-next-line no-console
+        console.error("[HTML FineTune] export error:", error);
+        const message =
+          format === "pdf" ? formatPdfError(error) : formatPptxError(error);
         setStatusMessage(message);
       } finally {
         setExportingFormat(null);
@@ -563,6 +569,26 @@ export default function App() {
     );
     setStatusMessage(`已从结构面板定位 ${hftId}`);
   }, [commit, flushDebouncedHistory]);
+
+  const handleElementDragged = useCallback(
+    (hftId: string, position: string, top: string, left: string) => {
+      const styles = { position, top, left };
+      const nextHtml = updateHtmlElementByHftId(latestHtmlRef.current, hftId, { styles });
+      if (nextHtml === latestHtmlRef.current) return;
+      latestHtmlRef.current = nextHtml;
+      commit(
+        {
+          html: nextHtml,
+          selectedId: hftId,
+        },
+        { debounce: true }
+      );
+      setSelectedElement(buildElementSnapshotFromHtml(nextHtml, hftId));
+      setPatchCommand({ id: Date.now(), hftId, patch: { styles } });
+      setStatusMessage(`已将元素移动到 ${top} / ${left}`);
+    },
+    [commit]
+  );
 
   const handleElementQuickAction = useCallback(
     (hftId: string, action: ElementQuickAction) => {
@@ -993,6 +1019,7 @@ export default function App() {
           onElementSelected={updateSelectedElement}
           onModalStateChange={handleModalStateChange}
           onElementAction={handleElementQuickAction}
+          onElementDragged={handleElementDragged}
           onReadyChange={setIsPreviewReady}
         />
         <button
