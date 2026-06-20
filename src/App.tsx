@@ -6,6 +6,7 @@ import { PreviewFrame } from "./components/PreviewFrame";
 import { StyleEditorPanel } from "./components/StyleEditorPanel";
 import { useEditorHistory } from "./hooks/useEditorHistory";
 import { usePanelResize } from "./hooks/usePanelResize";
+import { useShortcuts } from "./hooks/useShortcuts";
 import { sampleHtml } from "./sampleHtml";
 import type {
   EditableStyleKey,
@@ -127,6 +128,7 @@ export default function App() {
   const [patchCommand, setPatchCommand] = useState<PatchCommand | null>(null);
   const [styleClipboard, setStyleClipboard] = useState<StyleClipboard | null>(null);
   const [reloadNonce, setReloadNonce] = useState(0);
+  const [lastSyncedAt, setLastSyncedAt] = useState<number>(() => Date.now());
   const [sourceView, setSourceView] = useState<"source" | "tree">("tree");
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
@@ -492,12 +494,14 @@ export default function App() {
   const handleUndo = useCallback(() => {
     undo();
     setReloadNonce((n) => n + 1);
+    setLastSyncedAt(Date.now());
     setStatusMessage("已撤销上一步编辑");
   }, [undo]);
 
   const handleRedo = useCallback(() => {
     redo();
     setReloadNonce((n) => n + 1);
+    setLastSyncedAt(Date.now());
     setStatusMessage("已重做编辑");
   }, [redo]);
 
@@ -692,25 +696,79 @@ export default function App() {
     [commit, selectedElement, styleClipboard]
   );
 
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const isMod = event.ctrlKey || event.metaKey;
-      if (!isMod) return;
-
-      const key = event.key.toLowerCase();
-      if (key !== "z" && key !== "y") return;
-
-      event.preventDefault();
-      if ((key === "z" && event.shiftKey) || key === "y") {
-        handleRedo();
-      } else {
-        handleUndo();
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown, true);
-    return () => window.removeEventListener("keydown", handleKeyDown, true);
-  }, [handleRedo, handleUndo]);
+  // 全局快捷键 (Task 3 接线): useShortcuts hook 集中处理 12 个绑定,
+// 自带 input/textarea/contenteditable 白名单。
+  useShortcuts([
+    { combo: "mod+z", handler: handleUndo, allowInInputs: true },
+    { combo: "mod+y", handler: handleRedo, allowInInputs: true },
+    { combo: "mod+shift+z", handler: handleRedo, allowInInputs: true },
+    {
+      combo: "mod+d",
+      handler: () => {
+        if (selectedElement) handleElementQuickAction(selectedElement.hftId, "duplicate");
+      },
+      allowInInputs: true,
+    },
+    {
+      combo: "delete",
+      handler: () => {
+        if (selectedElement) handleElementQuickAction(selectedElement.hftId, "delete");
+      },
+    },
+    {
+      combo: "backspace",
+      handler: () => {
+        if (selectedElement) handleElementQuickAction(selectedElement.hftId, "delete");
+      },
+    },
+    {
+      combo: "esc",
+      handler: () => {
+        setSelectedElement(null);
+        setIsHistoryOpen(false);
+      },
+    },
+    { combo: "mod+e", handler: handleExport, allowInInputs: true },
+    {
+      combo: "mod+f",
+      handler: () => {
+        const target = document.querySelector<HTMLInputElement>("[data-tree-search-input]");
+        target?.focus();
+        target?.select();
+      },
+    },
+    {
+      combo: "mod+b",
+      handler: () => {
+        if (selectedElement) applyStyleUpdate("fontWeight", "700");
+      },
+    },
+    // ⌘I / ⌘U omitted: `fontStyle` / `textDecoration` are not part of EditableStyleKey.
+    // Use the inspector's weight/style selectors instead.
+    {
+      combo: "mod+l",
+      handler: () => {
+        if (selectedElement) applyStyleUpdate("textAlign", "left");
+      },
+    },
+    {
+      combo: "mod+r",
+      handler: () => {
+        if (selectedElement) applyStyleUpdate("textAlign", "right");
+      },
+    },
+    {
+      combo: "mod+shift+e",
+      handler: () => {
+        if (selectedElement) applyStyleUpdate("textAlign", "justify");
+      },
+    },
+    { combo: "mod+1", handler: () => setPreviewViewportMode("desktop") },
+    { combo: "mod+2", handler: () => setPreviewViewportMode("wide") },
+    { combo: "mod+3", handler: () => setPreviewViewportMode("tablet") },
+    { combo: "mod+4", handler: () => setPreviewViewportMode("mobile") },
+    { combo: "mod+5", handler: () => setPreviewViewportMode("fit") },
+  ]);
 
   // 侦听 iframe 超时等自定义状态消息
   useEffect(() => {
@@ -763,6 +821,15 @@ export default function App() {
     setAiAnalysisStatus("idle");
     setAiAnalysisError("");
   }, [state.html]);
+
+  // 同步时间戳 — HTML 变动时刷新,status bar "刚刚同步" 用
+  useEffect(() => {
+    setLastSyncedAt(Date.now());
+  }, [state.html]);
+
+  useEffect(() => {
+    setLastSyncedAt(Date.now());
+  }, [modalState.open]);
 
   const fetchModelsForProvider = useCallback(
     async (providerId: AiProviderId, apiKey: string, mode: "auto" | "manual", signal?: AbortSignal) => {
@@ -930,8 +997,8 @@ export default function App() {
     [inspectorWidth, isInspectorCollapsed, isSourceCollapsed, sourceWidth]
   );
   const previewStatus = isPreviewReady
-    ? { label: "实时预览", detail: "已就绪", tone: "ready" }
-    : { label: "实时预览", detail: "渲染中", tone: "syncing" };
+    ? { label: "实时预览", detail: "已就绪", tone: "ready" as const }
+    : { label: "实时预览", detail: "渲染中", tone: "syncing" as const };
   const characterCountText = `${state.html.length.toLocaleString()} 字符`;
 
   return (
@@ -1077,7 +1144,7 @@ export default function App() {
             <span className="status-dot" aria-hidden="true" />
             <span className="status-copy">
               <strong>{previewStatus.label}</strong>
-              <small>{previewStatus.detail}</small>
+              <small title={`最近一次同步：${formatRelative(lastSyncedAt)}`}>{formatRelative(lastSyncedAt)}</small>
             </span>
           </div>
           <div className="status-item status-message">
@@ -1220,4 +1287,16 @@ function withRelatedStyleUpdates(
   }
 
   return styles;
+}
+
+/**
+ * 状态栏"刚刚同步"相对时间格式化。
+ * 用 Date.now() 与 timestamp 之差,中文短文本。
+ */
+function formatRelative(timestamp: number): string {
+  const diff = Math.max(0, Date.now() - timestamp);
+  if (diff < 5_000) return "刚刚";
+  if (diff < 60_000) return `${Math.round(diff / 1000)}秒前`;
+  if (diff < 3_600_000) return `${Math.round(diff / 60_000)}分钟前`;
+  return new Date(timestamp).toLocaleTimeString();
 }

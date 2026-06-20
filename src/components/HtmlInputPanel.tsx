@@ -400,6 +400,7 @@ function TreeSearch({ value, onChange }: { value: string; onChange: (value: stri
       <Search size={14} strokeWidth={1.75} />
       <input
         type="search"
+        data-tree-search-input
         value={value}
         placeholder="查找标签、文本或类名"
         onChange={(event) => onChange(event.target.value)}
