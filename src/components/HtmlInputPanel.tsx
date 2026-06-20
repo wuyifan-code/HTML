@@ -823,13 +823,13 @@ function DomTreeList({
     return map;
   }, [nodes]);
 
-  // 2. 默认折叠: depth > 2 的非叶子节点(避免初次打开 31 个全展开的视觉冲击)
+  // 2. 默认折叠: depth > baseDepth + 1 的非叶子节点 (Task 7: 只展开顶层 2 层)
   const [collapsed, setCollapsed] = useState<Set<string>>(() => {
     const init = new Set<string>();
     for (let i = 0; i < nodes.length; i++) {
       const me = nodes[i];
       const childCount = childCountMap.get(me.hftId) ?? 0;
-      if (childCount > 0 && me.depth - baseDepth > 2) {
+      if (childCount > 0 && me.depth - baseDepth > 1) {
         init.add(me.hftId);
       }
     }
@@ -844,6 +844,17 @@ function DomTreeList({
       return next;
     });
   }, []);
+
+  const expandAll = useCallback(() => setCollapsed(new Set()), []);
+  const collapseAll = useCallback(() => {
+    const all = new Set<string>();
+    for (const node of nodes) {
+      if ((childCountMap.get(node.hftId) ?? 0) > 0) {
+        all.add(node.hftId);
+      }
+    }
+    setCollapsed(all);
+  }, [nodes, childCountMap]);
 
   // 3. 一次 pass 算"实际需要渲染的节点列表" (跳过被折叠祖先挡住的)
   const visibleRows = useMemo(() => {
@@ -912,11 +923,16 @@ function DomTreeList({
   }, [nodes, baseDepth, compact, collapsed, childCountMap]);
 
   return (
-    <div
-      className={`dom-tree${compact ? " dom-tree-compact" : ""}`}
-      role="tree"
-      aria-label="可编辑元素结构"
-    >
+    <>
+      <div className="dom-tree-toolbar" role="group" aria-label="树视图批量操作">
+        <button type="button" className="ghost-button compact-action" onClick={expandAll}>全部展开</button>
+        <button type="button" className="ghost-button compact-action" onClick={collapseAll}>全部折叠</button>
+      </div>
+      <div
+        className={`dom-tree${compact ? " dom-tree-compact" : ""}`}
+        role="tree"
+        aria-label="可编辑元素结构"
+      >
       {visibleRows.length === 0 ? (
         <div className="dom-tree-empty">{emptyText}</div>
       ) : (
@@ -938,6 +954,7 @@ function DomTreeList({
               aria-level={visibleDepth + 1}
               aria-expanded={hasChildren ? !isCollapsed : undefined}
               data-depth={visibleDepth}
+              data-tag={node.tagName}
               style={{ "--tree-indent": `${visibleDepth * 16}px` } as CSSProperties}
             >
               {hasChildren ? (
@@ -993,6 +1010,7 @@ function DomTreeList({
         })
       )}
     </div>
+    </>
   );
 }
 
