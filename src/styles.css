@@ -2868,9 +2868,10 @@ textarea:focus-visible {
   min-width: 0;
   min-height: 34px;
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 14px;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
   border-top: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.96);
   color: var(--muted);
@@ -2954,6 +2955,59 @@ textarea:focus-visible {
   font-size: 11px;
   font-weight: 650;
   opacity: 0.82;
+}
+
+/* 主行 + 副行布局(Task 5) */
+.status-bar-primary {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 12px;
+  min-height: 30px;
+}
+
+.status-bar-secondary {
+  max-height: 0;
+  opacity: 0;
+  overflow: hidden;
+  border-top: 1px solid rgba(15, 23, 42, 0.05);
+  transition: max-height 200ms ease, opacity 200ms ease;
+  padding: 0 12px;
+}
+
+.status-bar-secondary-open {
+  max-height: 36px;
+  opacity: 1;
+  padding-top: 6px;
+  padding-bottom: 6px;
+}
+
+.status-bar-tech-label {
+  font-size: 11px;
+  color: #64748b;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
+}
+
+.status-bar-toggle {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #475569;
+  cursor: pointer;
+  font-size: 12px;
+  transition: background 140ms ease, border-color 140ms ease;
+}
+
+.status-bar-toggle:hover {
+  background: rgba(15, 23, 42, 0.06);
+  border-color: rgba(15, 23, 42, 0.1);
 }
 
 .status-dot {
@@ -3060,14 +3114,18 @@ textarea:focus-visible {
   }
 
   .status-bar {
-    display: grid;
-    grid-template-columns: 1fr;
-    gap: 6px;
-    padding: 8px 12px;
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+  }
+
+  .status-bar-primary {
+    flex-wrap: wrap;
+    row-gap: 8px;
   }
 
   .status-item {
-    width: 100%;
+    width: auto;
     height: auto;
     min-height: 24px;
   }

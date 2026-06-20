@@ -130,6 +130,7 @@ export default function App() {
   const [sourceView, setSourceView] = useState<"source" | "tree">("tree");
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isStatusSecondaryOpen, setIsStatusSecondaryOpen] = useState(false);
   const [exportPreviewHtml, setExportPreviewHtml] = useState<string | null>(null);
   const [exportingFormat, setExportingFormat] = useState<DocumentExportFormat | null>(null);
   const [sourcePanelPlacement, setSourcePanelPlacement] = useState<SourcePanelPlacement>("side");
@@ -1046,26 +1047,45 @@ export default function App() {
         />
       </main>
       <footer className="status-bar" aria-live="polite">
-        <div className={`status-item status-selection${selectedElement ? " status-item-active" : ""}`}>
-          <span className="status-dot" aria-hidden="true" />
-          <span className="status-copy">
-            <strong>{selectionStatus.label}</strong>
-            <small>{selectionStatus.detail}</small>
-          </span>
+        <div className="status-bar-primary">
+          <div className={`status-item status-selection${selectedElement ? " status-item-active" : ""}`}>
+            <span className="status-dot" aria-hidden="true" />
+            <span className="status-copy">
+              <strong>{selectionStatus.label}</strong>
+              <small>{selectionStatus.detail}</small>
+            </span>
+          </div>
+          <div className="status-item status-count">
+            <span className="status-dot status-dot-muted" aria-hidden="true" />
+            <span>{characterCountText}</span>
+          </div>
+          <div className={`status-item status-preview status-preview-${previewStatus.tone}`}>
+            <span className="status-dot" aria-hidden="true" />
+            <span className="status-copy">
+              <strong>{previewStatus.label}</strong>
+              <small>{previewStatus.detail}</small>
+            </span>
+          </div>
+          <div className="status-item status-message">
+            <span>{statusMessage}</span>
+          </div>
+          <button
+            className="status-bar-toggle"
+            type="button"
+            aria-expanded={isStatusSecondaryOpen}
+            aria-controls="status-bar-secondary-panel"
+            title={isStatusSecondaryOpen ? "收起技术信息" : "展开技术信息"}
+            onClick={() => setIsStatusSecondaryOpen((v) => !v)}
+          >
+            {isStatusSecondaryOpen ? "▴" : "▾"}
+          </button>
         </div>
-        <div className="status-item status-count">
-          <span className="status-dot status-dot-muted" aria-hidden="true" />
-          <span>{characterCountText}</span>
-        </div>
-        <div className={`status-item status-preview status-preview-${previewStatus.tone}`}>
-          <span className="status-dot" aria-hidden="true" />
-          <span className="status-copy">
-            <strong>{previewStatus.label}</strong>
-            <small>{previewStatus.detail}</small>
-          </span>
-        </div>
-        <div className="status-item status-message">
-          <span>{statusMessage}</span>
+        <div
+          id="status-bar-secondary-panel"
+          className={`status-bar-secondary${isStatusSecondaryOpen ? " status-bar-secondary-open" : ""}`}
+          aria-hidden={!isStatusSecondaryOpen}
+        >
+          <span className="status-bar-tech-label">iframe srcDoc · postMessage 通信</span>
         </div>
       </footer>
     </div>
