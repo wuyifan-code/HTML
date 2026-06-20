@@ -9,8 +9,10 @@ import {
   rgbToHex,
   clampNumber,
   colorPresets,
+  COLOR_PALETTE,
   type HsvColor,
 } from "../utils/color";
+import { useColorHistory } from "../hooks/useColorHistory";
 
 interface ColorFieldProps {
   label: string;
@@ -29,6 +31,7 @@ const colorPopoverMetrics = {
 function ColorFieldComponent({ label, value, onChange, full = false }: ColorFieldProps) {
   const rootRef = useRef<HTMLDivElement>(null);
   const normalizedValue = normalizeHexColor(value);
+  const { history, record } = useColorHistory();
   const [isOpen, setIsOpen] = useState(false);
   const [popoverStyle, setPopoverStyle] = useState<CSSProperties>();
   const [picker, setPicker] = useState<HsvColor>(() => hexToHsv(normalizedValue));
@@ -116,6 +119,7 @@ function ColorFieldComponent({ label, value, onChange, full = false }: ColorFiel
             onChange(nextValue);
             if (isValidHexColor(nextValue)) {
               setPicker(hexToHsv(normalizeHexColor(nextValue)));
+              record(normalizeHexColor(nextValue));
             }
           }}
         />
@@ -181,6 +185,42 @@ function ColorFieldComponent({ label, value, onChange, full = false }: ColorFiel
                 />
               ))}
             </div>
+            <div className="color-swatch-grid color-swatch-grid-palette" aria-label="常用色">
+              {COLOR_PALETTE.map((color) => (
+                <button
+                  key={`palette-${color}`}
+                  type="button"
+                  aria-label={`选择 ${color}`}
+                  title={color}
+                  style={{ backgroundColor: color }}
+                  onClick={() => {
+                    const nextPicker = hexToHsv(color);
+                    setPicker(nextPicker);
+                    onChange(color);
+                    record(color);
+                  }}
+                />
+              ))}
+            </div>
+            {history.length > 0 ? (
+              <div className="color-swatch-grid color-swatch-grid-history" aria-label="最近使用">
+                <span className="color-history-label">最近</span>
+                {history.map((color) => (
+                  <button
+                    key={`history-${color}`}
+                    type="button"
+                    aria-label={`选择最近色 ${color}`}
+                    title={color}
+                    style={{ backgroundColor: color }}
+                    onClick={() => {
+                      const nextPicker = hexToHsv(color);
+                      setPicker(nextPicker);
+                      onChange(color);
+                    }}
+                  />
+                ))}
+              </div>
+            ) : null}
           </div>
         ) : null}
       </div>

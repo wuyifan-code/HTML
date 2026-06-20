@@ -104,3 +104,58 @@ export function clampNumber(value: number, min: number, max: number): number {
 }
 
 export const colorPresets = ["#141413", "#53615e", "#6b6a64", "#19a997", "#0f766e", "#ff6f4f", "#f8fbfa"];
+
+export const COLOR_HISTORY_STORAGE = "hft-color-history";
+export const COLOR_HISTORY_LIMIT = 6;
+
+/**
+ * 12-color curated palette covering grays + the brand's mint, plus accent colors.
+ * Used as a swatch row above the recent-history row in `ColorField`.
+ */
+export const COLOR_PALETTE: readonly string[] = [
+  "#141413", // ink
+  "#53615e", // slate
+  "#6b6a64", // warm gray
+  "#cfdad7", // mist
+  "#19a997", // brand mint
+  "#0f766e", // deep teal
+  "#ff6f4f", // coral
+  "#f79009", // amber
+  "#facc15", // sun
+  "#22c55e", // leaf
+  "#0ea5e9", // sky
+  "#a855f7", // iris
+] as const;
+
+function normalizeForStorage(hex: string): string {
+  if (!isValidHexColor(hex)) return "";
+  return normalizeHexColor(hex);
+}
+
+export function readColorHistory(): string[] {
+  try {
+    const raw = window.localStorage.getItem(COLOR_HISTORY_STORAGE);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    return parsed
+      .filter((value): value is string => typeof value === "string")
+      .slice(0, COLOR_HISTORY_LIMIT);
+  } catch {
+    return [];
+  }
+}
+
+export function pushColorHistory(hex: string): string[] {
+  const normalized = normalizeForStorage(hex);
+  if (!normalized) return readColorHistory();
+
+  const current = readColorHistory().filter((color) => color !== normalized);
+  const next = [normalized, ...current].slice(0, COLOR_HISTORY_LIMIT);
+  try {
+    window.localStorage.setItem(COLOR_HISTORY_STORAGE, JSON.stringify(next));
+  } catch {
+    // quota exceeded — silently drop
+  }
+  return next;
+}
