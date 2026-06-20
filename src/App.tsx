@@ -660,6 +660,20 @@ export default function App() {
         return;
       }
 
+      if (action === "edit-text") {
+        // 浮动工具栏 → "编辑" 按钮:聚焦 Inspector 的文本框
+        const textarea = document.querySelector<HTMLTextAreaElement>("textarea.text-field");
+        textarea?.focus();
+        setStatusMessage("在右侧检查器编辑文字");
+        return;
+      }
+
+      if (action === "drag-start") {
+        // 拖拽手柄: 提示用户用鼠标拖动元素。实际 pointerdown 已经在 bridge 内全局监听。
+        setStatusMessage("按住并拖动元素到新位置");
+        return;
+      }
+
       const mutatedHtml =
         action === "duplicate"
           ? duplicateHtmlElementByHftId(latestHtmlRef.current, hftId)

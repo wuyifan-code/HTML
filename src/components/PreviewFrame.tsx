@@ -381,7 +381,7 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
       z-index: 2147483647 !important;
       display: none;
       align-items: center !important;
-      gap: 4px !important;
+      gap: 8px !important;
       min-height: 42px !important;
       padding: 4px !important;
       border: 1px solid rgba(148, 163, 184, 0.28) !important;
@@ -940,12 +940,9 @@ function createBridgeScript(bridgeToken: string): string {
         toolbar.innerHTML = [
           '<div class="hft-toolbar-meta" aria-hidden="true"><span class="hft-toolbar-dot"></span><strong data-role="tag">element</strong></div>',
           '<span class="hft-toolbar-divider" aria-hidden="true"></span>',
-          '<button type="button" data-action="move-up" data-label="上移" title="上移一位" aria-label="上移一位"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5"></path><path d="M5 12l7-7 7 7"></path></svg><span>上移</span></button>',
-          '<button type="button" data-action="move-down" data-label="下移" title="下移一位" aria-label="下移一位"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M19 12l-7 7-7-7"></path></svg><span>下移</span></button>',
-          '<button type="button" data-action="duplicate" data-label="克隆" title="克隆元素" aria-label="克隆元素"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M4 16V6a2 2 0 0 1 2-2h10"></path></svg><span>克隆</span></button>',
-          '<button type="button" data-action="copy-style" data-label="取样式" title="复制样式" aria-label="复制样式"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m19 5-2-2a2.1 2.1 0 0 0-3 0l-9.5 9.5"></path><path d="m14 8 2 2"></path><path d="M4 13h6l-5 5H4z"></path><path d="M3 21h6"></path></svg><span>复制样式</span></button>',
-          '<button type="button" data-action="paste-style" data-label="套样式" title="粘贴样式" aria-label="粘贴样式"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 4h8l2 3v3H6V7z"></path><path d="M6 14h12"></path><path d="M8 18h8"></path><path d="M10 22h4"></path></svg><span>粘贴样式</span></button>',
-          '<button type="button" data-action="delete" data-label="删除" title="删除元素" aria-label="删除元素"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path></svg><span>删除</span></button>'
+          '<button type="button" data-action="edit-text" data-label="编辑" title="进入文字编辑" aria-label="编辑文字"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"></path></svg><span>编辑</span></button>',
+          '<button type="button" data-action="drag-start" data-label="拖拽" title="拖动元素到新位置" aria-label="拖拽元素"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.2"></circle><circle cx="15" cy="6" r="1.2"></circle><circle cx="9" cy="12" r="1.2"></circle><circle cx="15" cy="12" r="1.2"></circle><circle cx="9" cy="18" r="1.2"></circle><circle cx="15" cy="18" r="1.2"></circle></svg><span>拖拽</span></button>',
+          '<button type="button" data-action="delete" data-label="删除" title="删除元素" aria-label="删除元素"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg><span>删除</span></button>'
         ].join("");
 
         toolbar.addEventListener("mousedown", (event) => {
