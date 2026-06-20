@@ -1764,6 +1764,31 @@ textarea:focus-visible {
   box-shadow: 0 6px 16px rgba(15, 118, 110, 0.1);
 }
 
+/* viewport dim 标签:默认隐藏, hover 或 active 时显示像素尺寸 */
+.viewport-dim {
+  margin-left: 6px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.06);
+  color: #64748b;
+  font-size: 10px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.preview-mode-control .segmented-button:hover .viewport-dim,
+.preview-mode-control .segmented-button-active .viewport-dim {
+  opacity: 1;
+}
+
+@media (max-width: 1024px) {
+  .viewport-dim {
+    opacity: 1;
+  }
+}
+
 .canvas-size-control {
   min-height: 30px;
   display: inline-flex;

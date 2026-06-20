@@ -189,6 +189,7 @@ function PreviewFrameComponent({
                 mode="desktop"
                 activeMode={viewportMode}
                 label="桌面"
+                dimensions={viewportDimensions.desktop}
                 onClick={onViewportModeChange}
                 icon={<Monitor size={15} strokeWidth={1.75} />}
               />
@@ -196,6 +197,7 @@ function PreviewFrameComponent({
                 mode="wide"
                 activeMode={viewportMode}
                 label="宽屏"
+                dimensions={viewportDimensions.wide}
                 onClick={onViewportModeChange}
                 icon={<Maximize2 size={15} strokeWidth={1.75} />}
               />
@@ -203,6 +205,7 @@ function PreviewFrameComponent({
                 mode="tablet"
                 activeMode={viewportMode}
                 label="平板"
+                dimensions={viewportDimensions.tablet}
                 onClick={onViewportModeChange}
                 icon={<Tablet size={15} strokeWidth={1.75} />}
               />
@@ -210,6 +213,7 @@ function PreviewFrameComponent({
                 mode="mobile"
                 activeMode={viewportMode}
                 label="手机"
+                dimensions={viewportDimensions.mobile}
                 onClick={onViewportModeChange}
                 icon={<Smartphone size={15} strokeWidth={1.75} />}
               />
@@ -217,6 +221,7 @@ function PreviewFrameComponent({
                 mode="fit"
                 activeMode={viewportMode}
                 label="适配"
+                dimensions={viewportDimensions.fit}
                 onClick={onViewportModeChange}
                 icon={<Shrink size={15} strokeWidth={1.75} />}
               />
@@ -322,23 +327,26 @@ interface PreviewModeButtonProps {
   mode: PreviewViewportMode;
   activeMode: PreviewViewportMode;
   label: string;
+  dimensions: { width: number; height: number };
   icon: ReactNode;
   onClick: (mode: PreviewViewportMode) => void;
 }
 
-function PreviewModeButton({ mode, activeMode, label, icon, onClick }: PreviewModeButtonProps) {
+function PreviewModeButton({ mode, activeMode, label, dimensions, icon, onClick }: PreviewModeButtonProps) {
   const isActive = mode === activeMode;
+  const dimText = dimensions.width > 0 ? `${dimensions.width}×${dimensions.height}` : "适配";
 
   return (
     <button
       className={`segmented-button${isActive ? " segmented-button-active" : ""}`}
       type="button"
       aria-pressed={isActive}
-      title={`${label}预览`}
+      title={`${label}预览 · ${dimText}`}
       onClick={() => onClick(mode)}
     >
       {icon}
       <span>{label}</span>
+      <small className="viewport-dim" aria-hidden="true">{dimText}</small>
     </button>
   );
 }
