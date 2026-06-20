@@ -917,7 +917,7 @@ export default function App() {
   );
   const previewStatus = isPreviewReady
     ? { label: "实时预览", detail: "已就绪", tone: "ready" }
-    : { label: "实时预览", detail: "渲染中", tone: "busy" };
+    : { label: "实时预览", detail: "渲染中", tone: "syncing" };
   const characterCountText = `${state.html.length.toLocaleString()} 字符`;
 
   return (

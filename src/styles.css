@@ -3010,6 +3010,38 @@ textarea:focus-visible {
   border-color: rgba(15, 23, 42, 0.1);
 }
 
+/* 状态栏呼吸圆点 + 同步 spinner(Task 6) */
+@keyframes hft-status-dot-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(25, 169, 151, 0.45);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(25, 169, 151, 0);
+  }
+}
+
+@keyframes hft-status-dot-spin {
+  to { transform: rotate(360deg); }
+}
+
+.status-preview .status-dot {
+  position: relative;
+}
+
+.status-preview-ready .status-dot {
+  background-color: #19a997;
+  animation: hft-status-dot-pulse 2.4s ease-in-out infinite;
+}
+
+.status-preview-syncing .status-dot {
+  background-color: #f79009;
+  animation: hft-status-dot-spin 1s linear infinite;
+}
+
+.status-preview-error .status-dot {
+  background-color: #e5483f;
+}
+
 .status-dot {
   width: 7px;
   height: 7px;
