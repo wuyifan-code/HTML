@@ -523,6 +523,14 @@ export default function App() {
     setStatusMessage("正在关闭预览中的弹窗");
   }, []);
 
+  const handleToggleModal = useCallback(() => {
+    if (modalState.open) {
+      handleCloseModal();
+    } else {
+      handleOpenModal();
+    }
+  }, [modalState.open, handleOpenModal, handleCloseModal]);
+
   const isFocusPreview = isSourceCollapsed && isInspectorCollapsed;
 
   const handleToggleFocusPreview = useCallback(() => {
@@ -921,8 +929,7 @@ export default function App() {
         onUndo={handleUndo}
         onRedo={handleRedo}
         onToggleHistory={() => setIsHistoryOpen((value) => !value)}
-        onOpenModal={handleOpenModal}
-        onCloseModal={handleCloseModal}
+        onModalToggle={handleToggleModal}
         onImport={handleImport}
         onCopy={handleCopy}
         onExport={handleExport}

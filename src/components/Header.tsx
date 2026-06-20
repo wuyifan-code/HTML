@@ -9,8 +9,7 @@ interface HeaderProps {
   onUndo: () => void;
   onRedo: () => void;
   onToggleHistory: () => void;
-  onOpenModal: () => void;
-  onCloseModal: () => void;
+  onModalToggle: () => void;
   onImport: (file: File) => void;
   onCopy: () => void;
   onExport: () => void;
@@ -27,8 +26,7 @@ export function Header({
   onUndo,
   onRedo,
   onToggleHistory,
-  onOpenModal,
-  onCloseModal,
+  onModalToggle,
   onImport,
   onCopy,
   onExport,
@@ -54,8 +52,7 @@ export function Header({
         onUndo={onUndo}
         onRedo={onRedo}
         onToggleHistory={onToggleHistory}
-        onOpenModal={onOpenModal}
-        onCloseModal={onCloseModal}
+        onModalToggle={onModalToggle}
         onImport={onImport}
         onCopy={onCopy}
         onExport={onExport}

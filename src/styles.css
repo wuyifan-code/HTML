@@ -233,6 +233,16 @@ textarea:focus-visible {
   gap: 6px;
 }
 
+/* 中间组(导入/复制/导出)居中,右侧组(弹窗/历史)贴右 */
+.toolbar-group-middle {
+  flex: 1 1 auto;
+  justify-content: center;
+}
+
+.toolbar-group-tail {
+  margin-left: auto;
+}
+
 /* Modal toggle: when弹窗已打开,按钮高亮表示"当前在弹窗态" */
 .toolbar-modal-button-active {
   color: var(--mint-strong);

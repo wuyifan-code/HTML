@@ -21,8 +21,7 @@ interface ToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onToggleHistory: () => void;
-  onOpenModal: () => void;
-  onCloseModal: () => void;
+  onModalToggle: () => void;
   onImport: (file: File) => void;
   onCopy: () => void;
   onExport: () => void;
@@ -39,8 +38,7 @@ export function Toolbar({
   onUndo,
   onRedo,
   onToggleHistory,
-  onOpenModal,
-  onCloseModal,
+  onModalToggle,
   onImport,
   onCopy,
   onExport,
@@ -52,13 +50,14 @@ export function Toolbar({
 
   return (
     <div className="toolbar" aria-label="编辑器工具栏">
+      {/* 左侧：撤销/重做 */}
       <div className="toolbar-group" aria-label="历史操作">
         <button
           className="ghost-button toolbar-button"
           type="button"
           onClick={onUndo}
           disabled={!canUndo}
-          title="撤销 · Ctrl+Z / Cmd+Z"
+          title="撤销 · ⌘Z / Ctrl+Z"
         >
           <Undo2 size={16} strokeWidth={1.75} />
           <span className="button-label">撤销</span>
@@ -68,38 +67,17 @@ export function Toolbar({
           type="button"
           onClick={onRedo}
           disabled={!canRedo}
-          title="重做 · Ctrl+Y / Shift+Cmd+Z"
+          title="重做 · ⌘Y / ⇧⌘Z"
         >
           <Redo2 size={16} strokeWidth={1.75} />
           <span className="button-label">重做</span>
-        </button>
-        <button className="ghost-button toolbar-button" type="button" onClick={onToggleHistory} title="查看编辑历史">
-          <History size={16} strokeWidth={1.75} />
-          <span className="button-label">历史</span>
         </button>
       </div>
 
       <div className="toolbar-separator" aria-hidden="true" />
 
-      <div className="toolbar-group" aria-label="页面功能">
-        <button
-          className={
-            "ghost-button toolbar-button compact-toolbar-button toolbar-modal-button" +
-            (hasModal && isModalOpen ? " toolbar-modal-button-active" : "")
-          }
-          type="button"
-          onClick={isModalOpen ? onCloseModal : onOpenModal}
-          disabled={!hasModal}
-          title={isModalOpen ? "关闭预览中的弹窗" : "打开预览中的弹窗"}
-          aria-pressed={hasModal && isModalOpen}
-        >
-          {isModalOpen ? (
-            <X size={16} strokeWidth={1.75} />
-          ) : (
-            <MessageSquare size={16} strokeWidth={1.75} />
-          )}
-          <span className="button-label">{isModalOpen ? "关闭弹窗" : "打开弹窗"}</span>
-        </button>
+      {/* 中间：导入/复制/导出 */}
+      <div className="toolbar-group toolbar-group-middle" aria-label="页面功能">
         <label className="ghost-button toolbar-button compact-toolbar-button file-button" title="导入 .html 文件">
           <FileUp size={16} strokeWidth={1.75} />
           <span className="button-label">导入 HTML</span>
@@ -117,11 +95,6 @@ export function Toolbar({
           <Clipboard size={16} strokeWidth={1.75} />
           <span className="button-label">复制 HTML</span>
         </button>
-      </div>
-
-      <div className="toolbar-separator" aria-hidden="true" />
-
-      <div className="toolbar-group export-toolbar-group" aria-label="导出">
         <button className="primary-button toolbar-button export-toolbar-button" type="button" onClick={onExport}>
           <Download size={17} strokeWidth={1.75} />
           <span className="button-label">导出 HTML</span>
@@ -153,6 +126,35 @@ export function Toolbar({
             <Presentation size={16} strokeWidth={1.75} />
           )}
           <span className="button-label">{isExportingPptx ? "生成中" : "PPTX"}</span>
+        </button>
+      </div>
+
+      <div className="toolbar-separator" aria-hidden="true" />
+
+      {/* 右侧：弹窗 toggle + 历史 */}
+      <div className="toolbar-group toolbar-group-tail" aria-label="弹窗与历史">
+        <button
+          className={
+            "ghost-button toolbar-button compact-toolbar-button toolbar-modal-button" +
+            (hasModal && isModalOpen ? " toolbar-modal-button-active" : "")
+          }
+          type="button"
+          onClick={onModalToggle}
+          disabled={!hasModal}
+          title={isModalOpen ? "关闭预览中的弹窗" : "打开预览中的弹窗"}
+          aria-pressed={hasModal && isModalOpen}
+        >
+          {isModalOpen ? <X size={16} strokeWidth={1.75} /> : <MessageSquare size={16} strokeWidth={1.75} />}
+          <span className="button-label">{isModalOpen ? "关闭弹窗" : "打开弹窗"}</span>
+        </button>
+        <button
+          className="ghost-button toolbar-button compact-toolbar-button toolbar-history-tail"
+          type="button"
+          onClick={onToggleHistory}
+          title="查看编辑历史"
+        >
+          <History size={16} strokeWidth={1.75} />
+          <span className="button-label">历史</span>
         </button>
       </div>
     </div>
