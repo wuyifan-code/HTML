@@ -1,6 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
-import { Eye, Lock, Maximize2, Minimize2, Monitor, Scan, Shrink, Smartphone, Tablet, ZoomIn, ZoomOut } from "lucide-react";
+import { Eye, Maximize2, Minimize2, Scan, Shrink, ZoomIn, ZoomOut } from "lucide-react";
 import { useIframeSelection } from "../hooks/useIframeSelection";
 import type {
   ElementQuickAction,
@@ -20,6 +19,8 @@ import {
   createModalCommandMessage,
   sendMessageToIframeLax,
 } from "../utils/iframeMessages";
+import { findMatchingPresetKey, VIEWPORT_PRESETS } from "../utils/viewportPresets";
+import { CustomSelect } from "./CustomSelect";
 
 interface PreviewFrameProps {
   html: string;
@@ -29,8 +30,12 @@ interface PreviewFrameProps {
   modalCommand: ModalCommand | null;
   selectCommand: SelectElementCommand | null;
   viewportMode: PreviewViewportMode;
+  viewportWidth: number;
+  viewportHeight: number;
   isFocusPreview: boolean;
-  onViewportModeChange: (mode: PreviewViewportMode) => void;
+  onViewportSizeChange: (width: number, height: number) => void;
+  onViewportPresetSelect: (mode: Exclude<PreviewViewportMode, "fit">) => void;
+  onFitToggle: () => void;
   onToggleFocusPreview: () => void;
   onElementSelected: (element: SelectedElementSnapshot) => void;
   onModalStateChange: (state: ModalState) => void;
@@ -47,8 +52,12 @@ function PreviewFrameComponent({
   modalCommand,
   selectCommand,
   viewportMode,
+  viewportWidth,
+  viewportHeight,
   isFocusPreview,
-  onViewportModeChange,
+  onViewportSizeChange,
+  onViewportPresetSelect,
+  onFitToggle,
   onToggleFocusPreview,
   onElementSelected,
   onModalStateChange,
@@ -71,7 +80,7 @@ function PreviewFrameComponent({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [reloadNonce]
   );
-  const viewportSize = viewportDimensions[viewportMode];
+  const isFit = viewportMode === "fit";
   const [zoom, setZoom] = useState(1);
   const [autoFit, setAutoFit] = useState(true);
 
@@ -81,36 +90,19 @@ function PreviewFrameComponent({
     setZoom(1);
   }, [reloadNonce]);
 
-  // 自适应 viewport 尺寸:匹配内容宽高比,不缩放 iframe 内部渲染
-  const adaptiveViewport = useMemo(() => {
-    if (!autoFit || !contentDimensions || viewportMode === "fit") return null;
-    const preset = viewportDimensions[viewportMode];
-    if (preset.width <= 0 || preset.height <= 0 || contentDimensions.contentHeight <= 0) return null;
-    const contentRatio = contentDimensions.contentWidth / contentDimensions.contentHeight;
-    const presetRatio = preset.width / preset.height;
-    if (contentRatio > presetRatio) {
-      // 内容比预设更宽 → 保持宽度,缩减高度
-      return {
-        width: preset.width,
-        height: Math.round(preset.width / contentRatio),
-        ratio: String(contentRatio),
-      };
-    }
-    // 内容比预设更高 → 保持高度,缩减宽度
-    return {
-      width: Math.round(preset.height * contentRatio),
-      height: preset.height,
-      ratio: String(contentRatio),
-    };
-  }, [autoFit, contentDimensions, viewportMode]);
+  // 在 fit 模式下使用自适应尺寸；否则使用编辑器传入的尺寸
+  const effectiveWidth = isFit && contentDimensions
+    ? Math.round(contentDimensions.contentWidth)
+    : viewportWidth;
+  const effectiveHeight = isFit && contentDimensions
+    ? Math.round(contentDimensions.contentHeight)
+    : viewportHeight;
 
-  const readoutViewport = adaptiveViewport ??
-    (viewportMode === "fit" && contentDimensions
-      ? {
-          width: Math.round(contentDimensions.contentWidth),
-          height: Math.round(contentDimensions.contentHeight),
-        }
-      : viewportSize);
+  // 编辑器:当前 W×H 是否匹配某个 preset
+  const presetKey = useMemo(
+    () => findMatchingPresetKey(viewportWidth, viewportHeight),
+    [viewportWidth, viewportHeight]
+  );
 
   const displayZoom = autoFit ? 1 : zoom;
 
@@ -183,94 +175,101 @@ function PreviewFrameComponent({
           <span>Canvas</span>
         </div>
         <div className="preview-header-actions">
-          <div className="preview-control-cluster">
-            <div className="segmented-control preview-mode-control" aria-label="预览宽度">
-              <PreviewModeButton
-                mode="desktop"
-                activeMode={viewportMode}
-                label="桌面"
-                dimensions={viewportDimensions.desktop}
-                onClick={onViewportModeChange}
-                icon={<Monitor size={15} strokeWidth={1.75} />}
-              />
-              <PreviewModeButton
-                mode="wide"
-                activeMode={viewportMode}
-                label="宽屏"
-                dimensions={viewportDimensions.wide}
-                onClick={onViewportModeChange}
-                icon={<Maximize2 size={15} strokeWidth={1.75} />}
-              />
-              <PreviewModeButton
-                mode="tablet"
-                activeMode={viewportMode}
-                label="平板"
-                dimensions={viewportDimensions.tablet}
-                onClick={onViewportModeChange}
-                icon={<Tablet size={15} strokeWidth={1.75} />}
-              />
-              <PreviewModeButton
-                mode="mobile"
-                activeMode={viewportMode}
-                label="手机"
-                dimensions={viewportDimensions.mobile}
-                onClick={onViewportModeChange}
-                icon={<Smartphone size={15} strokeWidth={1.75} />}
-              />
-              <PreviewModeButton
-                mode="fit"
-                activeMode={viewportMode}
-                label="适配"
-                dimensions={viewportDimensions.fit}
-                onClick={onViewportModeChange}
-                icon={<Shrink size={15} strokeWidth={1.75} />}
-              />
-            </div>
+          <div className="viewport-editor" aria-label="视口尺寸">
+            <span className="viewport-editor-label">当前</span>
+            <input
+              className="viewport-size-input"
+              type="number"
+              inputMode="numeric"
+              min={120}
+              max={3840}
+              step={10}
+              value={effectiveWidth}
+              disabled={isFit}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (Number.isFinite(next)) onViewportSizeChange(next, effectiveHeight);
+              }}
+              aria-label="视口宽度"
+              title={isFit ? "适配模式下尺寸由内容决定" : "视口宽度"}
+            />
+            <span className="viewport-editor-times" aria-hidden="true">×</span>
+            <input
+              className="viewport-size-input"
+              type="number"
+              inputMode="numeric"
+              min={80}
+              max={2160}
+              step={10}
+              value={effectiveHeight}
+              disabled={isFit}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (Number.isFinite(next)) onViewportSizeChange(effectiveWidth, next);
+              }}
+              aria-label="视口高度"
+              title={isFit ? "适配模式下尺寸由内容决定" : "视口高度"}
+            />
+            <CustomSelect
+              value={presetKey ?? ""}
+              options={[
+                { value: "desktop", label: VIEWPORT_PRESETS.desktop.label },
+                { value: "wide",    label: VIEWPORT_PRESETS.wide.label },
+                { value: "tablet",  label: VIEWPORT_PRESETS.tablet.label },
+                { value: "mobile",  label: VIEWPORT_PRESETS.mobile.label },
+              ]}
+              onChange={(value) =>
+                onViewportPresetSelect(value as Exclude<PreviewViewportMode, "fit">)
+              }
+              matchValue={(opt) => opt.value === presetKey}
+              placeholder="预设"
+            />
+            <button
+              className={`ghost-button compact-action viewport-fit-btn${isFit ? " viewport-fit-btn-active" : ""}`}
+              type="button"
+              onClick={onFitToggle}
+              title={isFit ? "退出适配，使用自定义尺寸" : "按内容尺寸自适应"}
+            >
+              <Shrink size={14} strokeWidth={1.75} />
+              <span>适配</span>
+            </button>
           </div>
-          <div className="preview-readouts" aria-label="画布读数">
-            <div className="canvas-size-control" aria-label="当前画布尺寸">
-              <span>{readoutViewport.width}</span>
-              <small>x</small>
-              <span>{readoutViewport.height}</span>
-              <Lock size={13} strokeWidth={1.75} />
-            </div>
-            <div className="zoom-control-cluster" aria-label="缩放控制">
-              <button
-                className="ghost-button compact-action zoom-btn"
-                type="button"
-                onClick={handleZoomOut}
-                disabled={displayZoom <= 0.25}
-                title="缩小"
-              >
-                <ZoomOut size={14} strokeWidth={1.75} />
-              </button>
-              <button
-                className="zoom-pill-button"
-                type="button"
-                onClick={handleZoomReset}
-                title="重置为 100%"
-              >
-                {autoFit ? "适应" : `${Math.round(displayZoom * 100)}%`}
-              </button>
-              <button
-                className="ghost-button compact-action zoom-btn"
-                type="button"
-                onClick={handleZoomIn}
-                disabled={displayZoom >= 2}
-                title="放大"
-              >
-                <ZoomIn size={14} strokeWidth={1.75} />
-              </button>
-              <button
-                className={`ghost-button compact-action zoom-fit-btn${autoFit ? " zoom-fit-active" : ""}`}
-                type="button"
-                onClick={handleAutoFit}
-                title={autoFit ? "已开启自适应，点击关闭" : "自适应画布"}
-              >
-                <Scan size={14} strokeWidth={1.75} />
-                <span>适应</span>
-              </button>
-            </div>
+          <div className="zoom-control-cluster" aria-label="缩放控制">
+            <button
+              className="ghost-button compact-action zoom-btn"
+              type="button"
+              onClick={handleZoomOut}
+              disabled={displayZoom <= 0.25}
+              title="缩小"
+            >
+              <ZoomOut size={14} strokeWidth={1.75} />
+            </button>
+            <button
+              className="zoom-pill-button"
+              type="button"
+              onClick={handleZoomReset}
+              title="重置为 100%"
+            >
+              {autoFit ? "适应" : `${Math.round(displayZoom * 100)}%`}
+            </button>
+            <button
+              className="ghost-button compact-action zoom-btn"
+              type="button"
+              onClick={handleZoomIn}
+              disabled={displayZoom >= 2}
+              title="放大"
+            >
+              <ZoomIn size={14} strokeWidth={1.75} />
+            </button>
+            <button
+              className={`ghost-button compact-action zoom-fit-btn${autoFit ? " zoom-fit-active" : ""}`}
+              type="button"
+              onClick={handleAutoFit}
+              title={autoFit ? "已开启自适应，点击关闭" : "自适应画布"}
+            >
+              <Scan size={14} strokeWidth={1.75} />
+              <span>适应</span>
+            </button>
           </div>
           <button
             className="ghost-button compact-action preview-focus-button"
@@ -287,10 +286,9 @@ function PreviewFrameComponent({
         <div
           className={`preview-viewport preview-viewport-${viewportMode}`}
           style={{
-            "--adaptive-width": adaptiveViewport ? `${adaptiveViewport.width}px` : undefined,
-            "--adaptive-height": adaptiveViewport ? `${adaptiveViewport.height}px` : undefined,
-            "--adaptive-ratio": adaptiveViewport ? adaptiveViewport.ratio : undefined,
             "--preview-zoom": displayZoom,
+            width: `${effectiveWidth}px`,
+            height: `${effectiveHeight}px`,
           } as React.CSSProperties}
         >
           <iframe
@@ -314,34 +312,6 @@ function PreviewFrameComponent({
 }
 
 export const PreviewFrame = memo(PreviewFrameComponent);
-
-interface PreviewModeButtonProps {
-  mode: PreviewViewportMode;
-  activeMode: PreviewViewportMode;
-  label: string;
-  dimensions: { width: number; height: number };
-  icon: ReactNode;
-  onClick: (mode: PreviewViewportMode) => void;
-}
-
-function PreviewModeButton({ mode, activeMode, label, dimensions, icon, onClick }: PreviewModeButtonProps) {
-  const isActive = mode === activeMode;
-  const dimText = dimensions.width > 0 ? `${dimensions.width}×${dimensions.height}` : "适配";
-
-  return (
-    <button
-      className={`segmented-button${isActive ? " segmented-button-active" : ""}`}
-      type="button"
-      aria-pressed={isActive}
-      title={`${label}预览 · ${dimText}`}
-      onClick={() => onClick(mode)}
-    >
-      {icon}
-      <span>{label}</span>
-      <small className="viewport-dim" aria-hidden="true">{dimText}</small>
-    </button>
-  );
-}
 
 function buildPreviewDocument(html: string, bridgeToken: string): string {
   const script = createBridgeScript(bridgeToken);
