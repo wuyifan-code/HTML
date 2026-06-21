@@ -82,3 +82,33 @@ describe("exportSnapshot multi-slide discovery (regression: single-page export)"
     expect(snapshotSrc).toMatch(/onImageErrorHandler\s*:\s*\(\)\s*=>\s*TRANSPARENT_PIXEL/);
   });
 });
+
+describe("exportSnapshot frozen canvas size (regression: per-page size decrease)", () => {
+  // 用户报告: 导出的 PDF 多页尺寸递减, 越往后越小。
+  // 根因: 旧实现每页都用 measureTarget 重测 + resizeIframe, 而 measureTarget 的
+  // fallback 链 (rect || scrollWidth || iframe.clientWidth) 会被前一次 resize 污染。
+  // 修复: 在循环外声明 canvasWidth/canvasHeight, 只在第一张 slide 测量一次,
+  // 后续所有 slide 都用这个冻结的尺寸。
+  const snapshotSrc = readFileSync(join(process.cwd(), "src/utils/exportSnapshot.ts"), "utf8");
+
+  it("declares canvasWidth / canvasHeight state outside the per-slide loop", () => {
+    // canvasWidth / canvasHeight must be declared BEFORE the for loop so they persist
+    // across iterations.
+    expect(snapshotSrc).toMatch(/let\s+canvasWidth\s*=\s*0/);
+    expect(snapshotSrc).toMatch(/let\s+canvasHeight\s*=\s*0/);
+  });
+
+  it("only measures the first slide (canvasWidth === 0 guard inside loop)", () => {
+    // The if(canvasWidth === 0) guard must wrap the measure() call, so subsequent
+    // slides reuse the frozen size instead of re-measuring.
+    const guard = snapshotSrc.match(/if\s*\(\s*canvasWidth\s*===\s*0\s*\)\s*\{[\s\S]{0,300}measure\(/);
+    expect(guard).not.toBeNull();
+  });
+
+  it("toPng and resizeIframe always use canvasWidth / canvasHeight, not measured dims", () => {
+    // After the freeze, the call to htmlToImage.toPng must reference canvasWidth/Height
+    // (not the old per-iteration `dimensions.width` variable that has been removed).
+    expect(snapshotSrc).toMatch(/width:\s*canvasWidth/);
+    expect(snapshotSrc).toMatch(/height:\s*canvasHeight/);
+  });
+});

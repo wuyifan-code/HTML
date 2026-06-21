@@ -21,6 +21,7 @@ function makeHtmlToImage(width = 800, height = 600): HtmlToImageLike {
 
 function makePdfLib(imageWidth = 800, imageHeight = 600): PdfLibLike {
   const drawnImages: Array<{ x: number; y: number; w: number; h: number }> = [];
+  const drawnRects: Array<{ x: number; y: number; w: number; h: number; color: [number, number, number] }> = [];
   const pages: Array<{ width: number; height: number }> = [];
   const instance = {
     embedPng: vi.fn().mockResolvedValue({ width: imageWidth, height: imageHeight }),
@@ -30,6 +31,15 @@ function makePdfLib(imageWidth = 800, imageHeight = 600): PdfLibLike {
       return {
         drawImage: vi.fn((_image, opts) => {
           drawnImages.push(opts);
+        }),
+        drawRectangle: vi.fn((opts) => {
+          drawnRects.push({
+            x: opts.x,
+            y: opts.y,
+            w: opts.width,
+            h: opts.height,
+            color: opts.color,
+          });
         }),
       };
     }),
@@ -76,6 +86,49 @@ describe("dataUrlToUint8Array", () => {
 describe("buildPdfBlob", () => {
   it("rejects empty HTML", async () => {
     await expect(buildPdfBlob("   ", { htmlToImage: makeHtmlToImage() })).rejects.toBeInstanceOf(ExportError);
+  });
+
+  it("draws a white background rectangle on every page before drawing the image", async () => {
+    // We need access to the mock's tracking arrays. Refactor: call buildPdfBlob
+    // with a loadPdfLib that exposes a drawRectangle spy we can inspect.
+    const drawRects: Array<{ x: number; y: number; w: number; h: number; color: [number, number, number] }> = [];
+    const drawImages: Array<{ x: number; y: number; w: number; h: number }> = [];
+    const callOrder: string[] = [];
+    const customInstance = {
+      embedPng: vi.fn().mockResolvedValue({ width: 800, height: 600 }),
+      addPage: vi.fn((size: [number, number]) => ({
+        drawImage: vi.fn((_img, opts) => {
+          drawImages.push(opts);
+          callOrder.push("drawImage");
+        }),
+        drawRectangle: vi.fn((opts) => {
+          drawRects.push({ x: opts.x, y: opts.y, w: opts.width, h: opts.height, color: opts.color });
+          callOrder.push("drawRectangle");
+        }),
+        _size: size,
+      })),
+      save: vi.fn().mockResolvedValue(new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34])),
+    };
+    const customLib: PdfLibLike = {
+      PDFDocument: { create: vi.fn().mockResolvedValue(customInstance) },
+    } as unknown as PdfLibLike;
+
+    await buildPdfBlob("<html><body><h1>hi</h1></body></html>", {
+      htmlToImage: makeHtmlToImage(),
+      loadPdfLib: () => Promise.resolve(customLib),
+      singlePage: true,
+    });
+
+    expect(drawRects).toHaveLength(1);
+    expect(drawRects[0].color).toEqual([1, 1, 1]);
+    expect(drawRects[0].x).toBe(0);
+    expect(drawRects[0].y).toBe(0);
+    expect(drawRects[0].w).toBeGreaterThan(0);
+    expect(drawRects[0].h).toBeGreaterThan(0);
+    expect(drawImages).toHaveLength(1);
+    // 关键: 矩形必须在图片之前绘制, 否则黑底叠在图上面盖住文字/icon。
+    expect(callOrder[0]).toBe("drawRectangle");
+    expect(callOrder[1]).toBe("drawImage");
   });
 
   it("produces a PDF Blob from a rendered PNG", async () => {

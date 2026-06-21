@@ -32,6 +32,14 @@ export interface PdfDocumentInstance {
 
 export interface PdfPageInstance {
   drawImage: (image: PdfImageInstance, options: { x: number; y: number; width: number; height: number }) => void;
+  drawRectangle: (options: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    /** PDF point RGB triple in 0..1, e.g. [1, 1, 1] for white. */
+    color: [number, number, number];
+  }) => void;
 }
 
 export interface PdfImageInstance {
@@ -93,6 +101,12 @@ export async function buildPdfBlob(
     const image = await pdf.embedPng(pngBytes);
     const { width, height } = computePdfPageSize(page.width, page.height, image.width, image.height);
     const pdfPage = pdf.addPage([width, height]);
+    // 关键修复: pdf-lib 默认 PDF 页面透明 → 大多数 PDF viewer 把透明渲染为黑色。
+    // 文字/icon 用了 currentColor / 透明背景的 SVG / icon-font 捕获出来的 PNG 在
+    // 透明区域没有 alpha=255 的不透明背景，叠在黑底 PDF 上就成了"黑块"。
+    // 与 exportPptx.ts:107 `slide.background = { color: "FFFFFF" }` 行为对齐:
+    // 先铺一层白色背景矩形，再画图片。
+    pdfPage.drawRectangle({ x: 0, y: 0, width, height, color: [1, 1, 1] });
     pdfPage.drawImage(image, { x: 0, y: 0, width, height });
   }
 

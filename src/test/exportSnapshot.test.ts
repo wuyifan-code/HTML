@@ -111,6 +111,61 @@ describe("capturePreviewAsPng", () => {
     expect(htmlToImage.toPng).toHaveBeenCalledTimes(2);
   });
 
+  it("freezes canvas size to the first slide's dimensions, ignoring later measure values", async () => {
+    // 关键回归测试: 即使后面 slide 测量出更小的尺寸, 也必须用第一张 slide 的尺寸。
+    // 防止 "每页按当前 slide 缩放 iframe" 的旧实现回归 → 修这个 bug 的目的是
+    // 让所有 PDF 页大小一致, 不出现用户报告的"页面大小递减"。
+    const iframe = fakeIframe() as unknown as HTMLIFrameElement;
+    const htmlToImage = { toPng: vi.fn().mockResolvedValue(TINY_PNG_DATA_URL) };
+    const slide1 = { id: "slide-1" } as unknown as HTMLElement;
+    const slide2 = { id: "slide-2" } as unknown as HTMLElement;
+    const slide3 = { id: "slide-3" } as unknown as HTMLElement;
+
+    // 模拟"递减尺寸": 第 1 张 1440x812, 后面越来越小
+    const measureCalls: number[] = [];
+    const measureTarget = (() => {
+      const sizes = [
+        { width: 1440, height: 812 },
+        { width: 800, height: 600 },
+        { width: 400, height: 300 },
+      ];
+      let i = 0;
+      return () => {
+        measureCalls.push(i);
+        return sizes[i++] ?? sizes[sizes.length - 1];
+      };
+    })();
+
+    const pages = await capturePreviewAsPng({
+      html: "<html><body><section class='slide'>a</section><section class='slide'>b</section><section class='slide'>c</section></body></html>",
+      htmlToImage,
+      createIframe: () => iframe,
+      waitForAssets: async () => undefined,
+      settle: async () => undefined,
+      activateSlide: () => undefined,
+      findSlides: () => [slide1, slide2, slide3],
+      measureTarget,
+    });
+
+    // 只测了第一张, 后面两张不再重测
+    expect(measureCalls).toEqual([0]);
+
+    // 所有页必须用第一张 slide 的尺寸
+    expect(pages).toHaveLength(3);
+    expect(pages[0].width).toBe(1440);
+    expect(pages[0].height).toBe(812);
+    expect(pages[1].width).toBe(1440);
+    expect(pages[1].height).toBe(812);
+    expect(pages[2].width).toBe(1440);
+    expect(pages[2].height).toBe(812);
+
+    // htmlToImage 也必须收到统一的尺寸参数, 不应该看到 800/600 或 400/300
+    const toPngCalls = htmlToImage.toPng.mock.calls;
+    expect(toPngCalls[0][1]).toMatchObject({ width: 1440, height: 812 });
+    expect(toPngCalls[1][1]).toMatchObject({ width: 1440, height: 812 });
+    expect(toPngCalls[2][1]).toMatchObject({ width: 1440, height: 812 });
+  });
+
   it("falls back to a single page when no slides are present", async () => {
     const doc = {
       body: {},

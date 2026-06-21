@@ -123,19 +123,34 @@ export async function capturePreviewAsPng(input: SnapshotInput): Promise<Rendere
     }
 
 const pages: RenderedPage[] = [];
+    // 关键修复: 把"画布尺寸"冻结为第一张 slide 的测量结果。
+    // 旧实现每页都按当前 slide 的尺寸缩放 iframe + 重测,
+    // 但 measureTargetDefault 的 fallback 链 (rect || scrollWidth || iframe.clientWidth)
+    // 会被前一次 resizeIframe 污染: 例如 slide1=1440x812, slide2=800x600
+    // → 第 1 次测量得 1440x812, iframe 被缩到 1440x812
+    // → 第 2 次激活 slide2 时, measure 的 rect 可能仍读出前一次的 viewport
+    //   或被上一轮 resize 影响, 后续页尺寸会逐页递减。
+    // 冻结到第一页尺寸后, 后续 slide 即使内部尺寸不同, 也按统一画布截图,
+    // 小 slide 周围留白边(与 PowerPoint "固定 slide size" 行为一致)。
+    let canvasWidth = 0;
+    let canvasHeight = 0;
     for (let index = 0; index < targets.length; index += 1) {
       const target = targets[index];
       if (slides.length > 0) activate(slides, index, frameWindow);
       await settle(frameWindow);
-      const dimensions = measure(target, iframe);
-      if (dimensions.width <= 0 || dimensions.height <= 0) {
-        throw new ExportError("页面尺寸为 0,无法截图", "snapshot-render-failed");
+      if (canvasWidth === 0) {
+        const measured = measure(target, iframe);
+        if (measured.width <= 0 || measured.height <= 0) {
+          throw new ExportError("页面尺寸为 0,无法截图", "snapshot-render-failed");
+        }
+        canvasWidth = measured.width;
+        canvasHeight = measured.height;
       }
-      resizeIframe(iframe, dimensions.width, dimensions.height);
+      resizeIframe(iframe, canvasWidth, canvasHeight);
       await settle(frameWindow);
       const dataUrl = await htmlToImage.toPng(target, {
-        width: dimensions.width,
-        height: dimensions.height,
+        width: canvasWidth,
+        height: canvasHeight,
         pixelRatio: input.pixelRatio ?? DEFAULT_PIXEL_RATIO,
         cacheBust: true,
         backgroundColor: "#ffffff",
@@ -154,8 +169,8 @@ const pages: RenderedPage[] = [];
       }
       pages.push({
         dataUrl,
-        width: dimensions.width,
-        height: dimensions.height,
+        width: canvasWidth,
+        height: canvasHeight,
         label: slides.length > 0 ? `Slide ${index + 1}` : "Page",
       });
     }
