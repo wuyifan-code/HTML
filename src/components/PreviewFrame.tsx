@@ -315,14 +315,6 @@ function PreviewFrameComponent({
 
 export const PreviewFrame = memo(PreviewFrameComponent);
 
-const viewportDimensions: Record<PreviewViewportMode, { width: number; height: number }> = {
-  desktop: { width: 1280, height: 800 },
-  wide: { width: 1440, height: 900 },
-  tablet: { width: 820, height: 1180 },
-  mobile: { width: 390, height: 844 },
-  fit: { width: 0, height: 0 },
-};
-
 interface PreviewModeButtonProps {
   mode: PreviewViewportMode;
   activeMode: PreviewViewportMode;
