@@ -113,14 +113,14 @@ export async function capturePreviewAsPng(input: SnapshotInput): Promise<Rendere
       }
       resizeIframe(iframe, dimensions.width, dimensions.height);
       await settle(frameWindow);
-      const dataUrl = await htmlToImage.toPng(target, {
-        width: dimensions.width,
-        height: dimensions.height,
-        pixelRatio: input.pixelRatio ?? DEFAULT_PIXEL_RATIO,
-        cacheBust: true,
-        backgroundColor: "#ffffff",
-        imagePlaceholder: TRANSPARENT_PIXEL,
-      });
+const dataUrl = await htmlToImage.toPng(target, {
+      width: dimensions.width,
+      height: dimensions.height,
+      pixelRatio: input.pixelRatio ?? DEFAULT_PIXEL_RATIO,
+      cacheBust: true,
+      backgroundColor: "#ffffff",
+      imagePlaceholder: TRANSPARENT_PIXEL,
+    });
       if (!dataUrl || typeof dataUrl !== "string") {
         throw new ExportError("截图结果为空", "snapshot-empty");
       }
@@ -162,13 +162,18 @@ async function createAndLoadIframe(html: string, timeoutMs: number): Promise<HTM
 
     iframe.setAttribute("aria-hidden", "true");
     iframe.style.position = "fixed";
-    iframe.style.left = "-10000px";
+    // 关键修复: 用 visibility:hidden + 放在视口内(top-left, 而不是 -10000px)。
+    // 之前的 opacity:0 + 屏外定位会导致 Chrome 调度器延迟/跳过布局与绘制,
+    // 使 html-to-image 捕获到空白 PNG。visibility:hidden 保留布局盒并强制 paint,
+    // 用户仍然看不到(因为 visibility 隐藏)。
+    iframe.style.left = "0";
     iframe.style.top = "0";
     iframe.style.width = `${DEFAULT_EXPORT_WIDTH}px`;
     iframe.style.height = `${DEFAULT_EXPORT_HEIGHT}px`;
     iframe.style.border = "0";
-    iframe.style.opacity = "0";
+    iframe.style.visibility = "hidden";
     iframe.style.pointerEvents = "none";
+    iframe.style.zIndex = "-1";
 
     iframe.onload = () => {
       if (settled) return;
@@ -294,9 +299,19 @@ function resizeIframe(iframe: HTMLIFrameElement, width: number, height: number):
 
 function settleFrameDefault(frameWindow: Window): Promise<void> {
   return new Promise<void>((resolve) => {
-    frameWindow.requestAnimationFrame(() => {
-      frameWindow.requestAnimationFrame(() => resolve());
-    });
+    // 三重 RAF + 微任务 yield, 给 Chrome 足够时间真正完成布局/绘制。
+    // 之前两重 RAF 在 hidden iframe + 大块 HTML 上不够, 会捕获到空白。
+    let count = 0;
+    const tick = () => {
+      count += 1;
+      if (count >= 3) {
+        // 让 microtask 队列清空再继续
+        Promise.resolve().then(() => resolve());
+        return;
+      }
+      frameWindow.requestAnimationFrame(tick);
+    };
+    frameWindow.requestAnimationFrame(tick);
   });
 }
 
