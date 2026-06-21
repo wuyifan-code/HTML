@@ -29,6 +29,11 @@ export function cleanHtmlForExport(html: string): string {
     documentRef.querySelectorAll(selector).forEach((node) => node.remove());
   });
 
+  // 移除文档脚本 — 它们在导出用的 srcdoc iframe 里会污染 document.title、
+  // 访问 history API 等,容易触发 unhandled errors 把 html-to-image 截断。
+  // 脚本对视觉截图无贡献。
+  documentRef.querySelectorAll("script").forEach((node) => node.remove());
+
   documentRef.querySelectorAll("*").forEach((element) => {
     INTERNAL_ATTRIBUTES.forEach((attribute) => element.removeAttribute(attribute));
   });

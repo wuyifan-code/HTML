@@ -49,3 +49,36 @@ describe("exportSnapshot iframe (regression: blank PDF/PPTX)", () => {
     expect(source).toMatch(/navigator\.userAgent\?\.includes\(["']jsdom["']\)/);
   });
 });
+
+describe("exportSnapshot multi-slide discovery (regression: single-page export)", () => {
+  const snapshotSrc = readFileSync(join(process.cwd(), "src/utils/exportSnapshot.ts"), "utf8");
+  const cleanSrc = readFileSync(join(process.cwd(), "src/utils/cleanHtmlForExport.ts"), "utf8");
+
+  it("isSlideCandidate uses duck typing, not instanceof HTMLElement", () => {
+    // 关键修复: srcdoc iframe 的 contentDocument 是独立 browsing context,
+    // HTMLElement constructor 与外层不同,instanceof HTMLElement 永远 false
+    // → 所有 slide 被过滤掉 → findDefaultSlides 返回 [] → 退到 fallback → 单页导出。
+    // Locate isSlideCandidate and check its body for `instanceof`.
+    const start = snapshotSrc.indexOf("function isSlideCandidate");
+    expect(start).toBeGreaterThan(0);
+    // Function body ends at the next standalone `}` followed by a blank line or new statement.
+    const slice = snapshotSrc.slice(start, start + 600);
+    // The duck typing line MUST exist.
+    expect(slice).toMatch(/typeof\s+\(?el\s+as HTMLElement\)?\.style/);
+  });
+
+  it("cleanHtmlForExport strips script tags before capture", () => {
+    // 关键修复: deck 的 <script>(history.replaceState 等) 在 srcdoc iframe 里
+    // 会抛 [object Event] 异常,中断 html-to-image 渲染。
+    // 在 cleanHtmlForExport 里移除所有 <script>。
+    expect(cleanSrc).toMatch(/documentRef\.querySelectorAll\(["']script["']\)/);
+    expect(cleanSrc).toMatch(/node\.remove\(\)/);
+  });
+
+  it("html-to-image toPng calls onImageErrorHandler to swallow broken <img>", () => {
+    // 关键修复: deck 的 <img src="assets/..."> 在 srcdoc iframe 里 404,
+    // html-to-image 默认走 reject → toPng 抛 [object Event] → 整次 export 中断。
+    // 必须传 onImageErrorHandler 把失败转成 placeholder 占位。
+    expect(snapshotSrc).toMatch(/onImageErrorHandler\s*:\s*\(\)\s*=>\s*TRANSPARENT_PIXEL/);
+  });
+});

@@ -29,6 +29,12 @@ export interface HtmlToImageOptions {
   cacheBust?: boolean;
   backgroundColor?: string;
   imagePlaceholder?: string;
+  /**
+   * 当 <img> 加载失败时(html-to-image 内部把 image 转为 dataURL)被调用。
+   * 返回一个占位 dataURL 让整次 capture 继续, 避免单个坏 <img> 抛出
+   * [object Event] 让 toPng 失败、整次 export 中断。
+   */
+  onImageErrorHandler?: () => string;
 }
 
 export interface HtmlToImageLike {
@@ -116,7 +122,7 @@ export async function capturePreviewAsPng(input: SnapshotInput): Promise<Rendere
       throw new ExportError("没有找到可导出的页面内容", "snapshot-no-slide-target");
     }
 
-    const pages: RenderedPage[] = [];
+const pages: RenderedPage[] = [];
     for (let index = 0; index < targets.length; index += 1) {
       const target = targets[index];
       if (slides.length > 0) activate(slides, index, frameWindow);
@@ -127,14 +133,19 @@ export async function capturePreviewAsPng(input: SnapshotInput): Promise<Rendere
       }
       resizeIframe(iframe, dimensions.width, dimensions.height);
       await settle(frameWindow);
-const dataUrl = await htmlToImage.toPng(target, {
-      width: dimensions.width,
-      height: dimensions.height,
-      pixelRatio: input.pixelRatio ?? DEFAULT_PIXEL_RATIO,
-      cacheBust: true,
-      backgroundColor: "#ffffff",
-      imagePlaceholder: TRANSPARENT_PIXEL,
-    });
+      const dataUrl = await htmlToImage.toPng(target, {
+        width: dimensions.width,
+        height: dimensions.height,
+        pixelRatio: input.pixelRatio ?? DEFAULT_PIXEL_RATIO,
+        cacheBust: true,
+        backgroundColor: "#ffffff",
+        imagePlaceholder: TRANSPARENT_PIXEL,
+        // 关键: deck 里的 <img src="..."> 用相对路径,
+        // 在 srcdoc iframe 里会 404。如果让 html-to-image 走默认 reject 路径,
+        // toPng 会抛出 [object Event] 把整次 export 中断。
+        // 用 onImageErrorHandler 把失败转成 placeholder 占位, 保证多页 capture 继续。
+        onImageErrorHandler: () => TRANSPARENT_PIXEL,
+      });
       if (!dataUrl || typeof dataUrl !== "string") {
         throw new ExportError("截图结果为空", "snapshot-empty");
       }
@@ -292,7 +303,10 @@ function findDefaultFallbackTarget(documentRef: Document): HTMLElement {
 }
 
 function isSlideCandidate(el: Element): boolean {
-  if (!(el instanceof HTMLElement)) return false;
+  // 关键修复: 不要用 instanceof HTMLElement —— srcdoc iframe 的 contentDocument
+  // 是独立 browsing context, 它的 HTMLElement constructor 与外层不同,
+  // 即使同源也会导致 instanceof 失败。改用 duck typing 检查 style 属性存在即可。
+  if (!el || typeof (el as HTMLElement).style === "undefined") return false;
   return (
     el.classList.contains("slide") ||
     el.hasAttribute("data-slide") ||
