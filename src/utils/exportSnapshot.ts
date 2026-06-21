@@ -48,6 +48,9 @@ export interface SnapshotInput {
   createIframe?: (srcdoc: string) => HTMLIFrameElement;
   /** 用于测试的钩子:等待 iframe 内资源就绪 */
   waitForAssets?: (documentRef: Document) => Promise<void>;
+  /** 用于测试的钩子:等待 srcdoc 真正被解析(contentDocument.body 出现子节点)。
+   *  默认会轮询 body.children.length。jsdom 测试环境可以注入 no-op。 */
+  waitForIframeContent?: (iframe: HTMLIFrameElement) => Promise<void>;
   /** 用于测试的钩子:等待动画 / 布局稳定 */
   settle?: (windowRef: Window) => Promise<void>;
   /** 用于测试的钩子:测量目标尺寸 */
@@ -78,6 +81,17 @@ export async function capturePreviewAsPng(input: SnapshotInput): Promise<Rendere
   const iframe = input.createIframe
     ? await waitForIframeLoad(input.createIframe, input.html, input.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT)
     : await createAndLoadIframe(input.html, input.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT);
+
+  // 关键修复: 等待 srcdoc 真正被解析/提交。
+  // iframe.onload 会在 about:blank 与 srcdoc 完成时各触发一次,
+  // 但有些浏览器在 onload 回调执行时 contentDocument.body 仍是空的,
+  // 导致 findDefaultFallbackTarget 找不到 <main>, 退而求其次用 <body>,
+  // 而此时 <body> 是空的, capture 出空白 PDF/PPTX。
+  if (input.waitForIframeContent) {
+    await input.waitForIframeContent(iframe);
+  } else {
+    await waitForIframeContent(iframe, input.loadTimeoutMs ?? DEFAULT_LOAD_TIMEOUT);
+  }
 
   try {
     const documentRef = iframe.contentDocument;
@@ -192,6 +206,31 @@ async function createAndLoadIframe(html: string, timeoutMs: number): Promise<HTM
     document.body.appendChild(iframe);
     iframe.srcdoc = wrapDocument(html);
   });
+}
+
+/**
+ * 等待 iframe 的 srcdoc 真正被解析 — contentDocument.body 出现内容。
+ * 修复 race condition: onload 触发时 body 可能仍是空的, 导致后续捕获到空白。
+ *
+ * jsdom 等无真实 layout 的环境下直接跳过(永远不会 children.length > 0)。
+ */
+async function waitForIframeContent(
+  iframe: HTMLIFrameElement,
+  timeoutMs: number
+): Promise<void> {
+  // jsdom 没有真实布局引擎,跳过轮询避免测试超时
+  if (typeof navigator !== "undefined" && navigator.userAgent?.includes("jsdom")) {
+    return;
+  }
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    const doc = iframe.contentDocument;
+    if (doc && doc.body && doc.body.children.length > 0) {
+      return;
+    }
+    await new Promise<void>((r) => setTimeout(r, 16));
+  }
+  // 超时也不抛, 让后续 fallback 处理空 body 的情况
 }
 
 function waitForIframeLoad(

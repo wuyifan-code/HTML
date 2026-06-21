@@ -37,4 +37,15 @@ describe("exportSnapshot iframe (regression: blank PDF/PPTX)", () => {
     const target = parseInt(tickCount![1], 10);
     expect(target).toBeGreaterThanOrEqual(3);
   });
+
+  it("waits for srcdoc to be parsed before capturing (race-condition fix)", () => {
+    // iframe.onload can fire before contentDocument.body has children.
+    // capturePreviewAsPng must wait for actual content to appear,
+    // otherwise findDefaultFallbackTarget returns an empty <body>.
+    expect(source).toMatch(/waitForIframeContent/);
+    // The wait loop must inspect body.children.length
+    expect(source).toMatch(/doc\.body\.children\.length\s*>\s*0/);
+    // jsdom short-circuit so unit tests don't time out
+    expect(source).toMatch(/navigator\.userAgent\?\.includes\(["']jsdom["']\)/);
+  });
 });
