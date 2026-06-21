@@ -1784,95 +1784,88 @@ textarea:focus-visible {
   gap: 7px;
 }
 
-.preview-control-cluster,
-.preview-readouts {
-  min-width: 0;
+.viewport-editor {
   height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 3px;
+  padding: 0 9px;
   border: 1px solid var(--border);
   border-radius: 9px;
   background: var(--surface-soft);
   box-shadow: 0 1px 2px rgba(16, 24, 40, 0.03);
 }
 
-.preview-mode-control {
-  border: 0;
-  background: transparent;
+.viewport-editor-label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
 }
 
-.preview-mode-control .segmented-button {
-  min-width: 72px;
-  min-height: 30px;
-  transition:
-    color var(--motion-fast),
-    background var(--motion-fast),
-    box-shadow var(--motion-fast),
-    transform var(--motion-fast);
-}
-
-.preview-mode-control .segmented-button:hover {
-  transform: translateY(-1px);
-}
-
-.preview-mode-control .segmented-button:active {
-  transform: translateY(0px) scale(0.97);
-  transition-duration: 60ms;
-}
-
-.preview-mode-control .segmented-button-active {
-  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.1);
-}
-
-/* viewport dim 标签:默认隐藏, hover 或 active 时显示像素尺寸 */
-.viewport-dim {
-  margin-left: 6px;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: rgba(15, 23, 42, 0.06);
-  color: #64748b;
-  font-size: 10px;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 600;
-  opacity: 0;
-  transition: opacity 140ms ease;
-}
-
-.preview-mode-control .segmented-button:hover .viewport-dim,
-.preview-mode-control .segmented-button-active .viewport-dim {
-  opacity: 1;
-}
-
-@media (max-width: 1024px) {
-  .viewport-dim {
-    opacity: 1;
-  }
-}
-
-.canvas-size-control {
-  min-height: 30px;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 9px;
-  border: 1px solid transparent;
-  border-radius: 7px;
+.viewport-size-input {
+  width: 56px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
   background: var(--surface);
   color: var(--ink-soft);
   font-family: var(--mono);
   font-size: 12px;
   font-weight: 680;
+  text-align: right;
+  -moz-appearance: textfield;
+  appearance: textfield;
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
 }
 
-.canvas-size-control small {
-  color: var(--faint);
-  font-family: var(--ui);
+.viewport-size-input::-webkit-outer-spin-button,
+.viewport-size-input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
 }
 
-.canvas-size-control svg {
+.viewport-size-input:focus-visible {
+  outline: none;
+  border-color: var(--mint);
+  box-shadow: 0 0 0 3px rgba(25, 169, 151, 0.14);
+}
+
+.viewport-size-input:disabled {
   color: var(--faint);
+  background: var(--surface-muted);
+  cursor: not-allowed;
+}
+
+.viewport-editor-times {
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.viewport-editor .custom-select {
+  width: auto;
+}
+
+.viewport-editor .custom-select-trigger {
+  min-height: 28px;
+  height: 28px;
+  padding: 0 8px;
+  background: var(--surface);
+}
+
+.viewport-fit-btn {
+  height: 28px;
+  padding: 0 8px;
+  gap: 4px;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.viewport-fit-btn-active {
+  color: var(--mint-strong);
+  background: rgba(25, 169, 151, 0.1);
+  border-color: rgba(25, 169, 151, 0.25);
 }
 
 .zoom-control-cluster {
@@ -3168,7 +3161,6 @@ textarea:focus-visible {
 
 @media (max-width: 1240px) {
   .button-label,
-  .preview-mode-control .segmented-button span,
   .zoom-pill-button {
     display: none;
   }
@@ -3283,23 +3275,6 @@ textarea:focus-visible {
 
   .toolbar {
     gap: 6px;
-  }
-
-  .canvas-size-control {
-    display: none;
-  }
-
-  .preview-readouts {
-    display: none;
-  }
-
-  .preview-control-cluster {
-    max-width: 100%;
-  }
-
-  .preview-mode-control .segmented-button {
-    min-width: 38px;
-    padding-inline: 8px;
   }
 
   .field-grid.two-col,
