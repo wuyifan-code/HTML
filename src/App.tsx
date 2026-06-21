@@ -43,6 +43,7 @@ import { exportPptxFromHtml, formatPptxError } from "./utils/exportPptx";
 import type { DocumentExportFormat } from "./utils/exportErrors";
 import { buildDisplayItemsFromSummaries } from "./utils/historySummary";
 import { injectEditableIds } from "./utils/injectEditableIds";
+import { VIEWPORT_PRESETS, type ViewportPresetKey } from "./utils/viewportPresets";
 import {
   getElementClassName,
   getNormalizedTagName,
@@ -131,6 +132,29 @@ export default function App() {
   const [lastSyncedAt, setLastSyncedAt] = useState<number>(() => Date.now());
   const [sourceView, setSourceView] = useState<"source" | "tree">("tree");
   const [previewViewportMode, setPreviewViewportMode] = useState<PreviewViewportMode>("desktop");
+  const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>({
+    width: 1280,
+    height: 800,
+  });
+
+  const handleViewportSizeChange = useCallback((width: number, height: number) => {
+    setViewportSize({ width, height });
+  }, []);
+
+  const handleViewportPresetSelect = useCallback(
+    (mode: ViewportPresetKey) => {
+      setPreviewViewportMode(mode);
+      setViewportSize({
+        width: VIEWPORT_PRESETS[mode].width,
+        height: VIEWPORT_PRESETS[mode].height,
+      });
+    },
+    []
+  );
+
+  const handleFitToggle = useCallback(() => {
+    setPreviewViewportMode((prev) => (prev === "fit" ? "desktop" : "fit"));
+  }, []);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isStatusSecondaryOpen, setIsStatusSecondaryOpen] = useState(false);
   const [exportPreviewHtml, setExportPreviewHtml] = useState<string | null>(null);
@@ -763,10 +787,10 @@ export default function App() {
         if (selectedElement) applyStyleUpdate("textAlign", "justify");
       },
     },
-    { combo: "mod+1", handler: () => setPreviewViewportMode("desktop") },
-    { combo: "mod+2", handler: () => setPreviewViewportMode("wide") },
-    { combo: "mod+3", handler: () => setPreviewViewportMode("tablet") },
-    { combo: "mod+4", handler: () => setPreviewViewportMode("mobile") },
+    { combo: "mod+1", handler: () => { setPreviewViewportMode("desktop"); setViewportSize({ width: 1280, height: 800 }); } },
+    { combo: "mod+2", handler: () => { setPreviewViewportMode("wide");    setViewportSize({ width: 1440, height: 900 }); } },
+    { combo: "mod+3", handler: () => { setPreviewViewportMode("tablet");  setViewportSize({ width: 820,  height: 1180 }); } },
+    { combo: "mod+4", handler: () => { setPreviewViewportMode("mobile");  setViewportSize({ width: 390,  height: 844 }); } },
     { combo: "mod+5", handler: () => setPreviewViewportMode("fit") },
   ]);
 
@@ -1102,8 +1126,12 @@ export default function App() {
           modalCommand={modalCommand}
           selectCommand={selectCommand}
           viewportMode={previewViewportMode}
+          viewportWidth={viewportSize.width}
+          viewportHeight={viewportSize.height}
           isFocusPreview={isFocusPreview}
-          onViewportModeChange={setPreviewViewportMode}
+          onViewportSizeChange={handleViewportSizeChange}
+          onViewportPresetSelect={handleViewportPresetSelect}
+          onFitToggle={handleFitToggle}
           onToggleFocusPreview={handleToggleFocusPreview}
           onElementSelected={updateSelectedElement}
           onModalStateChange={handleModalStateChange}
