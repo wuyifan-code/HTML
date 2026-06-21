@@ -1086,6 +1086,8 @@ export function formatAiErrorDetail(error: AiRequestError, maxBodyLength = 800):
   return `[${statusLabel}] ${urlLabel}\n${body}`;
 }
 
+// 取 HEAD 版本的 parseJsonObject (含 buildJsonParseCandidates / repairLooseJson
+// 等更完整的修复管道) 作为唯一实现。origin/main 的简单实现是 HEAD 的子集。
 function parseJsonObject(text: string): unknown {
   const trimmed = text.trim();
   const candidates = buildJsonParseCandidates(trimmed);
