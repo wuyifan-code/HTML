@@ -12,9 +12,11 @@ interface CustomSelectProps {
   onChange: (value: string) => void;
   /** Optional custom matcher if value stored differs from option.value */
   matchValue?: (option: CustomSelectOption, currentValue: string) => boolean;
+  /** Optional placeholder shown when no option matches. Defaults to "". */
+  placeholder?: string;
 }
 
-export function CustomSelect({ value, options, onChange, matchValue }: CustomSelectProps) {
+export function CustomSelect({ value, options, onChange, matchValue, placeholder = "" }: CustomSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -23,7 +25,7 @@ export function CustomSelect({ value, options, onChange, matchValue }: CustomSel
   const selectedIndex = options.findIndex((opt) =>
     matchValue ? matchValue(opt, value) : opt.value === value
   );
-  const selectedLabel = selectedIndex >= 0 ? options[selectedIndex].label : value;
+  const selectedLabel = selectedIndex >= 0 ? options[selectedIndex].label : placeholder;
 
   const handleToggle = useCallback(() => {
     setIsOpen((prev) => !prev);
