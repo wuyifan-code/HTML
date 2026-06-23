@@ -211,7 +211,7 @@ export default function OptimizedUiApp() {
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "pptx" | null>(null);
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("content");
-  const [zoomMode, setZoomMode] = useState<ZoomMode>("88");
+  const [zoomMode, setZoomMode] = useState<ZoomMode>("fit");
   const stageRef = useRef<HTMLDivElement | null>(null);
   const stageSize = useElementSize(stageRef);
   const [viewportSize, setViewportSize] = useState(() => ({
