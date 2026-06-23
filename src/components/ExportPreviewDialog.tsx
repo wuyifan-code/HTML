@@ -1,11 +1,13 @@
 import { memo } from "react";
 import { CheckCircle2, Clipboard, Download, X } from "lucide-react";
+import type { ExportWarning } from "../utils/exportValidation";
 
 interface ExportPreviewDialogProps {
   html: string;
   onClose: () => void;
   onCopy: () => void;
   onDownload: () => void;
+  warnings?: ExportWarning[];
 }
 
 const internalMarkers = [
@@ -15,8 +17,11 @@ const internalMarkers = [
   "html-finetune-floating-toolbar",
 ];
 
-function ExportPreviewDialogImpl({ html, onClose, onCopy, onDownload }: ExportPreviewDialogProps) {
+function ExportPreviewDialogImpl({ html, onClose, onCopy, onDownload, warnings = [] }: ExportPreviewDialogProps) {
   const hasInternalMarkers = internalMarkers.some((marker) => html.includes(marker));
+  const hasBlockingWarnings = warnings.some((warning) =>
+    ["internal-attribute", "internal-element", "empty-html"].includes(warning.type)
+  );
 
   return (
     <div className="dialog-backdrop" role="presentation">
@@ -33,8 +38,19 @@ function ExportPreviewDialogImpl({ html, onClose, onCopy, onDownload }: ExportPr
 
         <div className={`export-check ${hasInternalMarkers ? "export-check-warning" : ""}`}>
           <CheckCircle2 size={17} strokeWidth={1.75} />
-          {hasInternalMarkers ? "仍检测到内部标记，请先检查 HTML" : "未检测到 HTML FineTune 内部标记"}
+          {hasInternalMarkers || hasBlockingWarnings ? "仍检测到导出风险，请先检查 HTML" : "未检测到 HTML FineTune 内部标记"}
         </div>
+
+        {warnings.length > 0 ? (
+          <div className="export-warning-list" role="status" aria-live="polite">
+            <strong>导出检查</strong>
+            <ul>
+              {warnings.map((warning, index) => (
+                <li key={`${warning.type}-${index}`}>{warning.message}</li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
 
         <textarea className="export-preview-code" readOnly value={html} />
 
@@ -43,7 +59,7 @@ function ExportPreviewDialogImpl({ html, onClose, onCopy, onDownload }: ExportPr
             <Clipboard size={16} strokeWidth={1.75} />
             复制干净 HTML
           </button>
-          <button className="primary-button" type="button" onClick={onDownload} disabled={hasInternalMarkers}>
+          <button className="primary-button" type="button" onClick={onDownload} disabled={hasInternalMarkers || hasBlockingWarnings}>
             <Download size={17} strokeWidth={1.75} />
             下载 edited-page.html
           </button>
