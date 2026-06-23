@@ -22,6 +22,7 @@ export interface PdfLibLike {
   PDFDocument: {
     create: () => Promise<PdfDocumentInstance>;
   };
+  rgb?: (red: number, green: number, blue: number) => unknown;
 }
 
 export interface PdfDocumentInstance {
@@ -37,8 +38,7 @@ export interface PdfPageInstance {
     y: number;
     width: number;
     height: number;
-    /** PDF point RGB triple in 0..1, e.g. [1, 1, 1] for white. */
-    color: [number, number, number];
+    color: unknown;
   }) => void;
 }
 
@@ -106,7 +106,10 @@ export async function buildPdfBlob(
     // 透明区域没有 alpha=255 的不透明背景，叠在黑底 PDF 上就成了"黑块"。
     // 与 exportPptx.ts:107 `slide.background = { color: "FFFFFF" }` 行为对齐:
     // 先铺一层白色背景矩形，再画图片。
-    pdfPage.drawRectangle({ x: 0, y: 0, width, height, color: [1, 1, 1] });
+    const white = pdfLib.rgb?.(1, 1, 1);
+    if (white) {
+      pdfPage.drawRectangle({ x: 0, y: 0, width, height, color: white });
+    }
     pdfPage.drawImage(image, { x: 0, y: 0, width, height });
   }
 
@@ -180,6 +183,7 @@ async function defaultLoadPdfLib(): Promise<PdfLibLike> {
 
   const bundle = await loadBundleScript<{
     PDFDocument: PdfLibLike["PDFDocument"];
+    rgb?: PdfLibLike["rgb"];
   }>(
     (import.meta.env.BASE_URL || "/") + "pdf-lib.bundle.js",
     "PdfLibBundle"
@@ -187,7 +191,7 @@ async function defaultLoadPdfLib(): Promise<PdfLibLike> {
   if (!bundle?.PDFDocument?.create) {
     throw new ExportError("pdf-lib 预打包模块加载失败", "library-load-failed");
   }
-  return { PDFDocument: bundle.PDFDocument };
+  return { PDFDocument: bundle.PDFDocument, rgb: bundle.rgb };
 }
 
 /**
