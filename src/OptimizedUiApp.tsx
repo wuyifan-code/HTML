@@ -1649,7 +1649,6 @@ export default function OptimizedUiApp() {
                   onChange={(event) => updateViewportDimension("height", event.target.value)}
                 />
               </div>
-              <span className="size-pill">{viewportSize.width} × {viewportSize.height}</span>
               <div className="segmented" aria-label="画布缩放">
                 <button className={`seg-btn${zoomMode === "fit" ? " is-active" : ""}`} type="button" onClick={() => setZoomMode("fit")}>适配</button>
                 <button className={`seg-btn${zoomMode === "88" ? " is-active" : ""}`} type="button" onClick={() => setZoomMode("88")}>88%</button>
