@@ -1324,13 +1324,6 @@ export default function OptimizedUiApp() {
           </div>
         </div>
 
-        <div className="workflow" aria-label="工作流程">
-          <button className="step" type="button">导入</button>
-          <button className="step is-current" type="button">微调</button>
-          <button className="step" type="button">预览</button>
-          <button className="step" type="button">交付</button>
-        </div>
-
         <div className="toolbar" aria-label="主要操作">
           <button className="icon-btn btn-muted" type="button" title="撤销 · Ctrl/⌘+Z" aria-label="撤销" onClick={undo} disabled={!canUndo}>
             <IconUndo />
@@ -1338,20 +1331,6 @@ export default function OptimizedUiApp() {
           <button className="icon-btn btn-muted" type="button" title="重做 · Ctrl/⌘+Y 或 Shift+Ctrl/⌘+Z" aria-label="重做" onClick={redo} disabled={!canRedo}>
             <IconRedo />
           </button>
-          <button className="btn" type="button" title="导入 HTML · Ctrl/⌘+O" onClick={() => fileInputRef.current?.click()}>
-            <IconImport />
-            导入 HTML
-          </button>
-          <input
-            ref={fileInputRef}
-            hidden
-            type="file"
-            accept=".html,.htm,text/html"
-            onChange={(event) => {
-              handleFile(event.currentTarget.files?.[0]);
-              event.currentTarget.value = "";
-            }}
-          />
           <button className="btn" type="button" title="复制干净 HTML · Shift+Ctrl/⌘+C" onClick={handleCopy}>复制 HTML</button>
           <div className={`dropdown${isExportOpen ? " is-open" : ""}`}>
             <button
@@ -1375,25 +1354,19 @@ export default function OptimizedUiApp() {
               </button>
             </div>
           </div>
-          <button
-            className={`btn panel-toggle-btn${isSourceCollapsed ? " is-active" : ""}`}
-            type="button"
-            aria-pressed={!isSourceCollapsed}
-            onClick={handleToggleSourcePanel}
-          >
-            结构
-          </button>
-          <button
-            className={`btn panel-toggle-btn${isInspectorCollapsed ? " is-active" : ""}`}
-            type="button"
-            aria-pressed={!isInspectorCollapsed}
-            onClick={handleToggleInspectorPanel}
-          >
-            属性
-          </button>
           <button className="icon-btn" type="button" title="查看历史" aria-label="查看历史" onClick={() => setIsHistoryOpen((value) => !value)}>
             <IconHistory />
           </button>
+          <input
+            ref={fileInputRef}
+            hidden
+            type="file"
+            accept=".html,.htm,text/html"
+            onChange={(event) => {
+              handleFile(event.currentTarget.files?.[0]);
+              event.currentTarget.value = "";
+            }}
+          />
         </div>
       </header>
 
