@@ -1941,8 +1941,8 @@ export default function OptimizedUiApp() {
       </main>
 
       <footer className="statusbar">
-        <div className="status-left"><span className="dot"></span><span>已选择：{selectedTitle}</span><span>{statusMessage}</span></div>
-        <div className="status-right"><span>{state.html.length.toLocaleString()} 字符</span><span>预览：{isPreviewReady ? "已就绪" : "渲染中"}</span><span>最近同步：{formatRelativeTime(lastSyncedAt)}</span><span>本地运行 · iframe srcDoc · postMessage 通信</span></div>
+        <div className="status-left"><span className="dot"></span><span>已选择：{selectedTitle}</span></div>
+        <div className="status-right"><span>{state.html.length.toLocaleString()} 字符</span><span>预览：{isPreviewReady ? "已就绪" : "渲染中"}</span></div>
       </footer>
 
       {isExportPreviewOpen ? (
