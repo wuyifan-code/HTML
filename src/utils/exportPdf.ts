@@ -38,7 +38,7 @@ export interface PdfPageInstance {
     y: number;
     width: number;
     height: number;
-    color: unknown;
+    color: [number, number, number];
   }) => void;
 }
 
@@ -106,10 +106,7 @@ export async function buildPdfBlob(
     // 透明区域没有 alpha=255 的不透明背景，叠在黑底 PDF 上就成了"黑块"。
     // 与 exportPptx.ts:107 `slide.background = { color: "FFFFFF" }` 行为对齐:
     // 先铺一层白色背景矩形，再画图片。
-    const white = pdfLib.rgb?.(1, 1, 1);
-    if (white) {
-      pdfPage.drawRectangle({ x: 0, y: 0, width, height, color: white });
-    }
+    pdfPage.drawRectangle({ x: 0, y: 0, width, height, color: [1, 1, 1] });
     pdfPage.drawImage(image, { x: 0, y: 0, width, height });
   }
 
