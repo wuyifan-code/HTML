@@ -3,6 +3,7 @@ import { ColorField } from "./components/ColorField";
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { PretextMeasureBadge } from "./components/PretextMeasureBadge";
 import { useEditorHistory } from "./hooks/useEditorHistory";
+import { useElementSize } from "./hooks/useElementSize";
 import { sampleHtml } from "./sampleHtml";
 import type { AiTreeAnnotation, DomTreeNode } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
@@ -210,6 +211,8 @@ export default function OptimizedUiApp() {
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "pptx" | null>(null);
   const [inspectorTab, setInspectorTab] = useState<InspectorTab>("content");
   const [zoomMode, setZoomMode] = useState<ZoomMode>("88");
+  const stageRef = useRef<HTMLDivElement | null>(null);
+  const stageSize = useElementSize(stageRef);
   const [viewportSize, setViewportSize] = useState(() => ({
     width: VIEWPORT_PRESETS.desktop.width,
     height: VIEWPORT_PRESETS.desktop.height,
@@ -1667,14 +1670,14 @@ export default function OptimizedUiApp() {
               {isFocusMode ? "退出专注" : "专注"}
             </button>
           </div>
-          <div className="stage">
+          <div className="stage" ref={stageRef}>
             <article
               className="page-preview"
               aria-label="页面预览"
               style={{
                 width: viewportSize.width,
                 height: viewportSize.height,
-                transform: zoomToTransform(zoomMode),
+                transform: zoomToTransform(zoomMode, viewportSize, stageSize),
               }}
             >
               <iframe
@@ -2601,9 +2604,22 @@ function toNodeIcon(tagName: string): string {
   return tagName.slice(0, 3).toUpperCase();
 }
 
-function zoomToTransform(mode: ZoomMode): string | undefined {
+function zoomToTransform(
+  mode: ZoomMode,
+  viewportSize: { width: number; height: number },
+  stageSize: { width: number; height: number }
+): string | undefined {
   if (mode === "100") return "scale(1)";
-  if (mode === "fit") return "scale(0.72)";
+  if (mode === "fit") {
+    if (stageSize.width === 0 || stageSize.height === 0) return "scale(0.72)";
+    // 预留 32px 边距,避免 page-preview 贴边
+    const scale = Math.min(
+      (stageSize.width - 32) / viewportSize.width,
+      (stageSize.height - 32) / viewportSize.height,
+      1
+    );
+    return `scale(${scale.toFixed(3)})`;
+  }
   return "scale(0.88)";
 }
 
