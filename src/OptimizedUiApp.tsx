@@ -1723,17 +1723,12 @@ export default function OptimizedUiApp() {
             <button className="icon-btn panel-collapse-btn" type="button" aria-label="折叠属性面板" onClick={handleToggleInspectorPanel}>›</button>
           </div>
           <div className="inspector-body">
-            <section className="property-card" data-od-id="selected-summary">
-              <span className="meta">当前选择</span>
-              <h3>{selectedTitle}</h3>
-              <p className="meta">{selectedMeta}</p>
-              {selectedAnnotation ? (
-                <p className="meta ai-selected-note">
-                  AI：{selectedAnnotation.label} · {selectedAnnotation.role}
-                  {selectedAnnotation.issues.length ? " · " + selectedAnnotation.issues.join(" / ") : ""}
-                </p>
-              ) : null}
-            </section>
+            {selectedAnnotation ? (
+              <p className="meta ai-selected-note">
+                AI：{selectedAnnotation.label} · {selectedAnnotation.role}
+                {selectedAnnotation.issues.length ? " · " + selectedAnnotation.issues.join(" / ") : ""}
+              </p>
+            ) : null}
             <section className="property-card" data-od-id="content-editor" hidden={inspectorTab !== "content"}>
               <div className="field">
                 <label htmlFor="contentInput">文字内容</label>
@@ -2024,7 +2019,7 @@ function InspectorDiagnostics({ selected }: { selected: SelectedSnapshot | null 
       <div className="diagnostic-card">
         <div className="diagnostic-head">
           <span>Computed</span>
-          <strong>{selected.path ? simplifyDomPath(selected.path) : selected.tagName}</strong>
+          <strong>{selected.tagName}</strong>
         </div>
         <h4>Typography</h4>
         <dl className="diagnostic-list">
