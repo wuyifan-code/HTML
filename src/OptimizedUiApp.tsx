@@ -1209,7 +1209,7 @@ export default function OptimizedUiApp() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [applyShortcutStyle, applyViewportPreset, commit, handleCopy, handleExportHtml, handleOpenExportPreview, redo, selected, showToast, state.html, undo]);
+  }, [applyShortcutStyle, applyViewportPreset, commit, handleCopy, handleExportHtml, handleOpenExportPreview, isCheatsheetOpen, redo, selected, showToast, state.html, undo]);
 
   const handleMoveElement = useCallback(
     (direction: "up" | "down") => {
