@@ -738,8 +738,16 @@
       grid-template-columns: repeat(3, 1fr);
     }
     .inspector-tabs-wrap .panel-collapse-btn {
-      align-self: center;
-      margin-right: var(--space-3);
+      align-self: stretch;
+      margin-right: var(--space-2);
+      border-radius: var(--radius-md);
+      background: var(--surface-warm);
+      color: var(--fg-2);
+      transition: background var(--motion-fast) var(--ease-standard);
+    }
+    .inspector-tabs-wrap .panel-collapse-btn:hover {
+      background: color-mix(in oklab, var(--accent) 14%, var(--surface-warm));
+      color: var(--fg);
     }
     .inspector-tabs .tab {
       border-radius: 0;
