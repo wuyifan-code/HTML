@@ -14,3 +14,8 @@ worktrees/
 # Embedded git worktrees (other agents)
 .claude/worktrees/
 artifacts/
+
+# IDE / agent scratch directories
+.reasonix/
+.trae/
+.workbuddy/
