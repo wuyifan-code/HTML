@@ -206,6 +206,7 @@ export default function OptimizedUiApp() {
   const [statusMessage, setStatusMessage] = useState("实时预览 · 刚刚");
   const [toastMessage, setToastMessage] = useState("");
   const [isToastVisible, setIsToastVisible] = useState(false);
+  const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "pptx" | null>(null);
@@ -1083,6 +1084,11 @@ export default function OptimizedUiApp() {
 
       const key = event.key.toLowerCase();
       if (!isTextInput && key === "escape") {
+        if (isCheatsheetOpen) {
+          event.preventDefault();
+          setIsCheatsheetOpen(false);
+          return;
+        }
         event.preventDefault();
         setIsHistoryOpen(false);
         setIsExportOpen(false);
@@ -1090,6 +1096,11 @@ export default function OptimizedUiApp() {
         setIsSelectionCleared(true);
         commit({ html: state.html, selectedId: null }, { record: false });
         setStatusMessage("已取消选择");
+        return;
+      }
+      if (!isTextInput && !event.metaKey && !event.ctrlKey && event.key === "?") {
+        event.preventDefault();
+        setIsCheatsheetOpen((value) => !value);
         return;
       }
       if (!isTextInput && (key === "delete" || key === "backspace") && selected) {
@@ -1359,6 +1370,9 @@ export default function OptimizedUiApp() {
           </div>
           <button className="icon-btn" type="button" title="查看历史" aria-label="查看历史" onClick={() => setIsHistoryOpen((value) => !value)}>
             <IconHistory />
+          </button>
+          <button className="icon-btn" type="button" title="快捷键 (?)" aria-label="快捷键" onClick={() => setIsCheatsheetOpen((value) => !value)}>
+            <IconKeyboard />
           </button>
           <input
             ref={fileInputRef}
@@ -1959,6 +1973,35 @@ export default function OptimizedUiApp() {
       ) : null}
 
       <div className={`toast${isToastVisible ? " is-visible" : ""}`} role="status" aria-live="polite">{toastMessage || "已更新"}</div>
+
+      {isCheatsheetOpen ? (
+        <div className="cheatsheet-backdrop" onClick={() => setIsCheatsheetOpen(false)}>
+          <section
+            className="cheatsheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="快捷键"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <header className="cheatsheet-head">
+              <h2>快捷键</h2>
+              <button className="icon-btn" type="button" aria-label="关闭" onClick={() => setIsCheatsheetOpen(false)}>×</button>
+            </header>
+            <dl className="cheatsheet-list">
+              <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>Z</kbd></dt><dd>撤销</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>Y</kbd></dt><dd>重做</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>Shift</kbd> + <kbd>Ctrl/⌘</kbd> + <kbd>Z</kbd></dt><dd>重做（备选）</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>O</kbd></dt><dd>导入 HTML</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>Shift</kbd> + <kbd>Ctrl/⌘</kbd> + <kbd>C</kbd></dt><dd>复制干净 HTML</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>S</kbd></dt><dd>导出</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>1</kbd> · <kbd>2</kbd> · <kbd>3</kbd> · <kbd>4</kbd></dt><dd>切换 viewport 预设</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>F</kbd></dt><dd>专注模式</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>?</kbd></dt><dd>显示本面板</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>Esc</kbd></dt><dd>关闭弹窗</dd></div>
+            </dl>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2660,6 +2703,10 @@ function IconHistory() {
 
 function IconMenu() {
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16M4 12h10M4 18h16"/></svg>;
+}
+
+function IconKeyboard() {
+  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>;
 }
 
 function IconEye() {

@@ -1617,3 +1617,86 @@
   color: var(--accent);
 }
 
+/* 快捷键面板 */
+.cheatsheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in oklab, var(--fg) 38%, transparent);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  animation: cheatsheet-fade-in 180ms ease;
+}
+@keyframes cheatsheet-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.cheatsheet {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  max-width: 520px;
+  width: 90vw;
+  max-height: 85vh;
+  overflow: auto;
+  box-shadow: 0 28px 76px rgba(15, 23, 42, 0.32);
+  animation: cheatsheet-pop-in 220ms ease;
+}
+@keyframes cheatsheet-pop-in {
+  from { opacity: 0; transform: scale(0.96) translateY(8px); }
+  to { opacity: 1; transform: scale(1) translateY(0); }
+}
+.cheatsheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border-soft);
+}
+.cheatsheet-head h2 {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-family: var(--font-display);
+  color: var(--fg);
+}
+.cheatsheet-list {
+  display: grid;
+  gap: var(--space-3);
+  margin: 0;
+}
+.cheatsheet-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  align-items: center;
+  gap: var(--space-4);
+}
+.cheatsheet-row dt,
+.cheatsheet-row dd {
+  margin: 0;
+}
+.cheatsheet-row dt {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+}
+.cheatsheet-row dd {
+  color: var(--muted);
+  font-size: var(--text-sm);
+}
+.cheatsheet kbd {
+  font-family: var(--font-mono);
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-warm);
+  color: var(--fg-2);
+  line-height: 1.4;
+  min-width: 20px;
+  text-align: center;
+  display: inline-block;
+}
+
