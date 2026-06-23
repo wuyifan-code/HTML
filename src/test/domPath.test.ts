@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { getDomPath, hasElementWithHftId, serializeDocument, updateHtmlElementByHftId } from "../utils/domPath";
+import { getDomPath, hasElementWithHftId, serializeDocument, simplifyDomPath, updateHtmlElementByHftId } from "../utils/domPath";
 import { HFT_ID_ATTRIBUTE } from "../utils/editableElement";
 
 describe("getDomPath", () => {
@@ -13,6 +13,25 @@ describe("getDomPath", () => {
     expect(path).toMatch(/html > body(:nth-of-type\(\d+\))? > div:nth-of-type\(\d+\) > p:nth-of-type\(\d+\)/);
 
     document.body.removeChild(div);
+  });
+});
+
+describe("simplifyDomPath", () => {
+  it("strips nth-of-type from every segment", () => {
+    const input = "html > body:nth-of-type(1) > main:nth-of-type(1) > section:nth-of-type(1) > div:nth-of-type(1) > h1:nth-of-type(1)";
+    expect(simplifyDomPath(input)).toBe("html > body > main > section > div > h1");
+  });
+
+  it("leaves a path without nth-of-type unchanged", () => {
+    expect(simplifyDomPath("html > body > h1")).toBe("html > body > h1");
+  });
+
+  it("returns empty string for empty input", () => {
+    expect(simplifyDomPath("")).toBe("");
+  });
+
+  it("handles single segment", () => {
+    expect(simplifyDomPath("div:nth-of-type(3)")).toBe("div");
   });
 });
 

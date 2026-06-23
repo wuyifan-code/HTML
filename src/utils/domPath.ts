@@ -25,6 +25,18 @@ export function getDomPath(element: Element): string {
   return segments.join(" > ");
 }
 
+/**
+ * 把完整 CSS 选择器路径 (e.g. `html > body:nth-of-type(1) > main:nth-of-type(1) > ...`) 
+ * 简化为纯标签名链 (e.g. `html > body > main > section > div > h1`)。
+ * 用于 Inspector 展示,避免用户被冗长 nth-of-type 链淹没。
+ */
+export function simplifyDomPath(path: string): string {
+  return path
+    .split(" > ")
+    .map((segment) => segment.replace(/:nth-of-type\(\d+\)/, ""))
+    .join(" > ");
+}
+
 export function queryElementByPath(documentRef: Document, path: string): HTMLElement | null {
   try {
     const element = documentRef.querySelector(path);

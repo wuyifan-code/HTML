@@ -16,7 +16,9 @@ describe("Cheatsheet overlay (OptimizedUiApp)", () => {
   it("点击 ? 按钮打开 cheatsheet,显示至少 8 条快捷键", () => {
     render(<OptimizedUiApp />);
     const trigger = screen.getByRole("button", { name: /快捷键/ });
-    fireEvent.click(trigger);
+    act(() => {
+      fireEvent.click(trigger);
+    });
     const cheatsheet = document.querySelector(".cheatsheet");
     expect(cheatsheet).not.toBeNull();
     const rows = cheatsheet?.querySelectorAll(".cheatsheet-row") ?? [];
@@ -25,7 +27,9 @@ describe("Cheatsheet overlay (OptimizedUiApp)", () => {
 
   it("cheatsheet 包含 <kbd> 元素显示快捷键文本", () => {
     render(<OptimizedUiApp />);
-    fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    });
     const kbds = document.querySelectorAll(".cheatsheet kbd");
     expect(kbds.length).toBeGreaterThan(0);
     const allText = Array.from(kbds).map((k) => k.textContent).join(" ");
@@ -35,26 +39,36 @@ describe("Cheatsheet overlay (OptimizedUiApp)", () => {
 
   it("点击 backdrop 关闭 cheatsheet", () => {
     render(<OptimizedUiApp />);
-    fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    });
     expect(document.querySelector(".cheatsheet")).not.toBeNull();
     const backdrop = document.querySelector(".cheatsheet-backdrop");
     expect(backdrop).not.toBeNull();
-    fireEvent.click(backdrop as HTMLElement);
+    act(() => {
+      fireEvent.click(backdrop as HTMLElement);
+    });
     expect(document.querySelector(".cheatsheet")).toBeNull();
   });
 
   it("点击 cheatsheet 头部关闭按钮关闭面板", () => {
     render(<OptimizedUiApp />);
-    fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    });
     const closeBtn = document.querySelector(".cheatsheet-head .icon-btn") as HTMLElement;
     expect(closeBtn).not.toBeNull();
-    fireEvent.click(closeBtn);
+    act(() => {
+      fireEvent.click(closeBtn);
+    });
     expect(document.querySelector(".cheatsheet")).toBeNull();
   });
 
   it("Esc 键关闭 cheatsheet", () => {
     render(<OptimizedUiApp />);
-    fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    });
     expect(document.querySelector(".cheatsheet")).not.toBeNull();
     act(() => {
       window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
@@ -64,9 +78,13 @@ describe("Cheatsheet overlay (OptimizedUiApp)", () => {
 
   it("点击 cheatsheet 内部不冒泡到 backdrop(不会被误关)", () => {
     render(<OptimizedUiApp />);
-    fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    });
     const cheatsheet = document.querySelector(".cheatsheet") as HTMLElement;
-    fireEvent.click(cheatsheet);
+    act(() => {
+      fireEvent.click(cheatsheet);
+    });
     expect(document.querySelector(".cheatsheet")).not.toBeNull();
   });
 });

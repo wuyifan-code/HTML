@@ -16,6 +16,7 @@ import {
   getHoverBackgroundColor,
   queryElementByHftId,
   serializeDocument,
+  simplifyDomPath,
   updateHtmlElementByHftId,
 } from "./utils/domPath";
 import { HFT_ID_ATTRIBUTE, getElementClassName, getNormalizedTagName } from "./utils/editableElement";
@@ -1309,7 +1310,7 @@ export default function OptimizedUiApp() {
 
   const currentCount = domTree.length;
   const selectedTitle = selected?.label ?? "未选择";
-  const selectedMeta = selected ? `${selected.tagName} · ${selected.path}` : "从左侧结构或 Canvas 选择元素";
+  const selectedMeta = selected ? `${selected.tagName} · ${simplifyDomPath(selected.path)}` : "从左侧结构或 Canvas 选择元素";
   const canEditSelectedText = Boolean(selected?.canEditText);
   const workspaceStyle = useMemo(
     () =>
@@ -2023,7 +2024,7 @@ function InspectorDiagnostics({ selected }: { selected: SelectedSnapshot | null 
       <div className="diagnostic-card">
         <div className="diagnostic-head">
           <span>Computed</span>
-          <strong>{selected.path || selected.tagName}</strong>
+          <strong>{selected.path ? simplifyDomPath(selected.path) : selected.tagName}</strong>
         </div>
         <h4>Typography</h4>
         <dl className="diagnostic-list">
