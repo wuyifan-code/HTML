@@ -23,9 +23,9 @@
       --font-display: Inter, system-ui, sans-serif;
       --font-body: Inter, system-ui, sans-serif;
       --font-mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
-      --text-xs: 12px;
-      --text-sm: 13px;
-      --text-base: 15px;
+      --text-xs: 13px;
+      --text-sm: 14px;
+      --text-base: 16px;
       --text-lg: 17px;
       --text-xl: 22px;
       --text-2xl: 32px;
@@ -223,7 +223,7 @@
     .workspace {
       min-height: 0;
       display: grid;
-      grid-template-columns: var(--source-col, 336px) minmax(420px, 1fr) var(--inspector-col, 360px);
+      grid-template-columns: var(--source-col, 280px) minmax(560px, 1fr) var(--inspector-col, 300px);
       gap: var(--space-4);
       padding: var(--space-4);
       align-items: stretch;
@@ -357,17 +357,19 @@
     .upload-card {
       border: 1px dashed var(--border);
       border-radius: var(--radius-md);
-      padding: var(--space-4);
+      padding: var(--space-2) var(--space-3);
       background: color-mix(in oklab, var(--surface-warm) 50%, transparent);
-      display: grid;
-      gap: var(--space-2);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
     }
     .upload-card.is-imported {
       border-style: solid;
       border-color: color-mix(in oklab, var(--accent) 28%, var(--border));
       background: color-mix(in oklab, var(--accent) 8%, var(--surface));
     }
-    .upload-card strong { font-family: var(--font-display); font-size: var(--text-lg); }
+    .upload-card strong { font-family: var(--font-display); font-size: var(--text-sm); }
+    .upload-card p { margin: 0; }
     .search {
       width: 100%;
       border: 1px solid var(--border);
