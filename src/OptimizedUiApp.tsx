@@ -16,7 +16,6 @@ import {
   getHoverBackgroundColor,
   queryElementByHftId,
   serializeDocument,
-  simplifyDomPath,
   updateHtmlElementByHftId,
 } from "./utils/domPath";
 import { HFT_ID_ATTRIBUTE, getElementClassName, getNormalizedTagName } from "./utils/editableElement";
@@ -1314,7 +1313,6 @@ export default function OptimizedUiApp() {
 
   const currentCount = domTree.length;
   const selectedTitle = selected?.label ?? "未选择";
-  const selectedMeta = selected ? `${selected.tagName} · ${simplifyDomPath(selected.path)}` : "从左侧结构或 Canvas 选择元素";
   const canEditSelectedText = Boolean(selected?.canEditText);
   const workspaceStyle = useMemo(
     () =>
