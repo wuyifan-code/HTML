@@ -733,9 +733,13 @@
       align-items: stretch;
       border-bottom: 1px solid var(--border-soft);
     }
-    .inspector-tabs {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
+    .inspector-title {
+      align-self: center;
+      padding: 0 var(--space-4);
+      font-family: var(--font-display);
+      font-size: var(--text-base);
+      color: var(--fg);
+      font-weight: 500;
     }
     .inspector-tabs-wrap .panel-collapse-btn {
       align-self: stretch;
@@ -748,17 +752,6 @@
     .inspector-tabs-wrap .panel-collapse-btn:hover {
       background: color-mix(in oklab, var(--accent) 14%, var(--surface-warm));
       color: var(--fg);
-    }
-    .inspector-tabs .tab {
-      border-radius: 0;
-      padding-block: var(--space-4);
-      border-bottom: 2px solid transparent;
-    }
-    .inspector-tabs .tab.is-active {
-      box-shadow: none;
-      background: transparent;
-      color: var(--fg);
-      border-bottom-color: var(--accent);
     }
     .inspector-body {
       min-height: 0;

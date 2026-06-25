@@ -211,7 +211,11 @@ export default function OptimizedUiApp() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "pptx" | null>(null);
-  const [inspectorTab, setInspectorTab] = useState<InspectorTab>("content");
+  // Inspector tab 合并后,保留 setInspectorTab 为 noop 避免破坏既有调用点。
+  // 后续清理可以删除所有调用并移除该函数。
+  const setInspectorTab = useCallback((_value: InspectorTab) => {
+    /* no-op: tabs are merged into a single scrollable panel */
+  }, []);
   const [zoomMode, setZoomMode] = useState<ZoomMode>("fit");
   const stageRef = useRef<HTMLDivElement | null>(null);
   const stageSize = useElementSize(stageRef);
@@ -1715,11 +1719,7 @@ export default function OptimizedUiApp() {
             onPointerDown={handleStartPanelResize("inspector")}
           />
           <div className="inspector-tabs-wrap">
-            <div className="inspector-tabs" role="tablist" aria-label="Inspector sections">
-              <button className={`tab${inspectorTab === "content" ? " is-active" : ""}`} type="button" role="tab" aria-selected={inspectorTab === "content"} onClick={() => setInspectorTab("content")}>内容</button>
-              <button className={`tab${inspectorTab === "style" ? " is-active" : ""}`} type="button" role="tab" aria-selected={inspectorTab === "style"} onClick={() => setInspectorTab("style")}>样式</button>
-              <button className={`tab${inspectorTab === "interaction" ? " is-active" : ""}`} type="button" role="tab" aria-selected={inspectorTab === "interaction"} onClick={() => setInspectorTab("interaction")}>交互</button>
-            </div>
+            <span className="inspector-title">属性</span>
             <button className="icon-btn panel-collapse-btn" type="button" aria-label="折叠属性面板" onClick={handleToggleInspectorPanel}>›</button>
           </div>
           <div className="inspector-body">
@@ -1729,7 +1729,7 @@ export default function OptimizedUiApp() {
                 {selectedAnnotation.issues.length ? " · " + selectedAnnotation.issues.join(" / ") : ""}
               </p>
             ) : null}
-            <section className="property-card" data-od-id="content-editor" hidden={inspectorTab !== "content"}>
+            <section className="property-card" data-od-id="content-editor">
               <div className="field">
                 <label htmlFor="contentInput">文字内容</label>
                 <textarea
@@ -1755,7 +1755,7 @@ export default function OptimizedUiApp() {
               </div>
               <button className="btn btn-primary" type="button" onClick={handleApplyText} disabled={!canEditSelectedText}>应用到 Canvas</button>
             </section>
-            <section className="property-card" data-od-id="style-editor" hidden={inspectorTab !== "style"}>
+            <section className="property-card" data-od-id="style-editor">
               <h3>快速样式</h3>
               <div className="token-row">
                 <span>强调色</span>
@@ -1884,7 +1884,7 @@ export default function OptimizedUiApp() {
               </div>
               <button className="btn btn-primary" type="button" onClick={handleApplyStyle} disabled={!selected}>应用样式</button>
             </section>
-            <section className="property-card" data-od-id="attribute-editor" hidden={inspectorTab !== "content"}>
+            <section className="property-card" data-od-id="attribute-editor">
               <h3>媒体 / 属性</h3>
               <div className="field">
                 <label htmlFor="srcInput">src / viewBox / href</label>
@@ -1896,7 +1896,7 @@ export default function OptimizedUiApp() {
               </div>
               <button className="btn btn-primary" type="button" onClick={handleApplyAttributes} disabled={!selected}>应用属性</button>
             </section>
-            <section className="property-card" data-od-id="interaction-editor" hidden={inspectorTab !== "interaction"}>
+            <section className="property-card" data-od-id="interaction-editor">
               <h3>交互状态</h3>
               <div className="token-row"><span>悬停状态</span><span className="meta">预览可点击选中</span></div>
               <div className="token-row"><span>焦点状态</span><span className="meta">iframe 内可访问</span></div>
@@ -1940,7 +1940,7 @@ export default function OptimizedUiApp() {
                 <button className="btn" type="button" onClick={() => handleModalCommand("close")}>关闭弹窗</button>
               </div>
             </section>
-            <section className="property-card is-compact" data-od-id="state-coverage" hidden={inspectorTab !== "interaction"}>
+            <section className="property-card is-compact" data-od-id="state-coverage">
               <h3>状态覆盖</h3>
               <div className="state-grid" aria-live="polite">
                 <div className={`state-card${isPreviewReady ? "" : " is-loading"}`}><span className="state-dot"></span><strong>{isPreviewReady ? "预览就绪" : "预览渲染中"}</strong><span className="meta">iframe</span></div>
