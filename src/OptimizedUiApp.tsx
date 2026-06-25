@@ -1898,7 +1898,6 @@ export default function OptimizedUiApp() {
               <h3>交互状态</h3>
               <div className="token-row"><span>悬停状态</span><span className="meta">预览可点击选中</span></div>
               <div className="token-row"><span>焦点状态</span><span className="meta">iframe 内可访问</span></div>
-              <div className="token-row"><span>实时预览</span><span className="meta">{isPreviewReady ? "已就绪" : "渲染中"}</span></div>
               <div className="token-row"><span>拖拽定位</span><span className="meta">松手后写回 HTML</span></div>
               <div className="token-row"><span>AI 预检</span><span className="meta">{aiPreflightNote}</span></div>
               <div className="token-row"><span>导出检查</span><span className="meta">{formatExportWarningSummary(exportWarnings.length, blockingExportWarningCount)}</span></div>
@@ -1953,7 +1952,7 @@ export default function OptimizedUiApp() {
 
       <footer className="statusbar">
         <div className="status-left"><span className="dot"></span><span>已选择：{selectedTitle}</span></div>
-        <div className="status-right"><span>{state.html.length.toLocaleString()} 字符</span><span>预览：{isPreviewReady ? "已就绪" : "渲染中"}</span></div>
+        <div className="status-right"><span>{state.html.length.toLocaleString()} 字符</span></div>
       </footer>
 
       {isExportPreviewOpen ? (
