@@ -645,6 +645,27 @@
       display: none;
     }
     .property-card h3 { font-size: var(--text-lg); }
+    .inspector-empty {
+      text-align: left;
+      background: color-mix(in oklab, var(--accent) 6%, var(--surface-warm));
+      border-style: dashed;
+    }
+    .inspector-empty strong {
+      font-family: var(--font-display);
+      font-size: var(--text-base);
+      color: var(--fg);
+    }
+    .inspector-empty p { margin: 0; }
+    .inspector-empty kbd {
+      font-family: var(--font-mono);
+      font-size: var(--text-xs);
+      padding: 1px 6px;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--fg-2);
+      line-height: 1.4;
+    }
     .property-card.is-compact {
       gap: var(--space-2);
     }

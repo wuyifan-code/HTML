@@ -1727,6 +1727,13 @@ export default function OptimizedUiApp() {
                 {selectedAnnotation.issues.length ? " · " + selectedAnnotation.issues.join(" / ") : ""}
               </p>
             ) : null}
+            {!selected ? (
+              <section className="property-card inspector-empty" aria-label="选择提示">
+                <strong>未选择元素</strong>
+                <p className="meta">在左侧结构树或画布中点击任意元素即可在此处编辑内容、样式和属性。</p>
+                <p className="meta">提示：按 <kbd>?</kbd> 查看全部快捷键。</p>
+              </section>
+            ) : null}
             <section className="property-card" data-od-id="content-editor">
               <div className="field">
                 <label htmlFor="contentInput">文字内容</label>
