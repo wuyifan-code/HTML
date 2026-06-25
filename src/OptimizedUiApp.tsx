@@ -1987,10 +1987,14 @@ export default function OptimizedUiApp() {
               <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>O</kbd></dt><dd>导入 HTML</dd></div>
               <div className="cheatsheet-row"><dt><kbd>Shift</kbd> + <kbd>Ctrl/⌘</kbd> + <kbd>C</kbd></dt><dd>复制干净 HTML</dd></div>
               <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>S</kbd></dt><dd>导出</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>E</kbd></dt><dd>导出预览</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>D</kbd></dt><dd>复制当前元素</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>I</kbd></dt><dd>在右侧检查器编辑文字</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>F</kbd></dt><dd>聚焦结构树搜索</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>B</kbd> · <kbd>L</kbd> · <kbd>R</kbd> · <kbd>J</kbd></dt><dd>粗体 / 左对齐 / 右对齐 / 两端对齐</dd></div>
               <div className="cheatsheet-row"><dt><kbd>1</kbd> · <kbd>2</kbd> · <kbd>3</kbd> · <kbd>4</kbd></dt><dd>切换 viewport 预设</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>F</kbd></dt><dd>专注模式</dd></div>
               <div className="cheatsheet-row"><dt><kbd>?</kbd></dt><dd>显示本面板</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>Esc</kbd></dt><dd>关闭弹窗</dd></div>
+              <div className="cheatsheet-row"><dt><kbd>Esc</kbd></dt><dd>关闭弹窗 / 取消选择</dd></div>
             </dl>
           </section>
         </div>
