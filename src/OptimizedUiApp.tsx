@@ -1933,8 +1933,12 @@ export default function OptimizedUiApp() {
                 <button className="btn" type="button" onClick={handleDeleteElement} disabled={!selected}>删除</button>
                 <button className="btn" type="button" onClick={handleCopyStyle} disabled={!selected}>复制样式</button>
                 <button className="btn" type="button" onClick={handlePasteStyle} disabled={!selected || !copiedStyle}>粘贴样式</button>
-                <button className="btn" type="button" onClick={() => handleModalCommand("open")}>打开弹窗</button>
-                <button className="btn" type="button" onClick={() => handleModalCommand("close")}>关闭弹窗</button>
+                {selected ? (
+                  <>
+                    <button className="btn" type="button" onClick={() => handleModalCommand("open")}>打开弹窗</button>
+                    <button className="btn" type="button" onClick={() => handleModalCommand("close")}>关闭弹窗</button>
+                  </>
+                ) : null}
               </div>
             </section>
             <section className="property-card is-compact" data-od-id="state-coverage">
