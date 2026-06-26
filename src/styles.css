@@ -2661,11 +2661,15 @@ span.meta { display: inline-block; }
   cursor: pointer;
   white-space: nowrap;
   font-family: var(--font-family-default);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
-  line-height: 16px;
+  line-height: 18px;
   color: var(--text-default);
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition: background 140ms cubic-bezier(0.2, 0, 0, 1),
+              color 140ms cubic-bezier(0.2, 0, 0, 1),
+              border-color 140ms cubic-bezier(0.2, 0, 0, 1),
+              transform 140ms cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 140ms cubic-bezier(0.2, 0, 0, 1);
 }
 .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
 .btn-primary {
@@ -2700,15 +2704,16 @@ span.meta { display: inline-block; }
   color: var(--text-default);
   border-color: var(--border-neutral-l1);
 }
-.btn-secondary:hover:not(:disabled) { background: var(--bg-overlay-l2); border-color: var(--border-neutral-l2); }
-.btn-secondary:active:not(:disabled) { background: var(--bg-overlay-l3); border-color: var(--border-neutral-l3); }
+.btn-secondary:hover:not(:disabled) { background: var(--bg-overlay-l2); border-color: var(--border-neutral-l2); box-shadow: 0 1px 2px color-mix(in srgb, var(--text-default) 4%, transparent); }
+.btn-secondary:active:not(:disabled) { background: var(--bg-overlay-l3); border-color: var(--border-neutral-l3); transform: translateY(0.5px); }
 .btn-ghost {
   background: transparent;
   color: var(--text-secondary);
   border-color: transparent;
+  transition: background 140ms cubic-bezier(0.2, 0, 0, 1), color 140ms cubic-bezier(0.2, 0, 0, 1), transform 140ms cubic-bezier(0.2, 0, 0, 1);
 }
 .btn-ghost:hover:not(:disabled) { background: var(--bg-overlay-l2); color: var(--text-default); }
-.btn-ghost:active:not(:disabled) { background: var(--bg-overlay-l3); }
+.btn-ghost:active:not(:disabled) { background: var(--bg-overlay-l3); transform: scale(0.98); }
 .btn-danger {
   background: var(--status-error-default);
   color: var(--text-onbrand);
