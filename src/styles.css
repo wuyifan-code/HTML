@@ -2290,12 +2290,20 @@ span.meta { display: inline-block; }
   background: transparent;
   color: var(--icon-secondary);
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+  transition: background 140ms cubic-bezier(0.2, 0, 0, 1),
+              color 140ms cubic-bezier(0.2, 0, 0, 1),
+              border-color 140ms cubic-bezier(0.2, 0, 0, 1),
+              transform 140ms cubic-bezier(0.2, 0, 0, 1);
 }
 .icon-btn:hover { background: var(--bg-overlay-l2); color: var(--icon-default); }
-.icon-btn:active { background: var(--bg-overlay-l3); }
+.icon-btn:active { background: var(--bg-overlay-l3); transform: scale(0.94); }
+.icon-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg-brand) 35%, transparent);
+}
 .icon-btn[disabled] { color: var(--icon-disabled); cursor: not-allowed; }
-.icon-btn svg { width: 14px; height: 14px; }
+.icon-btn svg { width: 14px; height: 14px; transition: transform 140ms cubic-bezier(0.2, 0, 0, 1); }
+.icon-btn:hover svg { transform: scale(1.1); }
 
 /* --- topbar ghost button (undo/redo) --- */
 .btn-muted {
@@ -2471,16 +2479,21 @@ span.meta { display: inline-block; }
   margin: 0;
   position: relative;
   align-self: stretch;
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 .panel-resizer::before {
   content: "";
   position: absolute;
   inset: 0;
   background: transparent;
-  transition: background 120ms ease;
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 .panel-resizer:hover::before,
-.panel-resizer:focus-visible::before { background: var(--bg-brand); }
+.panel-resizer:focus-visible::before {
+  background: var(--bg-brand);
+  box-shadow: 0 0 8px color-mix(in srgb, var(--bg-brand) 40%, transparent);
+}
+.panel-resizer:focus-visible { outline: none; }
 .panel-resizer-source { border-right: 1px solid var(--border-neutral-l1); }
 .panel-resizer-inspector { border-left: 1px solid var(--border-neutral-l1); }
 
