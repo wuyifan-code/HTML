@@ -326,9 +326,9 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
       border-radius: 6px !important;
     }
     [data-html-finetune-selected="true"] {
-      outline: 2px solid #19a997 !important;
+      outline: 1.5px solid #19a997 !important;
       outline-offset: 2px !important;
-      box-shadow: 0 0 0 6px rgba(25, 169, 151, 0.14) !important;
+      box-shadow: 0 0 0 4px rgba(25, 169, 151, 0.1) !important;
       border-radius: 6px !important;
     }
     [data-html-finetune-dragging="true"] {

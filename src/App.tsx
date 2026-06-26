@@ -1354,14 +1354,16 @@ export default function App() {
         isInspectorCollapsed ? "is-inspector-collapsed" : "",
       ].filter(Boolean).join(" ")}
     >
-      <header className="topbar">
-        <div className="brand-block" aria-label="产品标识">
-          <div className="brand-mark">&lt;/&gt;</div>
-          <div className="brand-copy">
-            <h1>
-              HTML FineTune
-              <span className="brand-version">v2.0</span>
-            </h1>
+      <header className="app-topbar" role="banner">
+        <div className="app-topbar__left">
+          <div className="brand-block" aria-label="产品标识">
+            <div className="brand-mark">&lt;/&gt;</div>
+            <div className="brand-copy">
+              <h1>
+                HTML FineTune
+                <span className="brand-version">v2.0</span>
+              </h1>
+            </div>
           </div>
           <nav className="brand-breadcrumb" aria-label="文件路径">
             <span className="brand-breadcrumb-folder">landing-page</span>
@@ -1370,14 +1372,16 @@ export default function App() {
           </nav>
         </div>
 
-        <div className="app-toolbar" aria-label="主要操作">
+        <div className="app-topbar__center app-toolbar" aria-label="历史操作">
           <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="撤销 · Ctrl/⌘+Z" aria-label="撤销" data-dom-id="btn-undo" onClick={undo} disabled={!canUndo}>
             <IconUndo />
           </button>
           <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="重做 · Ctrl/⌘+Y 或 Shift+Ctrl/⌘+Z" aria-label="重做" data-dom-id="btn-redo" onClick={redo} disabled={!canRedo}>
             <IconRedo />
           </button>
-          <span className="app-toolbar-sep" aria-hidden="true"></span>
+        </div>
+
+        <div className="app-topbar__right" aria-label="主要操作">
           <label className="ds-btn ds-btn--ghost ds-btn--sm" data-dom-id="btn-import" title="导入 .html 文件">
             <IconImport />
             <span>导入</span>
@@ -1406,15 +1410,17 @@ export default function App() {
             <span>复制</span>
           </button>
           <span className="app-toolbar-sep" aria-hidden="true"></span>
+          <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" title="导出 PDF" aria-label="导出 PDF" data-dom-id="btn-pdf" onClick={handleExportPdf} disabled={exportingFormat !== null}>
+            <IconDownload />
+            <span>PDF</span>
+          </button>
+          <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" title="导出 PPTX" aria-label="导出 PPTX" data-dom-id="btn-pptx" onClick={handleExportPptx} disabled={exportingFormat !== null}>
+            <IconDownload />
+            <span>PPTX</span>
+          </button>
           <button className="ds-btn ds-btn--brand ds-btn--sm" type="button" title="导出 HTML · Ctrl/⌘+S" aria-label="导出 HTML" data-dom-id="btn-export" onClick={handleOpenExportPreview}>
             <IconDownload />
             <span>导出</span>
-          </button>
-          <button className="ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" type="button" title="导出 PDF" aria-label="导出 PDF" data-dom-id="btn-pdf" onClick={handleExportPdf} disabled={exportingFormat !== null}>
-            <IconDownload />
-          </button>
-          <button className="ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" type="button" title="导出 PPTX" aria-label="导出 PPTX" data-dom-id="btn-pptx" onClick={handleExportPptx} disabled={exportingFormat !== null}>
-            <IconDownload />
           </button>
           <span className="app-toolbar-sep" aria-hidden="true"></span>
           <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="查看历史" aria-label="查看历史" data-dom-id="btn-history" onClick={() => setIsHistoryOpen((value) => !value)}>
@@ -1988,54 +1994,6 @@ export default function App() {
               </section>
 
               {/* 颜色 */}
-              <section className="inspector-card" data-dom-id="inspector-color">
-                <div className="inspector-card__head">
-                  <IconPalette />
-                  <span className="inspector-card__title">颜色</span>
-                </div>
-                <div className="inspector-card__body">
-                  <ColorField label="文字" value={draftColor} onChange={setDraftColor} full />
-                  <ColorField label="背景" value={draftBackgroundColor} onChange={setDraftBackgroundColor} full />
-                  <ColorField label="Hover 背景" value={draftHoverBackground} onChange={setDraftHoverBackground} full />
-                </div>
-              </section>
-
-              {/* 边框 */}
-              <section className="inspector-card" data-dom-id="inspector-border">
-                <div className="inspector-card__head">
-                  <IconBorder />
-                  <span className="inspector-card__title">边框</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="field-grid">
-                    <ColorField label="边框色" value={draftBorderColor} onChange={setDraftBorderColor} />
-                    <div className="field">
-                      <label htmlFor="borderWidthInput">宽度</label>
-                      <input className="input" id="borderWidthInput" value={draftBorderWidth} placeholder="1px" onChange={(event) => setDraftBorderWidth(event.target.value)} />
-                    </div>
-                  </div>
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="borderStyleInput">样式</label>
-                      <select className="input" id="borderStyleInput" value={draftBorderStyle} onChange={(event) => setDraftBorderStyle(event.target.value)}>
-                        <option value="">继承</option>
-                        <option value="solid">solid</option>
-                        <option value="dashed">dashed</option>
-                        <option value="none">none</option>
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="radiusInput">圆角</label>
-                      <input className="input" id="radiusInput" value={draftBorderRadius} placeholder="16px" onChange={(event) => setDraftBorderRadius(event.target.value)} />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="boxShadowInput">阴影</label>
-                    <input className="input" id="boxShadowInput" value={draftBoxShadow} placeholder="0 18px 50px rgba(15, 23, 42, .12)" onChange={(event) => setDraftBoxShadow(event.target.value)} />
-                  </div>
-                </div>
-              </section>
-
               {/* 尺寸 + 图片填充 */}
               <section className="inspector-card" data-dom-id="inspector-size">
                 <div className="inspector-card__head">
@@ -2069,6 +2027,55 @@ export default function App() {
                         <option value="scale-down">scale-down</option>
                       </select>
                     </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* 外观 — 颜色 */}
+              <section className="inspector-card" data-dom-id="inspector-color">
+                <div className="inspector-card__head">
+                  <IconPalette />
+                  <span className="inspector-card__title">颜色</span>
+                </div>
+                <div className="inspector-card__body">
+                  <ColorField label="文字" value={draftColor} onChange={setDraftColor} full />
+                  <ColorField label="背景" value={draftBackgroundColor} onChange={setDraftBackgroundColor} full />
+                  <ColorField label="Hover 背景" value={draftHoverBackground} onChange={setDraftHoverBackground} full />
+                </div>
+              </section>
+
+              {/* 外观 — 边框 */}
+              <section className="inspector-card" data-dom-id="inspector-border">
+                <div className="inspector-card__head">
+                  <IconBorder />
+                  <span className="inspector-card__title">边框</span>
+                </div>
+                <div className="inspector-card__body">
+                  <div className="field-grid">
+                    <ColorField label="边框色" value={draftBorderColor} onChange={setDraftBorderColor} />
+                    <div className="field">
+                      <label htmlFor="borderWidthInput">宽度</label>
+                      <input className="input" id="borderWidthInput" value={draftBorderWidth} placeholder="1px" onChange={(event) => setDraftBorderWidth(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="borderStyleInput">样式</label>
+                      <select className="input" id="borderStyleInput" value={draftBorderStyle} onChange={(event) => setDraftBorderStyle(event.target.value)}>
+                        <option value="">继承</option>
+                        <option value="solid">solid</option>
+                        <option value="dashed">dashed</option>
+                        <option value="none">none</option>
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="radiusInput">圆角</label>
+                      <input className="input" id="radiusInput" value={draftBorderRadius} placeholder="16px" onChange={(event) => setDraftBorderRadius(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="boxShadowInput">阴影</label>
+                    <input className="input" id="boxShadowInput" value={draftBoxShadow} placeholder="0 18px 50px rgba(15, 23, 42, .12)" onChange={(event) => setDraftBoxShadow(event.target.value)} />
                   </div>
                 </div>
               </section>
@@ -2404,7 +2411,12 @@ function TreeItemNode({
         <span className="tree-node__chev" aria-hidden="true"></span>
       )}
       <span className={tagClass}>{toTreeTagLabel(node.tagName)}</span>
-      <span className="tree-node__label">{node.label || node.className || node.text || node.tagName}</span>
+      <span className="tree-node__label">
+        {node.label || node.text || node.tagName}
+        {node.className ? (
+          <span className="tree-node__class">.{(node.className.split(/\s+/).filter(Boolean)[0] ?? "")}</span>
+        ) : null}
+      </span>
       {hasChildren ? <span className="tree-node__meta">x{childCount}</span> : null}
     </button>
   );
