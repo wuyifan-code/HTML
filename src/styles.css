@@ -2714,6 +2714,8 @@ span.meta { display: inline-block; }
 }
 .btn-ghost:hover:not(:disabled) { background: var(--bg-overlay-l2); color: var(--text-default); }
 .btn-ghost:active:not(:disabled) { background: var(--bg-overlay-l3); transform: scale(0.98); }
+.btn:hover:not(:disabled) { transform: translateY(-0.5px); }
+.btn:active:not(:disabled) { transform: translateY(0.5px); }
 .btn-danger {
   background: var(--status-error-default);
   color: var(--text-onbrand);
@@ -3417,6 +3419,7 @@ span.meta { display: inline-block; }
 }
 .tree-node__chev:active {
   transform: scale(0.85);
+  background: color-mix(in srgb, var(--bg-overlay-l3) 70%, transparent);
 }
 .tree-node__label {
   flex: 1;
@@ -3616,6 +3619,7 @@ span.meta { display: inline-block; }
 .statusbar-pill:hover {
   background: color-mix(in srgb, var(--bg-overlay-l2) 70%, transparent);
 }
+.statusbar-pill:hover .dot { animation-duration: 0.9s; }
 .statusbar-metric {
   font-family: var(--font-family-metric);
   font-variant-numeric: tabular-nums;
