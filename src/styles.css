@@ -1076,6 +1076,7 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
     linear-gradient(180deg, var(--bg-base-tertiary) 0%, color-mix(in srgb, var(--bg-base-secondary) 60%, var(--bg-base-tertiary)) 100%);
   position: relative;
   animation: stage-fade-in 360ms cubic-bezier(0.2, 0, 0, 1) both;
+  transition: background-color 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 @keyframes stage-fade-in {
   from { opacity: 0; }
@@ -1220,9 +1221,11 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
   content: "";
   width: 4px;
   height: 14px;
-  background: var(--bg-brand);
+  background: linear-gradient(180deg, var(--bg-brand), var(--bg-brand-hover));
   border-radius: var(--radius-4);
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
 }
+.property-card:hover h3::before { transform: scaleY(1.1); }
 
 /* Universal .meta — secondary helper text used across panels */
 .meta {
@@ -3047,7 +3050,9 @@ span.meta { display: inline-block; }
   height: 16px;
   background: var(--border-neutral-l1);
   margin: 0 var(--spacer-2);
+  transition: background 200ms cubic-bezier(0.2, 0, 0, 1);
 }
+.app-toolbar:hover .app-toolbar-sep { background: var(--border-neutral-l2); }
 
 /* --- Three-column workspace ----------------------------------- */
 .app-workspace {
@@ -3067,7 +3072,8 @@ span.meta { display: inline-block; }
   position: relative;
   transition: width 320ms cubic-bezier(0.4, 0, 0.2, 1),
               border-color 220ms cubic-bezier(0.2, 0, 0, 1),
-              opacity 220ms cubic-bezier(0.2, 0, 0, 1);
+              opacity 220ms cubic-bezier(0.2, 0, 0, 1),
+              background-color 200ms cubic-bezier(0.2, 0, 0, 1);
 }
 .app-side-panel--left { width: var(--source-col); border-right: 1px solid var(--border-neutral-l1); }
 .app-side-panel--right { width: var(--inspector-col); border-left: 1px solid var(--border-neutral-l1); }
@@ -3503,6 +3509,9 @@ span.meta { display: inline-block; }
 .statusbar-zone { display: inline-flex; align-items: center; gap: var(--spacer-12); position: relative; z-index: 1; }
 .statusbar-zone svg { width: 12px; height: 12px; }
 .statusbar-zone--center { gap: var(--spacer-6); justify-content: center; }
+.statusbar-zone--left .statusbar-pill,
+.statusbar-zone--center .statusbar-pill,
+.statusbar-zone--right .statusbar-metric { transition: background 160ms cubic-bezier(0.2, 0, 0, 1), color 160ms cubic-bezier(0.2, 0, 0, 1); }
 .statusbar-zone--right { gap: var(--spacer-12); }
 .statusbar-pill {
   display: inline-flex;
@@ -3577,6 +3586,7 @@ span.meta { display: inline-block; }
   font-weight: 600;
   flex-shrink: 0;
   letter-spacing: 0.04em;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--bg-brand) 16%, transparent);
   transition: transform 140ms cubic-bezier(0.2, 0, 0, 1),
               box-shadow 140ms cubic-bezier(0.2, 0, 0, 1);
   animation: pill-pop-in 280ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
