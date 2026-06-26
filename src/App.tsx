@@ -170,6 +170,7 @@ export default function App() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const workspaceRef = useRef<HTMLElement | null>(null);
+  const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const latestHtmlRef = useRef(state.html);
   const [sourceTab, setSourceTab] = useState<SourceTab>("structure");
   const [search, setSearch] = useState("");
@@ -332,6 +333,26 @@ export default function App() {
   useEffect(() => {
     setIsPreviewReady(false);
   }, [previewSrcDoc]);
+
+  // Scroll the selected tree node into view (predictive return)
+  useEffect(() => {
+    if (!selected) return;
+    const root = treeScrollRef.current;
+    if (!root) return;
+    const el = root.querySelector<HTMLElement>(`[data-dom-id="node-${selected.hftId}"]`);
+    if (!el || typeof el.scrollIntoView !== "function") return;
+    const rootRect = root.getBoundingClientRect();
+    const elRect = el.getBoundingClientRect();
+    const outTop = elRect.top < rootRect.top + 16;
+    const outBottom = elRect.bottom > rootRect.bottom - 16;
+    if (outTop || outBottom) {
+      try {
+        el.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      } catch {
+        // jsdom / older engines: fall back silently
+      }
+    }
+  }, [selected?.hftId]);
 
   useEffect(() => {
     setAiAnnotations({});
@@ -1578,7 +1599,7 @@ export default function App() {
               </div>
 
               {/* Structure tree */}
-              <div className="structure-tree">
+              <div className="structure-tree" ref={treeScrollRef}>
                 {visibleTree.map((node) => (
                   <TreeItemNode
                     key={node.hftId}
@@ -1623,7 +1644,7 @@ export default function App() {
           ) : null}
         </aside>
 
-        <section className="panel stage-panel" aria-label="画布" data-od-id="canvas">
+        <section className="panel stage-panel" aria-label="画布" data-od-id="canvas" tabIndex={-1}>
           <div className="viewport-bar" aria-label="画布工具栏">
             <div className="viewport-bar__group">
               <button
