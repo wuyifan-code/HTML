@@ -1899,127 +1899,172 @@ export default function App() {
                 <span>强调色</span>
                 <span className="token-swatch" aria-hidden="true" style={{ backgroundColor: draftColor || undefined }} />
               </div>
-              <ColorField label="颜色" value={draftColor} onChange={setDraftColor} full />
-              <ColorField label="背景色" value={draftBackgroundColor} onChange={setDraftBackgroundColor} full />
-              <ColorField label="Hover 背景" value={draftHoverBackground} onChange={setDraftHoverBackground} full />
-              <div className="field">
-                <label htmlFor="fontSize">字号</label>
-                <input className="input" id="fontSize" value={draftFontSize} placeholder="66px" onChange={(event) => setDraftFontSize(event.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="fontFamilyInput">字体</label>
-                <input className="input" id="fontFamilyInput" value={draftFontFamily} placeholder="Inter, sans-serif" onChange={(event) => setDraftFontFamily(event.target.value)} />
-              </div>
-              <div className="field-grid">
-                <div className="field">
-                  <label htmlFor="fontWeightInput">字重</label>
-                  <select className="input" id="fontWeightInput" value={draftFontWeight} onChange={(event) => setDraftFontWeight(event.target.value)}>
-                    <option value="">继承</option>
-                    <option value="300">300</option>
-                    <option value="400">400</option>
-                    <option value="500">500</option>
-                    <option value="600">600</option>
-                    <option value="700">700</option>
-                    <option value="800">800</option>
-                  </select>
+
+              {/* 字体 */}
+              <section className="inspector-card" data-dom-id="inspector-typography">
+                <div className="inspector-card__head">
+                  <IconType />
+                  <span className="inspector-card__title">字体</span>
                 </div>
-                <div className="field">
-                  <label htmlFor="textAlignInput">对齐</label>
-                  <select className="input" id="textAlignInput" value={draftTextAlign} onChange={(event) => setDraftTextAlign(event.target.value)}>
-                    <option value="">继承</option>
-                    <option value="left">左</option>
-                    <option value="center">中</option>
-                    <option value="right">右</option>
-                    <option value="justify">两端</option>
-                  </select>
+                <div className="inspector-card__body">
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="fontSize">字号</label>
+                      <input className="input" id="fontSize" value={draftFontSize} placeholder="66px" onChange={(event) => setDraftFontSize(event.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="fontWeightInput">字重</label>
+                      <select className="input" id="fontWeightInput" value={draftFontWeight} onChange={(event) => setDraftFontWeight(event.target.value)}>
+                        <option value="">继承</option>
+                        <option value="300">300</option>
+                        <option value="400">400</option>
+                        <option value="500">500</option>
+                        <option value="600">600</option>
+                        <option value="700">700</option>
+                        <option value="800">800</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="fontFamilyInput">字体</label>
+                    <input className="input" id="fontFamilyInput" value={draftFontFamily} placeholder="Inter, sans-serif" onChange={(event) => setDraftFontFamily(event.target.value)} />
+                  </div>
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="lineHeightInput">行高</label>
+                      <input className="input" id="lineHeightInput" value={draftLineHeight} placeholder="1.5 / 24px" onChange={(event) => setDraftLineHeight(event.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="letterSpacingInput">字距</label>
+                      <input className="input" id="letterSpacingInput" value={draftLetterSpacing} placeholder="0.2px" onChange={(event) => setDraftLetterSpacing(event.target.value)} />
+                    </div>
+                  </div>
                 </div>
-              </div>
-              <div className="field-grid">
-                <div className="field">
-                  <label htmlFor="lineHeightInput">行高</label>
-                  <input className="input" id="lineHeightInput" value={draftLineHeight} placeholder="1.5 / 24px" onChange={(event) => setDraftLineHeight(event.target.value)} />
+              </section>
+
+              {/* 间距 */}
+              <section className="inspector-card" data-dom-id="inspector-spacing">
+                <div className="inspector-card__head">
+                  <IconSpacing />
+                  <span className="inspector-card__title">间距</span>
                 </div>
-                <div className="field">
-                  <label htmlFor="letterSpacingInput">字距</label>
-                  <input className="input" id="letterSpacingInput" value={draftLetterSpacing} placeholder="0.2px" onChange={(event) => setDraftLetterSpacing(event.target.value)} />
+                <div className="inspector-card__body">
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="spacingInput">上外边距</label>
+                      <input className="input" id="spacingInput" value={draftMarginTop} placeholder="24px" onChange={(event) => setDraftMarginTop(event.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="marginBottomInput">下外边距</label>
+                      <input className="input" id="marginBottomInput" value={draftMarginBottom} placeholder="24px" onChange={(event) => setDraftMarginBottom(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="paddingTopInput">上内边距</label>
+                      <input className="input" id="paddingTopInput" value={draftPaddingTop} placeholder="16px" onChange={(event) => setDraftPaddingTop(event.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="paddingBottomInput">下内边距</label>
+                      <input className="input" id="paddingBottomInput" value={draftPaddingBottom} placeholder="16px" onChange={(event) => setDraftPaddingBottom(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="paddingInlineInput">左右内边距</label>
+                    <input className="input" id="paddingInlineInput" value={draftPaddingLeft || draftPaddingRight} placeholder="24px" onChange={(event) => {
+                      setDraftPaddingLeft(event.target.value);
+                      setDraftPaddingRight(event.target.value);
+                    }} />
+                  </div>
                 </div>
-              </div>
-              <div className="field">
-                <label htmlFor="spacingInput">上外边距</label>
-                <input className="input" id="spacingInput" value={draftMarginTop} placeholder="24px" onChange={(event) => setDraftMarginTop(event.target.value)} />
-              </div>
-              <div className="field-grid">
-                <div className="field">
-                  <label htmlFor="marginBottomInput">下外边距</label>
-                  <input className="input" id="marginBottomInput" value={draftMarginBottom} placeholder="24px" onChange={(event) => setDraftMarginBottom(event.target.value)} />
+              </section>
+
+              {/* 颜色 */}
+              <section className="inspector-card" data-dom-id="inspector-color">
+                <div className="inspector-card__head">
+                  <IconPalette />
+                  <span className="inspector-card__title">颜色</span>
                 </div>
-                <div className="field">
-                  <label htmlFor="paddingTopInput">上内边距</label>
-                  <input className="input" id="paddingTopInput" value={draftPaddingTop} placeholder="16px" onChange={(event) => setDraftPaddingTop(event.target.value)} />
+                <div className="inspector-card__body">
+                  <ColorField label="文字" value={draftColor} onChange={setDraftColor} full />
+                  <ColorField label="背景" value={draftBackgroundColor} onChange={setDraftBackgroundColor} full />
+                  <ColorField label="Hover 背景" value={draftHoverBackground} onChange={setDraftHoverBackground} full />
                 </div>
-              </div>
-              <div className="field-grid">
-                <div className="field">
-                  <label htmlFor="paddingBottomInput">下内边距</label>
-                  <input className="input" id="paddingBottomInput" value={draftPaddingBottom} placeholder="16px" onChange={(event) => setDraftPaddingBottom(event.target.value)} />
+              </section>
+
+              {/* 边框 */}
+              <section className="inspector-card" data-dom-id="inspector-border">
+                <div className="inspector-card__head">
+                  <IconBorder />
+                  <span className="inspector-card__title">边框</span>
                 </div>
-                <div className="field">
-                  <label htmlFor="paddingInlineInput">左右内边距</label>
-                  <input className="input" id="paddingInlineInput" value={draftPaddingLeft || draftPaddingRight} placeholder="24px" onChange={(event) => {
-                    setDraftPaddingLeft(event.target.value);
-                    setDraftPaddingRight(event.target.value);
-                  }} />
+                <div className="inspector-card__body">
+                  <div className="field-grid">
+                    <ColorField label="边框色" value={draftBorderColor} onChange={setDraftBorderColor} />
+                    <div className="field">
+                      <label htmlFor="borderWidthInput">宽度</label>
+                      <input className="input" id="borderWidthInput" value={draftBorderWidth} placeholder="1px" onChange={(event) => setDraftBorderWidth(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="borderStyleInput">样式</label>
+                      <select className="input" id="borderStyleInput" value={draftBorderStyle} onChange={(event) => setDraftBorderStyle(event.target.value)}>
+                        <option value="">继承</option>
+                        <option value="solid">solid</option>
+                        <option value="dashed">dashed</option>
+                        <option value="none">none</option>
+                      </select>
+                    </div>
+                    <div className="field">
+                      <label htmlFor="radiusInput">圆角</label>
+                      <input className="input" id="radiusInput" value={draftBorderRadius} placeholder="16px" onChange={(event) => setDraftBorderRadius(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="boxShadowInput">阴影</label>
+                    <input className="input" id="boxShadowInput" value={draftBoxShadow} placeholder="0 18px 50px rgba(15, 23, 42, .12)" onChange={(event) => setDraftBoxShadow(event.target.value)} />
+                  </div>
                 </div>
-              </div>
-              <div className="field">
-                <label htmlFor="radiusInput">圆角</label>
-                <input className="input" id="radiusInput" value={draftBorderRadius} placeholder="16px" onChange={(event) => setDraftBorderRadius(event.target.value)} />
-              </div>
-              <div className="field-grid">
-                <ColorField label="边框色" value={draftBorderColor} onChange={setDraftBorderColor} />
-                <div className="field">
-                  <label htmlFor="borderWidthInput">边框宽度</label>
-                  <input className="input" id="borderWidthInput" value={draftBorderWidth} placeholder="1px" onChange={(event) => setDraftBorderWidth(event.target.value)} />
+              </section>
+
+              {/* 尺寸 + 图片填充 */}
+              <section className="inspector-card" data-dom-id="inspector-size">
+                <div className="inspector-card__head">
+                  <IconRuler />
+                  <span className="inspector-card__title">尺寸</span>
                 </div>
-              </div>
-              <div className="field-grid">
-                <div className="field">
-                  <label htmlFor="borderStyleInput">边框样式</label>
-                  <select className="input" id="borderStyleInput" value={draftBorderStyle} onChange={(event) => setDraftBorderStyle(event.target.value)}>
-                    <option value="">继承</option>
-                    <option value="solid">solid</option>
-                    <option value="dashed">dashed</option>
-                    <option value="none">none</option>
-                  </select>
+                <div className="inspector-card__body">
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="widthInput">宽度</label>
+                      <input className="input" id="widthInput" value={draftWidth} placeholder="auto / 320px / 100%" onChange={(event) => setDraftWidth(event.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="heightInput">高度</label>
+                      <input className="input" id="heightInput" value={draftHeight} placeholder="auto / 240px" onChange={(event) => setDraftHeight(event.target.value)} />
+                    </div>
+                  </div>
+                  <div className="field-grid">
+                    <div className="field">
+                      <label htmlFor="maxWidthInput">最大宽度</label>
+                      <input className="input" id="maxWidthInput" value={draftMaxWidth} placeholder="640px / none" onChange={(event) => setDraftMaxWidth(event.target.value)} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="objectFitInput">图片填充</label>
+                      <select className="input" id="objectFitInput" value={draftObjectFit} onChange={(event) => setDraftObjectFit(event.target.value)}>
+                        <option value="">继承</option>
+                        <option value="cover">cover</option>
+                        <option value="contain">contain</option>
+                        <option value="fill">fill</option>
+                        <option value="none">none</option>
+                        <option value="scale-down">scale-down</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div className="field">
-                  <label htmlFor="objectFitInput">图片填充</label>
-                  <select className="input" id="objectFitInput" value={draftObjectFit} onChange={(event) => setDraftObjectFit(event.target.value)}>
-                    <option value="">继承</option>
-                    <option value="cover">cover</option>
-                    <option value="contain">contain</option>
-                    <option value="fill">fill</option>
-                    <option value="none">none</option>
-                    <option value="scale-down">scale-down</option>
-                  </select>
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor="boxShadowInput">阴影</label>
-                <input className="input" id="boxShadowInput" value={draftBoxShadow} placeholder="0 18px 50px rgba(15, 23, 42, .12)" onChange={(event) => setDraftBoxShadow(event.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="widthInput">宽度</label>
-                <input className="input" id="widthInput" value={draftWidth} placeholder="auto / 320px / 100%" onChange={(event) => setDraftWidth(event.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="maxWidthInput">最大宽度</label>
-                <input className="input" id="maxWidthInput" value={draftMaxWidth} placeholder="640px / none" onChange={(event) => setDraftMaxWidth(event.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="heightInput">高度</label>
-                <input className="input" id="heightInput" value={draftHeight} placeholder="auto / 240px" onChange={(event) => setDraftHeight(event.target.value)} />
-              </div>
+              </section>
+
               <button className="btn btn-primary" type="button" onClick={handleApplyStyle} disabled={!selected}>应用样式</button>
             </section>
             <section className="property-card" data-od-id="attribute-editor">
@@ -2956,4 +3001,24 @@ function IconZoomOut() {
 
 function IconMaximize() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/></svg>;
+}
+
+function IconType() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 7 4 5 20 5 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="5" x2="12" y2="20"/></svg>;
+}
+
+function IconSpacing() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18M21 3v18"/><path d="M7 8h10M7 12h10M7 16h10"/></svg>;
+}
+
+function IconPalette() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="7.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="11.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="16.5" cy="10.5" r="0.5" fill="currentColor"/><path d="M12 21a3 3 0 0 0 0-6 1.5 1.5 0 0 1 0-3h2a3 3 0 0 0 3-3"/></svg>;
+}
+
+function IconBorder() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>;
+}
+
+function IconRuler() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="9" width="18" height="6" rx="1"/><line x1="7" y1="9" x2="7" y2="12"/><line x1="11" y1="9" x2="11" y2="12"/><line x1="15" y1="9" x2="15" y2="12"/><line x1="19" y1="9" x2="19" y2="12"/></svg>;
 }
