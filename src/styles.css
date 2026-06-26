@@ -2656,12 +2656,32 @@ span.meta { display: inline-block; }
 }
 .btn svg { width: 14px; height: 14px; flex-shrink: 0; }
 .btn-primary {
-  background: var(--bg-brand);
+  background: linear-gradient(135deg, var(--bg-brand) 0%, color-mix(in srgb, var(--bg-brand-hover) 60%, var(--bg-brand)) 100%);
   color: var(--text-onbrand);
   border-color: var(--bg-brand);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--bg-brand) 16%, transparent),
+              inset 0 1px 0 color-mix(in srgb, #ffffff 18%, transparent);
+  transition: background 160ms cubic-bezier(0.2, 0, 0, 1),
+              color 160ms cubic-bezier(0.2, 0, 0, 1),
+              border-color 160ms cubic-bezier(0.2, 0, 0, 1),
+              box-shadow 160ms cubic-bezier(0.2, 0, 0, 1),
+              transform 160ms cubic-bezier(0.2, 0, 0, 1);
 }
-.btn-primary:hover:not(:disabled) { background: var(--bg-brand-hover); border-color: var(--bg-brand-hover); }
-.btn-primary:active:not(:disabled) { background: var(--bg-brand-active); border-color: var(--bg-brand-active); }
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, var(--bg-brand-hover) 0%, var(--bg-brand) 100%);
+  border-color: var(--bg-brand-hover);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--bg-brand) 36%, transparent),
+              inset 0 1px 0 color-mix(in srgb, #ffffff 24%, transparent);
+  transform: translateY(-0.5px);
+}
+.btn-primary:active:not(:disabled) {
+  background: var(--bg-brand-active);
+  border-color: var(--bg-brand-active);
+  transform: translateY(0.5px);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--bg-brand) 22%, transparent),
+              inset 0 1px 0 color-mix(in srgb, #ffffff 12%, transparent);
+}
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-secondary {
   background: var(--bg-overlay-l1);
   color: var(--text-default);
@@ -3239,7 +3259,9 @@ span.meta { display: inline-block; }
   font-family: var(--font-family-metric);
   font-variant-numeric: tabular-nums;
   font-weight: 500;
+  transition: transform 200ms cubic-bezier(0.2, 0, 0, 1);
 }
+.ai-scan-card:hover .ai-scan-card__count { transform: scale(1.05); }
 .ai-scan-card__count .dot {
   width: 6px;
   height: 6px;
