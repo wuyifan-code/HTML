@@ -1,0 +1,1671 @@
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Eye, Maximize2, Minimize2, Scan, Shrink, ZoomIn, ZoomOut } from "lucide-react";
+import { useIframeSelection } from "../hooks/useIframeSelection";
+import type {
+  ElementQuickAction,
+  ModalCommand,
+  ModalState,
+  PatchCommand,
+  PreviewViewportMode,
+  SelectElementCommand,
+  SelectedElementSnapshot,
+} from "../types/editor";
+import { createEditableElementScriptConfig } from "../utils/editableElement";
+import { getFontLibraryScriptConfig, buildFontLibraryLinkTags, htmlMayUseRemoteFont } from "../utils/fontLibrary";
+import { DRAG_ACTIVATION_PX } from "../utils/dragMath";
+import {
+  createPatchElementMessage,
+  createSelectElementMessage,
+  createModalCommandMessage,
+  sendMessageToIframeLax,
+} from "../utils/iframeMessages";
+import { findMatchingPresetKey, VIEWPORT_PRESETS } from "../utils/viewportPresets";
+import { CustomSelect } from "./CustomSelect";
+
+interface PreviewFrameProps {
+  html: string;
+  selectedId: string | null;
+  reloadNonce: number;
+  patchCommand: PatchCommand | null;
+  modalCommand: ModalCommand | null;
+  selectCommand: SelectElementCommand | null;
+  viewportMode: PreviewViewportMode;
+  viewportWidth: number;
+  viewportHeight: number;
+  isFocusPreview: boolean;
+  onViewportSizeChange: (width: number, height: number) => void;
+  onViewportPresetSelect: (mode: Exclude<PreviewViewportMode, "fit">) => void;
+  onFitToggle: () => void;
+  onToggleFocusPreview: () => void;
+  onElementSelected: (element: SelectedElementSnapshot) => void;
+  onModalStateChange: (state: ModalState) => void;
+  onElementAction: (hftId: string, action: ElementQuickAction) => void;
+  onElementDragged: (hftId: string, position: string, top: string, left: string) => void;
+  onReadyChange: (isReady: boolean) => void;
+}
+
+function PreviewFrameComponent({
+  html,
+  selectedId,
+  reloadNonce,
+  patchCommand,
+  modalCommand,
+  selectCommand,
+  viewportMode,
+  viewportWidth,
+  viewportHeight,
+  isFocusPreview,
+  onViewportSizeChange,
+  onViewportPresetSelect,
+  onFitToggle,
+  onToggleFocusPreview,
+  onElementSelected,
+  onModalStateChange,
+  onElementAction,
+  onElementDragged,
+  onReadyChange,
+}: PreviewFrameProps) {
+  const bridgeTokenRef = useRef(createBridgeToken());
+  const lastSelectCommandIdRef = useRef<number | null>(null);
+  const { iframeRef, isReady, contentDimensions, markReady, markRendering, hasIframeError } = useIframeSelection(
+    bridgeTokenRef.current,
+    onElementSelected,
+    onModalStateChange,
+    onElementAction,
+    onElementDragged
+  );
+  // srcDoc 仅在结构性变更(reloadNonce)时重建;文本/样式编辑通过 patchCommand 增量下发。
+  const srcDoc = useMemo(
+    () => buildPreviewDocument(html, bridgeTokenRef.current),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [reloadNonce]
+  );
+  const isFit = viewportMode === "fit";
+  const [zoom, setZoom] = useState(1);
+  const [autoFit, setAutoFit] = useState(true);
+
+  // 重置 autoFit 当 HTML 结构变更(reloadNonce)时
+  useEffect(() => {
+    setAutoFit(true);
+    setZoom(1);
+  }, [reloadNonce]);
+
+  // 在 fit 模式下使用自适应尺寸；否则使用编辑器传入的尺寸
+  const effectiveWidth = isFit && contentDimensions
+    ? Math.round(contentDimensions.contentWidth)
+    : viewportWidth;
+  const effectiveHeight = isFit && contentDimensions
+    ? Math.round(contentDimensions.contentHeight)
+    : viewportHeight;
+
+  // 编辑器:当前 W×H 是否匹配某个 preset
+  const presetKey = useMemo(
+    () => findMatchingPresetKey(viewportWidth, viewportHeight),
+    [viewportWidth, viewportHeight]
+  );
+
+  const displayZoom = autoFit ? 1 : zoom;
+
+  const handleZoomIn = useCallback(() => {
+    setAutoFit(false);
+    setZoom((z) => Math.min(2, z + 0.1));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setAutoFit(false);
+    setZoom((z) => Math.max(0.25, z - 0.1));
+  }, []);
+
+  const handleZoomReset = useCallback(() => {
+    setAutoFit(false);
+    setZoom(1);
+  }, []);
+
+  const handleAutoFit = useCallback(() => {
+    setAutoFit((prev) => !prev);
+  }, []);
+
+  useEffect(() => {
+    markRendering();
+    onReadyChange(false);
+  }, [markRendering, onReadyChange, srcDoc]);
+
+  useEffect(() => {
+    onReadyChange(isReady);
+  }, [isReady, onReadyChange]);
+
+  // 增量补丁:文本/样式/属性就地应用到 iframe,不触发整文档重建。
+  useEffect(() => {
+    if (!patchCommand || !isReady) return;
+    sendMessageToIframeLax(
+      iframeRef.current,
+      createPatchElementMessage(patchCommand.hftId, patchCommand.patch as unknown as Record<string, unknown>, bridgeTokenRef.current)
+    );
+  }, [iframeRef, isReady, patchCommand]);
+
+  useEffect(() => {
+    if (!modalCommand || !isReady) return;
+    sendMessageToIframeLax(
+      iframeRef.current,
+      createModalCommandMessage(modalCommand.action, bridgeTokenRef.current)
+    );
+  }, [iframeRef, isReady, modalCommand]);
+
+  useEffect(() => {
+    const pendingCommand =
+      selectCommand && selectCommand.id !== lastSelectCommandIdRef.current ? selectCommand : null;
+    const hftId = pendingCommand?.hftId || selectedId;
+    if (!hftId || !isReady) return;
+
+    if (pendingCommand) {
+      lastSelectCommandIdRef.current = pendingCommand.id;
+    }
+
+    sendMessageToIframeLax(
+      iframeRef.current,
+      createSelectElementMessage(hftId, Boolean(pendingCommand), bridgeTokenRef.current)
+    );
+  }, [iframeRef, isReady, selectCommand, selectedId]);
+
+  return (
+    <section className="panel preview-panel" aria-label="HTML 实时预览">
+      <div className="panel-header">
+        <div className="panel-title">
+          <Eye size={18} strokeWidth={1.75} />
+          <span>Canvas</span>
+        </div>
+        <div className="preview-header-actions">
+          <div className="viewport-editor" aria-label="视口尺寸">
+            <span className="viewport-editor-label">当前</span>
+            <input
+              className="viewport-size-input"
+              type="number"
+              inputMode="numeric"
+              min={120}
+              max={3840}
+              step={10}
+              value={effectiveWidth}
+              disabled={isFit}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (Number.isFinite(next)) onViewportSizeChange(next, effectiveHeight);
+              }}
+              aria-label="视口宽度"
+              title={isFit ? "适配模式下尺寸由内容决定" : "视口宽度"}
+            />
+            <span className="viewport-editor-times" aria-hidden="true">×</span>
+            <input
+              className="viewport-size-input"
+              type="number"
+              inputMode="numeric"
+              min={80}
+              max={2160}
+              step={10}
+              value={effectiveHeight}
+              disabled={isFit}
+              onChange={(e) => {
+                const next = Number(e.target.value);
+                if (Number.isFinite(next)) onViewportSizeChange(effectiveWidth, next);
+              }}
+              aria-label="视口高度"
+              title={isFit ? "适配模式下尺寸由内容决定" : "视口高度"}
+            />
+            <CustomSelect
+              value={presetKey ?? ""}
+              options={[
+                { value: "desktop", label: VIEWPORT_PRESETS.desktop.label },
+                { value: "wide",    label: VIEWPORT_PRESETS.wide.label },
+                { value: "tablet",  label: VIEWPORT_PRESETS.tablet.label },
+                { value: "mobile",  label: VIEWPORT_PRESETS.mobile.label },
+              ]}
+              onChange={(value) =>
+                onViewportPresetSelect(value as Exclude<PreviewViewportMode, "fit">)
+              }
+              matchValue={(opt) => opt.value === presetKey}
+              placeholder="预设"
+            />
+            <button
+              className={`ghost-button compact-action viewport-fit-btn${isFit ? " viewport-fit-btn-active" : ""}`}
+              type="button"
+              onClick={onFitToggle}
+              title={isFit ? "退出适配，使用自定义尺寸" : "按内容尺寸自适应"}
+            >
+              <Shrink size={14} strokeWidth={1.75} />
+              <span>适配</span>
+            </button>
+          </div>
+          <div className="zoom-control-cluster" aria-label="缩放控制">
+            <button
+              className="ghost-button compact-action zoom-btn"
+              type="button"
+              onClick={handleZoomOut}
+              disabled={displayZoom <= 0.25}
+              title="缩小"
+            >
+              <ZoomOut size={14} strokeWidth={1.75} />
+            </button>
+            <button
+              className="zoom-pill-button"
+              type="button"
+              onClick={handleZoomReset}
+              title="重置为 100%"
+            >
+              {autoFit ? "适应" : `${Math.round(displayZoom * 100)}%`}
+            </button>
+            <button
+              className="ghost-button compact-action zoom-btn"
+              type="button"
+              onClick={handleZoomIn}
+              disabled={displayZoom >= 2}
+              title="放大"
+            >
+              <ZoomIn size={14} strokeWidth={1.75} />
+            </button>
+            <button
+              className={`ghost-button compact-action zoom-fit-btn${autoFit ? " zoom-fit-active" : ""}`}
+              type="button"
+              onClick={handleAutoFit}
+              title={autoFit ? "已开启自适应，点击关闭" : "自适应画布"}
+            >
+              <Scan size={14} strokeWidth={1.75} />
+              <span>适应</span>
+            </button>
+          </div>
+          <button
+            className="ghost-button compact-action preview-focus-button"
+            type="button"
+            onClick={onToggleFocusPreview}
+            title={isFocusPreview ? "恢复三栏编辑器" : "隐藏编辑器，全屏预览"}
+          >
+            {isFocusPreview ? <Minimize2 size={15} strokeWidth={1.75} /> : <Maximize2 size={15} strokeWidth={1.75} />}
+            <span>{isFocusPreview ? "恢复" : "全屏"}</span>
+          </button>
+        </div>
+      </div>
+      <div className={`iframe-shell iframe-shell-${viewportMode}`}>
+        <div
+          className={`preview-viewport preview-viewport-${viewportMode}`}
+          style={{
+            "--preview-zoom": displayZoom,
+            width: `${effectiveWidth}px`,
+            height: `${effectiveHeight}px`,
+          } as React.CSSProperties}
+        >
+          <iframe
+            ref={iframeRef}
+            title="HTML FineTune 实时预览"
+            sandbox="allow-scripts"
+            srcDoc={srcDoc}
+            onLoad={markReady}
+            onError={markRendering}
+            style={viewportMode === "fit" ? { width: "100%", height: "100%" } : undefined}
+          />
+          {hasIframeError ? (
+            <div className="iframe-error-overlay">
+              <span>预览加载失败，请检查 HTML 内容</span>
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export const PreviewFrame = memo(PreviewFrameComponent);
+
+function buildPreviewDocument(html: string, bridgeToken: string): string {
+  const script = createBridgeScript(bridgeToken);
+  const style = `<style id="html-finetune-bridge-style">
+    [data-html-finetune-editable="true"] {
+      cursor: text !important;
+    }
+    [data-html-finetune-hovered="true"]:not([data-html-finetune-selected="true"]) {
+      outline: 1.5px dashed #19a997 !important;
+      outline-offset: 2px !important;
+      box-shadow: 0 0 0 5px rgba(25, 169, 151, 0.11) !important;
+      border-radius: 6px !important;
+    }
+    [data-html-finetune-selected="true"] {
+      outline: 2px solid #19a997 !important;
+      outline-offset: 2px !important;
+      box-shadow: 0 0 0 6px rgba(25, 169, 151, 0.14) !important;
+      border-radius: 6px !important;
+    }
+    [data-html-finetune-dragging="true"] {
+      cursor: grabbing !important;
+      outline-style: dashed !important;
+    }
+    [data-html-finetune-dragging="true"]:active {
+      cursor: grabbing !important;
+    }
+    #html-finetune-floating-toolbar {
+      position: fixed !important;
+      z-index: 2147483647 !important;
+      display: none;
+      align-items: center !important;
+      gap: 8px !important;
+      min-height: 42px !important;
+      padding: 4px !important;
+      border: 1px solid rgba(148, 163, 184, 0.28) !important;
+      border-radius: 10px !important;
+      background: rgba(255, 255, 255, 0.96) !important;
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+        0 2px 4px rgba(15, 23, 42, 0.04),
+        0 8px 18px rgba(15, 23, 42, 0.10),
+        0 28px 56px rgba(15, 23, 42, 0.18) !important;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+      backdrop-filter: blur(18px) !important;
+      -webkit-backdrop-filter: blur(18px) !important;
+      transform-origin: center bottom !important;
+      isolation: isolate !important;
+      animation: hft-toolbar-enter 220ms cubic-bezier(0.16, 1, 0.3, 1) both !important;
+    }
+
+    @keyframes hft-toolbar-enter {
+      0% {
+        opacity: 0 !important;
+        transform: translateY(8px) scale(0.94) !important;
+      }
+      100% {
+        opacity: 1 !important;
+        transform: translateY(0) scale(1) !important;
+      }
+    }
+    #html-finetune-floating-toolbar::after {
+      content: "" !important;
+      position: absolute !important;
+      left: 50% !important;
+      bottom: -6px !important;
+      width: 10px !important;
+      height: 10px !important;
+      transform: translateX(-50%) rotate(45deg) !important;
+      border-right: 1px solid rgba(148, 163, 184, 0.34) !important;
+      border-bottom: 1px solid rgba(148, 163, 184, 0.34) !important;
+      background: rgba(255, 255, 255, 0.98) !important;
+    }
+    #html-finetune-floating-toolbar[data-placement="below"] {
+      transform-origin: center top !important;
+    }
+    #html-finetune-floating-toolbar[data-placement="below"]::after {
+      top: -6px !important;
+      bottom: auto !important;
+      border: 0 !important;
+      border-left: 1px solid rgba(148, 163, 184, 0.34) !important;
+      border-top: 1px solid rgba(148, 163, 184, 0.34) !important;
+    }
+    #html-finetune-floating-toolbar .hft-toolbar-meta {
+      height: 32px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      gap: 7px !important;
+      max-width: 112px !important;
+      padding: 0 9px !important;
+      border-radius: 7px !important;
+      background: #f3fbf9 !important;
+      color: #0f766e !important;
+      font-size: 12px !important;
+      font-weight: 700 !important;
+      line-height: 1 !important;
+    }
+    #html-finetune-floating-toolbar .hft-toolbar-meta strong {
+      min-width: 0 !important;
+      max-width: 74px !important;
+      overflow: hidden !important;
+      text-overflow: ellipsis !important;
+      white-space: nowrap !important;
+    }
+    #html-finetune-floating-toolbar .hft-toolbar-dot {
+      width: 7px !important;
+      height: 7px !important;
+      border-radius: 999px !important;
+      background: #19a997 !important;
+      box-shadow: 0 0 0 3px rgba(25, 169, 151, 0.16) !important;
+    }
+    #html-finetune-floating-toolbar .hft-toolbar-divider {
+      width: 1px !important;
+      height: 24px !important;
+      border-radius: 999px !important;
+      background: linear-gradient(180deg, transparent 0%, #cfdad7 40%, #cfdad7 60%, transparent 100%) !important;
+    }
+    #html-finetune-floating-toolbar button {
+      position: relative !important;
+      width: 32px !important;
+      min-width: 32px !important;
+      height: 32px !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      gap: 0 !important;
+      padding: 0 !important;
+      border: 1px solid transparent !important;
+      border-radius: 7px !important;
+      background: transparent !important;
+      color: #334155 !important;
+      font: inherit !important;
+      font-size: 12px !important;
+      font-weight: 650 !important;
+      cursor: pointer !important;
+      transition: background 180ms ease, border-color 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease !important;
+    }
+    #html-finetune-floating-toolbar button svg {
+      width: 16px !important;
+      height: 16px !important;
+      flex: 0 0 auto !important;
+      stroke: currentColor !important;
+      stroke-width: 1.75 !important;
+      fill: none !important;
+      stroke-linecap: round !important;
+      stroke-linejoin: round !important;
+    }
+    #html-finetune-floating-toolbar button span {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      overflow: hidden !important;
+      clip: rect(0 0 0 0) !important;
+      white-space: nowrap !important;
+    }
+    #html-finetune-floating-toolbar button::after {
+      content: attr(data-label) !important;
+      position: absolute !important;
+      left: 50% !important;
+      top: -34px !important;
+      z-index: 2 !important;
+      padding: 5px 7px !important;
+      border: 1px solid rgba(15, 118, 110, 0.16) !important;
+      border-radius: 6px !important;
+      background: rgba(17, 24, 39, 0.92) !important;
+      color: #ffffff !important;
+      font-size: 11px !important;
+      font-weight: 650 !important;
+      line-height: 1 !important;
+      white-space: nowrap !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+      transform: translate(-50%, 4px) !important;
+      transition: opacity 140ms ease, transform 140ms ease !important;
+    }
+    #html-finetune-floating-toolbar button:hover::after,
+    #html-finetune-floating-toolbar button:focus-visible::after {
+      opacity: 1 !important;
+      transform: translate(-50%, 0) !important;
+    }
+    #html-finetune-floating-toolbar button:hover {
+      color: #0f766e !important;
+      background: rgba(25, 169, 151, 0.1) !important;
+      border-color: rgba(25, 169, 151, 0.18) !important;
+      box-shadow: 0 6px 14px rgba(15, 118, 110, 0.12) !important;
+      transform: translateY(-1px) scale(1.04) !important;
+    }
+    #html-finetune-floating-toolbar button:active {
+      transform: translateY(1px) scale(0.97) !important;
+      transition-duration: 60ms !important;
+    }
+    #html-finetune-floating-toolbar button[data-action="copy-style"],
+    #html-finetune-floating-toolbar button[data-action="paste-style"] {
+      color: #0f766e !important;
+    }
+    #html-finetune-floating-toolbar button[data-action="delete"] {
+      color: #b42318 !important;
+    }
+    #html-finetune-floating-toolbar button[data-action="delete"]:hover {
+      color: #ffffff !important;
+      background: #e5483f !important;
+      border-color: #e5483f !important;
+      box-shadow: 0 6px 18px rgba(229, 72, 63, 0.28) !important;
+      transform: translateY(-1px) scale(1.04) !important;
+    }
+  </style>`;
+
+  const hasHtmlShell = /<html[\s>]/i.test(html);
+  const source = withRemoteFontLibraryLinks(hasHtmlShell ? html : wrapFragment(html));
+  const withStyle = insertBeforeClosingTag(source, "head", style);
+  return insertBeforeClosingTag(withStyle, "body", script);
+}
+
+function wrapFragment(fragment: string): string {
+  return `<!doctype html><html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"></head><body>${fragment}</body></html>`;
+}
+
+/**
+ * 字符串级字体库注入（Pretext 技术）
+ *
+ * 传统方式用 DOMParser 解析全文 → DOM 操作 → 序列化。
+ * Pretext 方式：正则检查 + 字符串拼接，O(n) 降至常数级开销。
+ */
+function withRemoteFontLibraryLinks(html: string): string {
+  try {
+    if (!htmlMayUseRemoteFont(html)) return html;
+    const links = buildFontLibraryLinkTags();
+    return insertBeforeClosingTag(html, "head", links);
+  } catch {
+    return html;
+  }
+}
+
+function insertBeforeClosingTag(html: string, tag: "head" | "body", content: string): string {
+  const pattern = new RegExp(`</${tag}>`, "i");
+  if (pattern.test(html)) {
+    return html.replace(pattern, `${content}</${tag}>`);
+  }
+
+  return `${html}${content}`;
+}
+
+function createBridgeScript(bridgeToken: string): string {
+  const config = createEditableElementScriptConfig();
+  const fontLibrary = getFontLibraryScriptConfig();
+
+  return `<script>
+    (() => {
+      const bridgeToken = ${JSON.stringify(bridgeToken)};
+      const config = ${JSON.stringify(config)};
+      const fontLibrary = ${JSON.stringify(fontLibrary)};
+      const editableTags = new Set(config.editableTags.map((tag) => tag.toUpperCase()));
+      const editableSvgTextTags = new Set(config.editableSvgTextTags.map((tag) => tag.toUpperCase()));
+      const editableBlockTags = new Set(config.editableBlockTags.map((tag) => tag.toUpperCase()));
+      const editableMediaTags = new Set(config.editableMediaTags.map((tag) => tag.toUpperCase()));
+      const nonEditableTags = new Set(config.nonEditableTags.map((tag) => tag.toUpperCase()));
+      const modalSelectors = [
+        "dialog",
+        "[role='dialog']",
+        "[aria-modal='true']",
+        "[data-hft-modal]",
+        "[data-modal]",
+        ".modal",
+        ".dialog",
+        ".popup"
+      ];
+      let selectionSequence = 0;
+      let allowSlideNavigationEvent = false;
+      const DRAG_ACTIVATION_PX = ${JSON.stringify(DRAG_ACTIVATION_PX)};
+      const DRAGGING_ATTRIBUTE = "data-html-finetune-dragging";
+      let activeDrag = null;
+
+      function clamp(value, min, max) {
+        return Math.max(min, Math.min(max, value));
+      }
+
+      function computeDragPosition(input) {
+        const maxLeft = Math.max(0, input.frameWidth - input.elementWidth);
+        const maxTop = Math.max(0, input.frameHeight - input.elementHeight);
+        return {
+          left: clamp(input.startLeft + input.dx, 0, maxLeft),
+          top: clamp(input.startTop + input.dy, 0, maxTop),
+        };
+      }
+
+      function resolveSelectedEditableElement(target) {
+        if (!target || !(target instanceof Element)) return null;
+        if (target.closest("[data-html-finetune-ui='true']")) return null;
+        const direct = findEditableElement(target);
+        if (!direct) return null;
+        const selected = document.querySelector("[" + config.selectedAttribute + "='true']");
+        if (!selected || selected !== direct) return null;
+        if (direct instanceof SVGElement && editableSvgTextTags.has(direct.tagName.toUpperCase())) {
+          return null;
+        }
+        return direct instanceof HTMLElement ? direct : null;
+      }
+
+      function beginDragElement(element, downEvent) {
+        const rect = element.getBoundingClientRect();
+        const computed = window.getComputedStyle(element);
+        const originalPosition = computed.position;
+        if (!["relative", "absolute", "fixed"].includes(originalPosition)) {
+          element.style.setProperty("position", "absolute");
+        }
+        element.style.setProperty("top", rect.top + "px");
+        element.style.setProperty("left", rect.left + "px");
+        element.setAttribute(DRAGGING_ATTRIBUTE, "true");
+        try {
+          element.setPointerCapture(downEvent.pointerId);
+        } catch (e) {
+          // 某些浏览器在 SVG 上会抛错,忽略即可
+        }
+        hideFloatingToolbar();
+        activeDrag = {
+          element,
+          pointerId: downEvent.pointerId,
+          downClientX: downEvent.clientX,
+          downClientY: downEvent.clientY,
+          startLeft: rect.left,
+          startTop: rect.top,
+          elementWidth: rect.width,
+          elementHeight: rect.height,
+          activated: false,
+        };
+      }
+
+      function updateDragElement(moveEvent) {
+        if (!activeDrag || activeDrag.pointerId !== moveEvent.pointerId) return;
+        const dx = moveEvent.clientX - activeDrag.downClientX;
+        const dy = moveEvent.clientY - activeDrag.downClientY;
+        if (!activeDrag.activated) {
+          if (Math.hypot(dx, dy) < DRAG_ACTIVATION_PX) return;
+          activeDrag.activated = true;
+        }
+        const frame = getVisibleFrameBounds();
+        const next = computeDragPosition({
+          startLeft: activeDrag.startLeft,
+          startTop: activeDrag.startTop,
+          dx,
+          dy,
+          elementWidth: activeDrag.elementWidth,
+          elementHeight: activeDrag.elementHeight,
+          frameWidth: frame.width,
+          frameHeight: frame.height,
+        });
+        activeDrag.element.style.setProperty("left", next.left + "px");
+        activeDrag.element.style.setProperty("top", next.top + "px");
+      }
+
+      function endDragElement(upEvent) {
+        if (!activeDrag) return;
+        const drag = activeDrag;
+        activeDrag = null;
+        const element = drag.element;
+        element.removeAttribute(DRAGGING_ATTRIBUTE);
+        try {
+          element.releasePointerCapture(drag.pointerId);
+        } catch (e) {
+          // ignore
+        }
+        if (!drag.activated) {
+          positionFloatingToolbar(element);
+          return;
+        }
+        const top = element.style.top || "";
+        const left = element.style.left || "";
+        const position = element.style.position || "absolute";
+        const hftId = element.getAttribute(config.hftIdAttribute) || "";
+        if (hftId) {
+          window.parent.postMessage({
+            type: "HTML_FINETUNE_DRAG_COMMIT",
+            token: bridgeToken,
+            payload: { hftId, position, top, left }
+          }, "*");
+        }
+        positionFloatingToolbar(element);
+      }
+
+      function cancelDragElement() {
+        if (!activeDrag) return;
+        const element = activeDrag.element;
+        activeDrag = null;
+        element.removeAttribute(DRAGGING_ATTRIBUTE);
+        positionFloatingToolbar(element);
+      }
+
+      function hasDirectText(element) {
+        return Array.from(element.childNodes).some((node) => {
+          return node.nodeType === Node.TEXT_NODE && (node.textContent || "").trim().length > 0;
+        });
+      }
+
+      function isEditableSvgTextElement(element) {
+        return element instanceof SVGElement && editableSvgTextTags.has(element.tagName.toUpperCase());
+      }
+
+      function isRootSvgElement(element) {
+        return element instanceof SVGSVGElement || element.tagName.toUpperCase() === "SVG";
+      }
+
+      function isSvgImageElement(element) {
+        return element instanceof SVGElement && element.tagName.toUpperCase() === "IMAGE";
+      }
+
+      function getElementClassName(element) {
+        if (typeof element.className === "string") return element.className;
+        if (element.className && typeof element.className.baseVal === "string") return element.className.baseVal;
+        return element.getAttribute("class") || "";
+      }
+
+      function isEditableElement(element) {
+        if (!element || !(element instanceof HTMLElement) && !(element instanceof SVGElement)) return false;
+        if (element.closest("[data-html-finetune-ui='true']")) return false;
+        const tagName = element.tagName.toUpperCase();
+        if (nonEditableTags.has(tagName)) return false;
+        if (editableMediaTags.has(tagName)) return true;
+        const text = (element.textContent || "").trim();
+        if (!text) return false;
+        if (element instanceof SVGElement) return editableSvgTextTags.has(tagName);
+        if (editableTags.has(tagName)) return true;
+        if (editableBlockTags.has(tagName)) return hasDirectText(element);
+        return false;
+      }
+
+      function findEditableElement(start) {
+        let current = start;
+        while (current && current !== document.body) {
+          if (isEditableElement(current)) return current;
+          current = current.parentElement;
+        }
+        return null;
+      }
+
+      function getElementIndex(element) {
+        let index = 1;
+        let sibling = element.previousElementSibling;
+        while (sibling) {
+          if (sibling.tagName === element.tagName) index += 1;
+          sibling = sibling.previousElementSibling;
+        }
+        return index;
+      }
+
+      function getDomPath(element) {
+        const segments = [];
+        let current = element;
+        while (current && current.nodeType === Node.ELEMENT_NODE) {
+          const tag = current.tagName.toLowerCase();
+          if (tag === "html") {
+            segments.unshift("html");
+            break;
+          }
+          segments.unshift(tag + ":nth-of-type(" + getElementIndex(current) + ")");
+          current = current.parentElement;
+        }
+        return segments.join(" > ");
+      }
+
+      function colorToHex(color) {
+        const match = color.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/i);
+        if (match) {
+          return "#" + [match[1], match[2], match[3]]
+            .map((part) => Number(part).toString(16).padStart(2, "0"))
+            .join("");
+        }
+        if (/^#[0-9a-f]{6}$/i.test(color)) return color;
+        return "#141413";
+      }
+
+      function describeLocation(element) {
+        const className = getElementClassName(element);
+        const classes = className
+          ? "." + className.trim().split(/\\s+/).filter(Boolean).join(".")
+          : "";
+        const id = element.id ? "#" + element.id : "";
+        return element.tagName.toLowerCase() + id + classes;
+      }
+
+      function clearSelection() {
+        document.querySelectorAll("[" + config.selectedAttribute + "='true']").forEach((element) => {
+          element.removeAttribute(config.selectedAttribute);
+        });
+      }
+
+      function clearHover() {
+        document.querySelectorAll("[" + config.hoverAttribute + "='true']").forEach((element) => {
+          element.removeAttribute(config.hoverAttribute);
+        });
+      }
+
+      function markEditableElements() {
+        document.querySelectorAll("body *").forEach((element) => {
+          if (isEditableElement(element)) {
+            element.setAttribute(config.editableAttribute, "true");
+          }
+        });
+      }
+
+      function makePayload(element) {
+        const computed = window.getComputedStyle(element);
+        return {
+          hftId: element.getAttribute(config.hftIdAttribute) || "",
+          path: getDomPath(element),
+          tagName: element.tagName.toLowerCase(),
+          id: element.id || "",
+          className: typeof element.className === "string" ? element.className : "",
+          text: element.textContent || "",
+          styles: {
+            fontFamily: computed.fontFamily,
+            fontSize: computed.fontSize,
+            color: colorToHex(computed.color),
+            fontWeight: computed.fontWeight,
+            lineHeight: computed.lineHeight,
+            letterSpacing: computed.letterSpacing === "normal" ? "0px" : computed.letterSpacing,
+            textAlign: computed.textAlign,
+            backgroundColor: colorToHex(computed.backgroundColor),
+            borderColor: colorToHex(computed.borderColor),
+            borderWidth: computed.borderWidth,
+            borderStyle: computed.borderStyle,
+            borderRadius: computed.borderRadius,
+            boxShadow: computed.boxShadow === "none" ? "" : computed.boxShadow,
+            width: computed.width,
+            height: computed.height,
+            maxWidth: computed.maxWidth === "none" ? "" : computed.maxWidth,
+            objectFit: computed.objectFit,
+            marginTop: computed.marginTop,
+            marginBottom: computed.marginBottom,
+            paddingTop: computed.paddingTop,
+            paddingBottom: computed.paddingBottom,
+            paddingLeft: computed.paddingLeft,
+            paddingRight: computed.paddingRight
+          },
+          effects: {
+            hoverBackgroundColor: ""
+          },
+          attributes: {
+            src: getElementSourceAttribute(element),
+            alt: getElementAltAttribute(element)
+          },
+          location: describeLocation(element),
+          hasInlineStyle: Boolean(element.getAttribute("style")),
+          canEditText: canEditElementText(element)
+        };
+      }
+
+      function getElementSourceAttribute(element) {
+        if (element instanceof HTMLImageElement) return element.getAttribute("src") || "";
+        if (isRootSvgElement(element)) return element.getAttribute("viewBox") || "";
+        if (isSvgImageElement(element)) return element.getAttribute("href") || element.getAttribute("xlink:href") || "";
+        return "";
+      }
+
+      function getElementAltAttribute(element) {
+        if (element instanceof HTMLImageElement) return element.getAttribute("alt") || "";
+        if (element instanceof SVGElement) return element.getAttribute("aria-label") || "";
+        return "";
+      }
+
+      function canEditElementText(element) {
+        if (isEditableSvgTextElement(element)) return !element.querySelector("*");
+        if (element instanceof SVGElement || element instanceof HTMLImageElement) return false;
+        return !element.querySelector("*");
+      }
+
+      function selectElement(element, shouldNotify = true) {
+        clearSelection();
+        clearHover();
+        element.setAttribute(config.selectedAttribute, "true");
+        positionFloatingToolbar(element);
+        if (shouldNotify) {
+          window.parent.postMessage({
+            type: "HTML_FINETUNE_ELEMENT_SELECTED",
+            token: bridgeToken,
+            payload: makePayload(element)
+          }, "*");
+        }
+      }
+
+      function ensureFloatingToolbar() {
+        const existing = document.getElementById("html-finetune-floating-toolbar");
+        if (existing) return existing;
+
+        const toolbar = document.createElement("div");
+        toolbar.id = "html-finetune-floating-toolbar";
+        toolbar.setAttribute("data-html-finetune-ui", "true");
+        toolbar.setAttribute("role", "toolbar");
+        toolbar.setAttribute("aria-label", "HTML FineTune 快捷工具");
+        toolbar.innerHTML = [
+          '<div class="hft-toolbar-meta" aria-hidden="true"><span class="hft-toolbar-dot"></span><strong data-role="tag">element</strong></div>',
+          '<span class="hft-toolbar-divider" aria-hidden="true"></span>',
+          '<button type="button" data-action="edit-text" data-label="编辑" title="进入文字编辑" aria-label="编辑文字"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4Z"></path></svg><span>编辑</span></button>',
+          '<button type="button" data-action="drag-start" data-label="拖拽" title="拖动元素到新位置" aria-label="拖拽元素"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.2"></circle><circle cx="15" cy="6" r="1.2"></circle><circle cx="9" cy="12" r="1.2"></circle><circle cx="15" cy="12" r="1.2"></circle><circle cx="9" cy="18" r="1.2"></circle><circle cx="15" cy="18" r="1.2"></circle></svg><span>拖拽</span></button>',
+          '<button type="button" data-action="delete" data-label="删除" title="删除元素" aria-label="删除元素"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path></svg><span>删除</span></button>'
+        ].join("");
+
+        toolbar.addEventListener("mousedown", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+        }, true);
+
+        toolbar.addEventListener("click", (event) => {
+          const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
+          if (!button) return;
+          event.preventDefault();
+          event.stopPropagation();
+          const hftId = toolbar.getAttribute("data-hft-id") || "";
+          const action = button.getAttribute("data-action") || "";
+          if (!hftId || !action) return;
+
+          window.parent.postMessage({
+            type: "HTML_FINETUNE_ELEMENT_ACTION",
+            token: bridgeToken,
+            payload: { hftId, action }
+          }, "*");
+        }, true);
+
+        document.body.appendChild(toolbar);
+        return toolbar;
+      }
+
+      function hideFloatingToolbar() {
+        const toolbar = document.getElementById("html-finetune-floating-toolbar");
+        if (!toolbar) return;
+        toolbar.style.display = "none";
+        toolbar.removeAttribute("data-hft-id");
+      }
+
+      function positionFloatingToolbar(element) {
+        const toolbar = ensureFloatingToolbar();
+        const rect = element.getBoundingClientRect();
+        const tagLabel = toolbar.querySelector("[data-role='tag']");
+        if (tagLabel) tagLabel.textContent = element.tagName.toLowerCase();
+        toolbar.setAttribute("data-hft-id", element.getAttribute(config.hftIdAttribute) || "");
+        toolbar.style.display = "flex";
+
+        const toolbarWidth = toolbar.offsetWidth || 188;
+        const toolbarHeight = toolbar.offsetHeight || 42;
+        const visibleBounds = getVisibleFrameBounds();
+        const hasRoomAbove = rect.top >= toolbarHeight + 12;
+        toolbar.setAttribute("data-placement", hasRoomAbove ? "above" : "below");
+        const preferredTop = hasRoomAbove ? rect.top - toolbarHeight - 12 : rect.bottom + 12;
+        const maxTop = Math.max(8, visibleBounds.height - toolbarHeight - 8);
+        const top = Math.max(8, Math.min(preferredTop, maxTop));
+        const maxLeft = Math.max(8, visibleBounds.width - toolbarWidth - 8);
+        const preferredLeft = rect.left + rect.width / 2 - toolbarWidth / 2;
+        const left = Math.max(8, Math.min(preferredLeft, maxLeft));
+
+        toolbar.style.top = top + "px";
+        toolbar.style.left = left + "px";
+      }
+
+      let cachedFrameBounds = null;
+      let pendingReposition = false;
+      function invalidateFrameBounds() {
+        cachedFrameBounds = null;
+      }
+
+      function getVisibleFrameBounds() {
+        if (cachedFrameBounds) return cachedFrameBounds;
+        const fallback = { width: window.innerWidth, height: window.innerHeight };
+        try {
+          if (!window.frameElement || !window.parent) return fallback;
+          const frameRect = window.frameElement.getBoundingClientRect();
+          const parentWidth = window.parent.innerWidth || fallback.width;
+          const parentHeight = window.parent.innerHeight || fallback.height;
+          const bounds = {
+            width: Math.max(120, Math.min(fallback.width, parentWidth - frameRect.left - 8)),
+            height: Math.max(80, Math.min(fallback.height, parentHeight - frameRect.top - 8))
+          };
+          cachedFrameBounds = bounds;
+          return bounds;
+        } catch {
+          return fallback;
+        }
+      }
+
+      function repositionFloatingToolbar() {
+        const selected = document.querySelector("[" + config.selectedAttribute + "='true']");
+        if (selected && (selected instanceof HTMLElement || selected instanceof SVGElement)) {
+          positionFloatingToolbar(selected);
+        } else {
+          hideFloatingToolbar();
+        }
+      }
+
+      function queryByHftId(hftId) {
+        if (!hftId) return null;
+        return Array.from(document.querySelectorAll("[" + config.hftIdAttribute + "]")).find((element) => {
+          return element.getAttribute(config.hftIdAttribute) === hftId;
+        }) || null;
+      }
+
+      function getModalElements() {
+        return Array.from(document.querySelectorAll(modalSelectors.join(","))).filter((element) => {
+          return element instanceof HTMLElement;
+        });
+      }
+
+      function normalizeFontName(value) {
+        return String(value || "").toLowerCase().replace(/["']/g, "").replace(/\s+/g, " ").trim();
+      }
+
+      function shouldLoadRemoteFont(fontFamily) {
+        const normalized = normalizeFontName(fontFamily);
+        return fontLibrary.remoteFamilies.some((familyName) => {
+          return normalized.includes(normalizeFontName(familyName));
+        });
+      }
+
+      function ensureRemoteFontLibrary(fontFamily) {
+        if (!shouldLoadRemoteFont(fontFamily)) return;
+        const existing = document.querySelector("link[" + fontLibrary.attribute + "='stylesheet']");
+        if (existing) return;
+
+        fontLibrary.preconnectOrigins.forEach((origin) => {
+          const link = document.createElement("link");
+          link.rel = "preconnect";
+          link.href = origin;
+          link.setAttribute(fontLibrary.attribute, "preconnect");
+          if (origin.indexOf("gstatic") >= 0) {
+            link.crossOrigin = "anonymous";
+          }
+          document.head.appendChild(link);
+        });
+
+        const stylesheet = document.createElement("link");
+        stylesheet.rel = "stylesheet";
+        stylesheet.href = fontLibrary.stylesheetHref;
+        stylesheet.setAttribute(fontLibrary.attribute, "stylesheet");
+        document.head.appendChild(stylesheet);
+      }
+
+      // 增量补丁:文本/样式/属性就地应用,避免整文档重建。
+      function patchElement(hftId, patch) {
+        const element = queryByHftId(hftId);
+        if (!element || !(element instanceof HTMLElement) && !(element instanceof SVGElement)) return;
+
+        if (typeof patch.text === "string" && canEditElementText(element)) {
+          element.textContent = patch.text;
+        }
+
+        if (patch.attributes) {
+          Object.keys(patch.attributes).forEach((attribute) => {
+            const value = patch.attributes[attribute];
+            if (typeof value !== "string") return;
+            const resolvedAttribute = resolveEditableAttribute(element, attribute);
+            if (value.trim()) {
+              element.setAttribute(resolvedAttribute, value);
+            } else {
+              element.removeAttribute(resolvedAttribute);
+            }
+          });
+        }
+
+        if (patch.styles) {
+          Object.keys(patch.styles).forEach((property) => {
+            const value = patch.styles[property];
+            if (typeof value !== "string") return;
+            const kebab = property.replace(/[A-Z]/g, (letter) => "-" + letter.toLowerCase());
+            if (value.trim()) {
+              element.style.setProperty(kebab, value);
+            } else {
+              element.style.removeProperty(kebab);
+            }
+            if (property === "fontFamily") {
+              ensureRemoteFontLibrary(value);
+            }
+          });
+        }
+
+        if (patch.effects && typeof patch.effects.hoverBackgroundColor !== "undefined") {
+          updateHoverBackgroundRule(element, patch.effects.hoverBackgroundColor);
+        }
+
+        if (element.getAttribute(config.selectedAttribute) === "true") {
+          positionFloatingToolbar(element);
+        }
+      }
+
+      function resolveEditableAttribute(element, attribute) {
+        if (isRootSvgElement(element)) {
+          if (attribute === "src") return "viewBox";
+          if (attribute === "alt") return "aria-label";
+        }
+        if (isSvgImageElement(element)) {
+          if (attribute === "src") return "href";
+          if (attribute === "alt") return "aria-label";
+        }
+        return attribute;
+      }
+
+      function updateHoverBackgroundRule(element, color) {
+        const styleId = "html-finetune-hover-rules";
+        let styleElement = document.getElementById(styleId);
+        const rules = [];
+        if (styleElement && styleElement.textContent) {
+          const pattern = new RegExp(
+            "\\[" + config.hftIdAttribute + "=\\\"([^\\\"]+)\\\"\\]:hover\\s*\\{[^}]*background-color\\s*:\\s*([^;]+);?[^}]*\\}",
+            "gi"
+          );
+          for (const match of styleElement.textContent.matchAll(pattern)) {
+            rules.push({ hftId: match[1], color: match[2].trim() });
+          }
+        }
+
+        const hftId = element.getAttribute(config.hftIdAttribute) || "";
+        const filtered = rules.filter((rule) => rule.hftId !== hftId);
+        if (color.trim()) {
+          filtered.push({ hftId, color: color.trim() });
+        }
+
+        if (filtered.length === 0) {
+          if (styleElement) styleElement.remove();
+          return;
+        }
+
+        if (!styleElement) {
+          styleElement = document.createElement("style");
+          styleElement.id = styleId;
+          document.head.appendChild(styleElement);
+        }
+        styleElement.textContent = "\\n" + filtered
+          .map((rule) => "[" + config.hftIdAttribute + "=\\\"" + rule.hftId + "\\\"]:hover { background-color: " + rule.color + "; }")
+          .join("\\n") + "\\n";
+      }
+
+      function isNativeDialog(element) {
+        return typeof HTMLDialogElement !== "undefined" && element instanceof HTMLDialogElement;
+      }
+
+      function isModalOpen(element) {
+        if (isNativeDialog(element)) return element.open;
+        if (element.hasAttribute("hidden")) return false;
+        if (element.getAttribute("aria-hidden") === "true") return false;
+        if (element.getAttribute("data-html-finetune-modal-open") === "true") return true;
+
+        const computed = window.getComputedStyle(element);
+        if (computed.display === "none" || computed.visibility === "hidden") return false;
+
+        return element.classList.contains("open") ||
+          element.classList.contains("is-open") ||
+          element.classList.contains("active") ||
+          element.classList.contains("show") ||
+          element.hasAttribute("open");
+      }
+
+      function getModalLabel(element) {
+        const ariaLabel = element.getAttribute("aria-label");
+        if (ariaLabel) return ariaLabel;
+
+        const labelledBy = element.getAttribute("aria-labelledby");
+        if (labelledBy) {
+          const labelElement = document.getElementById(labelledBy);
+          if (labelElement?.textContent?.trim()) return labelElement.textContent.trim();
+        }
+
+        if (element.id) return "#" + element.id;
+        if (typeof element.className === "string" && element.className.trim()) {
+          return "." + element.className.trim().split(/\\s+/).join(".");
+        }
+
+        return element.tagName.toLowerCase();
+      }
+
+      function findPrimaryModal() {
+        const modals = getModalElements();
+        return modals.find(isModalOpen) || modals[0] || null;
+      }
+
+      function postModalState() {
+        const modal = findPrimaryModal();
+        window.parent.postMessage({
+          type: "HTML_FINETUNE_MODAL_STATE",
+          token: bridgeToken,
+          payload: {
+            found: Boolean(modal),
+            open: modal ? isModalOpen(modal) : false,
+            label: modal ? getModalLabel(modal) : ""
+          }
+        }, "*");
+      }
+
+      function postPreviewReady() {
+        // 用 bounding rect 测量实际内容区域，而不是 body 的 scroll 尺寸
+        var bodyChildren = Array.from(document.body.children);
+        var maxArea = 0;
+        var contentWidth = window.innerWidth;
+        var contentHeight = window.innerHeight;
+        for (var i = 0; i < bodyChildren.length; i++) {
+          var rect = bodyChildren[i].getBoundingClientRect();
+          if (rect.width < 24 || rect.height < 24) continue;
+          var area = rect.width * rect.height;
+          if (area > maxArea) {
+            maxArea = area;
+            contentWidth = Math.round(rect.width);
+            contentHeight = Math.round(rect.height);
+          }
+        }
+        window.parent.postMessage({
+          type: "HTML_FINETUNE_PREVIEW_READY",
+          token: bridgeToken,
+          payload: {
+            contentWidth: contentWidth,
+            contentHeight: contentHeight
+          }
+        }, "*");
+      }
+
+      function openModal() {
+        const modal = findPrimaryModal();
+        if (!modal) {
+          postModalState();
+          return;
+        }
+
+        if (isNativeDialog(modal)) {
+          try {
+            if (!modal.open) modal.showModal();
+          } catch {
+            modal.setAttribute("open", "");
+          }
+        } else {
+          modal.removeAttribute("hidden");
+          modal.setAttribute("aria-hidden", "false");
+          modal.setAttribute("data-html-finetune-modal-open", "true");
+          const computed = window.getComputedStyle(modal);
+          if (computed.display === "none") modal.style.display = "block";
+          if (computed.visibility === "hidden") modal.style.visibility = "visible";
+          modal.style.pointerEvents = "auto";
+        }
+
+        postModalState();
+      }
+
+      function closeModal() {
+        const modal = getModalElements().find(isModalOpen) || findPrimaryModal();
+        if (!modal) {
+          postModalState();
+          return;
+        }
+
+        if (isNativeDialog(modal)) {
+          if (modal.open) modal.close();
+          modal.removeAttribute("open");
+        } else {
+          modal.setAttribute("hidden", "");
+          modal.setAttribute("aria-hidden", "true");
+          modal.setAttribute("data-html-finetune-modal-open", "false");
+          modal.style.display = "none";
+        }
+
+        postModalState();
+      }
+
+      function openContainingModal(element) {
+        const modal = element.closest(modalSelectors.join(","));
+        if (!modal || isModalOpen(modal)) return;
+
+        if (isNativeDialog(modal)) {
+          try {
+            modal.showModal();
+          } catch {
+            modal.setAttribute("open", "");
+          }
+        } else {
+          modal.removeAttribute("hidden");
+          modal.setAttribute("aria-hidden", "false");
+          modal.setAttribute("data-html-finetune-modal-open", "true");
+          if (window.getComputedStyle(modal).display === "none") modal.style.display = "block";
+          modal.style.pointerEvents = "auto";
+        }
+
+        postModalState();
+      }
+
+      function isSlideCandidate(element) {
+        if (!element || !(element instanceof HTMLElement)) return false;
+        return element.classList.contains("slide") ||
+          element.hasAttribute("data-slide") ||
+          /^slide[-_]?\\d+$/i.test(element.id || "");
+      }
+
+      function getAllSlides() {
+        return Array.from(document.querySelectorAll(".slide, [data-slide], section[id^='slide-'], article[id^='slide-']"))
+          .filter(isSlideCandidate);
+      }
+
+      function getContainingSlide(element) {
+        const slide = element.closest(".slide, [data-slide], section[id^='slide-'], article[id^='slide-']");
+        return isSlideCandidate(slide) ? slide : null;
+      }
+
+      function getRelatedSlides(slide) {
+        const siblings = slide.parentElement
+          ? Array.from(slide.parentElement.children).filter(isSlideCandidate)
+          : [];
+        if (siblings.includes(slide) && siblings.length > 1) return siblings;
+
+        const allSlides = getAllSlides();
+        if (allSlides.includes(slide)) return allSlides;
+        return [slide];
+      }
+
+      function getSlideIndex(slide, slides) {
+        const dataSlide = Number(slide.getAttribute("data-slide"));
+        if (Number.isFinite(dataSlide) && dataSlide > 0) return dataSlide - 1;
+
+        const idMatch = (slide.id || "").match(/(?:^|[-_])0*(\\d+)$/);
+        if (idMatch) {
+          const idIndex = Number(idMatch[1]) - 1;
+          if (Number.isFinite(idIndex) && idIndex >= 0) return idIndex;
+        }
+
+        return Math.max(0, slides.indexOf(slide));
+      }
+
+      function clampSlideIndex(index, slides) {
+        const safeIndex = Number.isFinite(index) ? index : 0;
+        return Math.max(0, Math.min(slides.length - 1, safeIndex));
+      }
+
+      function isElementVisible(element) {
+        if (!element || !element.isConnected) return false;
+        const computed = window.getComputedStyle(element);
+        if (computed.display === "none" || computed.visibility === "hidden") return false;
+        return element.getClientRects().length > 0;
+      }
+
+      function isSlideVisible(slide) {
+        if (!isElementVisible(slide)) return false;
+        if (slide.getAttribute("aria-hidden") === "true") return false;
+        return true;
+      }
+
+      function nextPaint() {
+        return new Promise((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(resolve));
+        });
+      }
+
+      async function waitForVisibleElement(element, attempts) {
+        for (let index = 0; index < attempts; index += 1) {
+          await nextPaint();
+          if (isElementVisible(element)) return true;
+        }
+        return isElementVisible(element);
+      }
+
+      function dispatchHashChange(oldUrl) {
+        let event;
+        try {
+          event = new HashChangeEvent("hashchange", {
+            oldURL: oldUrl,
+            newURL: window.location.href
+          });
+        } catch {
+          event = new Event("hashchange");
+        }
+        window.dispatchEvent(event);
+      }
+
+      function requestHashSlideNavigation(slide) {
+        if (!slide.id) return false;
+        const nextHash = "#" + slide.id;
+        const oldUrl = window.location.href;
+        if (window.location.hash !== nextHash) {
+          window.location.hash = nextHash;
+        }
+        dispatchHashChange(oldUrl);
+        return true;
+      }
+
+      function callExternalSlideApi(index) {
+        const api = window.__slideDeck;
+        if (!api || typeof api !== "object") return false;
+
+        try {
+          if (typeof api.show === "function") {
+            api.show(index);
+            return true;
+          }
+          if (typeof api.goTo === "function") {
+            api.goTo(index);
+            return true;
+          }
+        } catch {
+          return false;
+        }
+
+        return false;
+      }
+
+      function clickSlideNavigation(index) {
+        const target = String(index + 1);
+        const navButtons = Array.from(document.querySelectorAll(".nav-dots button[data-target]"));
+        const fallbackButtons = navButtons.length > 0 ? navButtons : Array.from(document.querySelectorAll("[data-target]"));
+        const button = fallbackButtons.find((candidate) => {
+          return candidate instanceof HTMLElement && candidate.getAttribute("data-target") === target;
+        });
+        if (!button || !(button instanceof HTMLElement)) return false;
+
+        allowSlideNavigationEvent = true;
+        try {
+          button.click();
+        } finally {
+          window.setTimeout(() => {
+            allowSlideNavigationEvent = false;
+          }, 0);
+        }
+        return true;
+      }
+
+      function syncSlideControls(index) {
+        document.querySelectorAll(".nav-dots button[data-target]").forEach((button) => {
+          const isActive = Number(button.getAttribute("data-target")) === index + 1;
+          button.classList.toggle("active", isActive);
+          if (isActive) {
+            button.setAttribute("aria-current", "step");
+          } else {
+            button.removeAttribute("aria-current");
+          }
+        });
+      }
+
+      function setActiveSlideDomOnly(slide, slides, index) {
+        slides.forEach((candidate) => {
+          const isActive = candidate === slide;
+          candidate.classList.toggle("is-active", isActive);
+          candidate.setAttribute("aria-hidden", isActive ? "false" : "true");
+          if (isActive && candidate.hasAttribute("hidden")) candidate.removeAttribute("hidden");
+        });
+        syncSlideControls(index);
+      }
+
+      function activateSlide(slide) {
+        const slides = getRelatedSlides(slide);
+        const slideIndex = clampSlideIndex(getSlideIndex(slide, slides), slides);
+        if (isSlideVisible(slide)) return false;
+
+        if (callExternalSlideApi(slideIndex)) return true;
+        if (requestHashSlideNavigation(slide)) return true;
+        if (clickSlideNavigation(slideIndex)) return true;
+
+        setActiveSlideDomOnly(slide, slides, slideIndex);
+        return true;
+      }
+
+      async function showSlideByIndex(index) {
+        const slides = getAllSlides();
+        if (!slides.length) return false;
+        const normalizedIndex = clampSlideIndex(Number(index), slides);
+        const slide = slides[normalizedIndex];
+        activateSlide(slide);
+        await waitForVisibleElement(slide, 4);
+        if (!isSlideVisible(slide)) {
+          setActiveSlideDomOnly(slide, slides, normalizedIndex);
+          await waitForVisibleElement(slide, 2);
+        }
+        return isSlideVisible(slide);
+      }
+
+      function exposeSlideDeckBridge() {
+        if (window.__htmlFineTuneSlideDeck) return;
+        window.__htmlFineTuneSlideDeck = {
+          show: showSlideByIndex,
+          showByNumber: (number) => showSlideByIndex(Number(number) - 1),
+          currentIndex: () => {
+            const slides = getAllSlides();
+            return Math.max(0, slides.findIndex(isSlideVisible));
+          }
+        };
+      }
+
+      async function activateContainingSlide(element) {
+        const slide = getContainingSlide(element);
+        if (!slide) return;
+        const slides = getRelatedSlides(slide);
+        const slideIndex = clampSlideIndex(getSlideIndex(slide, slides), slides);
+
+        activateSlide(slide);
+        if (await waitForVisibleElement(element, 4)) return;
+
+        setActiveSlideDomOnly(slide, slides, slideIndex);
+        await waitForVisibleElement(element, 3);
+      }
+
+      function selectElementByHftId(hftId, shouldNotify = true) {
+        if (!hftId) return;
+        const element = queryByHftId(hftId);
+        if (!element || !isEditableElement(element)) return;
+
+        const requestId = selectionSequence + 1;
+        selectionSequence = requestId;
+        openContainingModal(element);
+        activateContainingSlide(element).then(() => {
+          if (requestId !== selectionSequence) return;
+          element.scrollIntoView({ block: "center", inline: "center", behavior: "auto" });
+          requestAnimationFrame(() => {
+            if (requestId !== selectionSequence) return;
+            selectElement(element, shouldNotify);
+          });
+        });
+      }
+
+      document.addEventListener("mouseover", (event) => {
+        const target = event.target;
+        const element = target instanceof Element ? findEditableElement(target) : null;
+        clearHover();
+        if (element && element.getAttribute(config.selectedAttribute) !== "true") {
+          element.setAttribute(config.hoverAttribute, "true");
+        }
+      }, true);
+
+      document.addEventListener("mouseout", (event) => {
+        const target = event.target;
+        const element = target instanceof Element ? findEditableElement(target) : null;
+        if (element) {
+          element.removeAttribute(config.hoverAttribute);
+        }
+      }, true);
+
+      document.addEventListener("pointerdown", (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest("[data-html-finetune-ui='true']")) {
+          return;
+        }
+        const element = resolveSelectedEditableElement(target);
+        if (!element) return;
+        event.preventDefault();
+        event.stopPropagation();
+        beginDragElement(element, event);
+      }, true);
+
+      document.addEventListener("pointermove", (event) => {
+        if (!activeDrag) return;
+        event.preventDefault();
+        updateDragElement(event);
+      }, true);
+
+      document.addEventListener("pointerup", (event) => {
+        if (!activeDrag) return;
+        event.preventDefault();
+        endDragElement(event);
+      }, true);
+
+      document.addEventListener("pointercancel", () => {
+        if (!activeDrag) return;
+        cancelDragElement();
+      }, true);
+
+      document.addEventListener("click", (event) => {
+        const target = event.target;
+        if (target instanceof Element && target.closest("[data-html-finetune-ui='true']")) {
+          return;
+        }
+
+        const element = target instanceof Element ? findEditableElement(target) : null;
+
+        if (
+          target instanceof Element &&
+          (target.closest(".nav-dots button[data-target]") ||
+            (allowSlideNavigationEvent && target.closest("[data-target]")))
+        ) {
+          hideFloatingToolbar();
+          return;
+        }
+
+        if (element) {
+          event.preventDefault();
+          event.stopPropagation();
+          selectElement(element, true);
+          return;
+        }
+
+        const actionElement = target instanceof Element
+          ? target.closest("[data-hft-open-modal], [data-open-modal], [data-modal-open], [data-hft-close-modal], [data-close-modal], [data-modal-close], .modal-close")
+          : null;
+
+        if (actionElement) {
+          event.preventDefault();
+          event.stopPropagation();
+          if (
+            actionElement.matches("[data-hft-close-modal], [data-close-modal], [data-modal-close], .modal-close")
+          ) {
+            closeModal();
+          } else {
+            openModal();
+          }
+          return;
+        }
+      }, true);
+
+      document.addEventListener("submit", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+      }, true);
+
+      window.addEventListener("message", (event) => {
+        const data = event.data || {};
+        if (data.token !== bridgeToken) return;
+        if (data.type === "HTML_FINETUNE_SELECT_ELEMENT") {
+          selectElementByHftId(data.hftId, data.notify !== false);
+          return;
+        }
+
+        if (data.type === "HTML_FINETUNE_PATCH_ELEMENT") {
+          patchElement(data.hftId, data.patch || {});
+          return;
+        }
+
+        if (data.type !== "HTML_FINETUNE_MODAL_COMMAND") return;
+
+        if (data.action === "open") openModal();
+        if (data.action === "close") closeModal();
+      });
+
+      window.addEventListener("scroll", () => {
+        invalidateFrameBounds();
+        if (!pendingReposition) {
+          pendingReposition = true;
+          requestAnimationFrame(() => {
+            pendingReposition = false;
+            repositionFloatingToolbar();
+          });
+        }
+      }, true);
+      window.addEventListener("resize", () => {
+        invalidateFrameBounds();
+        if (!pendingReposition) {
+          pendingReposition = true;
+          requestAnimationFrame(() => {
+            pendingReposition = false;
+            repositionFloatingToolbar();
+          });
+        }
+      });
+
+      markEditableElements();
+      exposeSlideDeckBridge();
+      postModalState();
+      postPreviewReady();
+      window.setTimeout(() => {
+        postModalState();
+        postPreviewReady();
+      }, 50);
+      window.setTimeout(() => {
+        postModalState();
+        postPreviewReady();
+      }, 250);
+    })();
+  </script>`;
+}
+
+function createBridgeToken(): string {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  return `hft-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}

@@ -267,14 +267,6 @@ input, select, textarea { font-family: inherit; }
   font-weight: 600;
   letter-spacing: 0.04em;
   flex-shrink: 0;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--bg-brand) 28%, transparent);
-}
-.brand-mark-text {
-  display: inline-block;
-  font-size: 12px;
-  font-weight: 600;
-  line-height: 1;
-  letter-spacing: 0.02em;
 }
 .brand-copy {
   display: flex;
@@ -289,14 +281,12 @@ input, select, textarea { font-family: inherit; }
   color: var(--text-default);
   font-family: var(--font-family-heading);
   white-space: nowrap;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacer-8);
 }
 .brand-copy .brand-version {
   display: inline-flex;
   align-items: center;
   padding: 0 var(--spacer-6);
+  margin-left: var(--spacer-8);
   height: 16px;
   border-radius: var(--radius-4);
   background: var(--bg-overlay-l1);
@@ -304,38 +294,28 @@ input, select, textarea { font-family: inherit; }
   font-size: 10px;
   line-height: 16px;
   font-weight: 500;
-  font-family: var(--font-family-metric);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
   vertical-align: middle;
-}
-.brand-divider {
-  width: 1px;
-  height: 18px;
-  background: var(--border-neutral-l1);
-  margin: 0 var(--spacer-4);
-  flex-shrink: 0;
 }
 .brand-breadcrumb {
   display: flex;
   align-items: center;
-  gap: var(--spacer-6);
-  min-width: 0;
+  gap: var(--spacer-8);
+  margin-left: var(--spacer-12);
+  padding-left: var(--spacer-12);
+  border-left: 1px solid var(--border-neutral-l1);
   color: var(--text-tertiary);
   font-size: 12px;
   line-height: 18px;
+  min-width: 0;
 }
 .brand-breadcrumb-divider { color: var(--text-tertiary); }
-.brand-breadcrumb-current { color: var(--text-secondary); font-weight: 500; }
-.brand-breadcrumb-folder,
+.brand-breadcrumb-current { color: var(--text-secondary); }
+.brand-breadcrumb-prefix,
 .brand-breadcrumb-current {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 220px;
-  font-family: var(--font-family-mono);
-  font-size: 11px;
-  line-height: 16px;
 }
 .brand-subtitle { display: none; }
 
