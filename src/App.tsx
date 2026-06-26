@@ -1868,20 +1868,26 @@ export default function App() {
               </section>
             ) : null}
             <section className="property-card" data-od-id="content-editor">
-              <div className="field">
-                <label htmlFor="contentInput">文字内容</label>
-                <textarea
-                  className="textarea"
-                  id="contentInput"
-                  aria-describedby="contentHint"
-                  aria-invalid={!draftText.trim()}
-                  disabled={!canEditSelectedText}
-                  value={draftText}
-                  onChange={(event) => setDraftText(event.target.value)}
-                />
-                <p className="meta" id="contentHint">
-                  {canEditSelectedText ? "留空会触发错误提示，避免误发布空文案。" : "当前元素包含子节点或媒体内容，暂不支持直接改文字。"}
-                </p>
+              <section className="inspector-card" data-dom-id="inspector-content">
+                <div className="inspector-card__head">
+                  <IconText />
+                  <span className="inspector-card__title">文字内容</span>
+                </div>
+                <div className="inspector-card__body">
+                  <div className="field">
+                    <label htmlFor="contentInput">正文</label>
+                    <textarea
+                      className="textarea"
+                      id="contentInput"
+                      aria-describedby="contentHint"
+                      aria-invalid={!draftText.trim()}
+                      disabled={!canEditSelectedText}
+                      value={draftText}
+                      onChange={(event) => setDraftText(event.target.value)}
+                    />
+                    <p className="meta" id="contentHint">
+                      {canEditSelectedText ? "留空会触发错误提示，避免误发布空文案。" : "当前元素包含子节点或媒体内容，暂不支持直接改文字。"}
+                    </p>
                 {selected && canEditSelectedText ? (
                   <PretextMeasureBadge
                     text={draftText}
@@ -1890,7 +1896,9 @@ export default function App() {
                     lineHeight={resolveMeasureLineHeight(draftLineHeight, selected.lineHeight, draftFontSize, selected.fontSize)}
                   />
                 ) : null}
-              </div>
+                </div>
+                </div>
+              </section>
               <button className="btn btn-primary" type="button" onClick={handleApplyText} disabled={!canEditSelectedText}>应用到 Canvas</button>
             </section>
             <section className="property-card" data-od-id="style-editor">
@@ -2068,25 +2076,39 @@ export default function App() {
               <button className="btn btn-primary" type="button" onClick={handleApplyStyle} disabled={!selected}>应用样式</button>
             </section>
             <section className="property-card" data-od-id="attribute-editor">
-              <h3>媒体 / 属性</h3>
-              <div className="field">
-                <label htmlFor="srcInput">src / viewBox / href</label>
-                <input className="input" id="srcInput" value={draftSrc} placeholder="图片地址、SVG viewBox 或 href" onChange={(event) => setDraftSrc(event.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="altInput">alt / aria-label</label>
-                <input className="input" id="altInput" value={draftAlt} placeholder="替代文本或可访问名称" onChange={(event) => setDraftAlt(event.target.value)} />
-              </div>
+              <section className="inspector-card" data-dom-id="inspector-attribute">
+                <div className="inspector-card__head">
+                  <IconImage />
+                  <span className="inspector-card__title">媒体 / 属性</span>
+                </div>
+                <div className="inspector-card__body">
+                  <div className="field">
+                    <label htmlFor="srcInput">src / viewBox / href</label>
+                    <input className="input" id="srcInput" value={draftSrc} placeholder="图片地址、SVG viewBox 或 href" onChange={(event) => setDraftSrc(event.target.value)} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="altInput">alt / aria-label</label>
+                    <input className="input" id="altInput" value={draftAlt} placeholder="替代文本或可访问名称" onChange={(event) => setDraftAlt(event.target.value)} />
+                  </div>
+                </div>
+              </section>
               <button className="btn btn-primary" type="button" onClick={handleApplyAttributes} disabled={!selected}>应用属性</button>
             </section>
             <section className="property-card" data-od-id="interaction-editor">
-              <h3>交互状态</h3>
-              <div className="token-row"><span>悬停状态</span><span className="meta">预览可点击选中</span></div>
-              <div className="token-row"><span>焦点状态</span><span className="meta">iframe 内可访问</span></div>
-              <div className="token-row"><span>拖拽定位</span><span className="meta">松手后写回 HTML</span></div>
-              <div className="token-row"><span>AI 预检</span><span className="meta">{aiPreflightNote}</span></div>
-              <div className="token-row"><span>导出检查</span><span className="meta">{formatExportWarningSummary(exportWarnings.length, blockingExportWarningCount)}</span></div>
-              <div className="token-row"><span>发布检查</span><span className="meta">{isChecking ? "检查中" : "可运行"}</span></div>
+              <section className="inspector-card" data-dom-id="inspector-interaction">
+                <div className="inspector-card__head">
+                  <IconActivity />
+                  <span className="inspector-card__title">交互状态</span>
+                </div>
+                <div className="inspector-card__body">
+                  <div className="token-row"><span>悬停状态</span><span className="meta">预览可点击选中</span></div>
+                  <div className="token-row"><span>焦点状态</span><span className="meta">iframe 内可访问</span></div>
+                  <div className="token-row"><span>拖拽定位</span><span className="meta">松手后写回 HTML</span></div>
+                  <div className="token-row"><span>AI 预检</span><span className="meta">{aiPreflightNote}</span></div>
+                  <div className="token-row"><span>导出检查</span><span className="meta">{formatExportWarningSummary(exportWarnings.length, blockingExportWarningCount)}</span></div>
+                  <div className="token-row"><span>发布检查</span><span className="meta">{isChecking ? "检查中" : "可运行"}</span></div>
+                </div>
+              </section>
               <InspectorDiagnostics selected={selected} />
               <div className={`ai-risk-summary${aiRiskAnnotations.length > 0 ? " has-risk" : ""}`}>
                 <div>
@@ -2127,13 +2149,20 @@ export default function App() {
               </div>
             </section>
             <section className="property-card is-compact" data-od-id="state-coverage">
-              <h3>状态覆盖</h3>
-              <div className="state-grid" aria-live="polite">
-                <div className={`state-card${isPreviewReady ? "" : " is-loading"}`}><span className="state-dot"></span><strong>{isPreviewReady ? "预览就绪" : "预览渲染中"}</strong><span className="meta">iframe</span></div>
-                <div className="state-card" hidden={isChecking}><span className="state-dot"></span><strong>编辑就绪</strong><span className="meta">可编辑</span></div>
-                <div className="state-card is-loading" hidden={!isChecking}><span className="state-dot"></span><strong>检查中</strong><span className="meta">0.7s</span></div>
-              </div>
-              <button className="btn" type="button" onClick={handleRunCheck}>运行发布检查</button>
+              <section className="inspector-card" data-dom-id="inspector-state">
+                <div className="inspector-card__head">
+                  <IconShield />
+                  <span className="inspector-card__title">状态覆盖</span>
+                </div>
+                <div className="inspector-card__body">
+                  <div className="state-grid" aria-live="polite">
+                    <div className={`state-card${isPreviewReady ? "" : " is-loading"}`}><span className="state-dot"></span><strong>{isPreviewReady ? "预览就绪" : "预览渲染中"}</strong><span className="meta">iframe</span></div>
+                    <div className="state-card" hidden={isChecking}><span className="state-dot"></span><strong>编辑就绪</strong><span className="meta">可编辑</span></div>
+                    <div className="state-card is-loading" hidden={!isChecking}><span className="state-dot"></span><strong>检查中</strong><span className="meta">0.7s</span></div>
+                  </div>
+                  <button className="btn" type="button" onClick={handleRunCheck}>运行发布检查</button>
+                </div>
+              </section>
             </section>
           </div>
         </aside>
@@ -3021,4 +3050,20 @@ function IconBorder() {
 
 function IconRuler() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="9" width="18" height="6" rx="1"/><line x1="7" y1="9" x2="7" y2="12"/><line x1="11" y1="9" x2="11" y2="12"/><line x1="15" y1="9" x2="15" y2="12"/><line x1="19" y1="9" x2="19" y2="12"/></svg>;
+}
+
+function IconText() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/></svg>;
+}
+
+function IconImage() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>;
+}
+
+function IconActivity() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+}
+
+function IconShield() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>;
 }
