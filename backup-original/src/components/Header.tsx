@@ -1,7 +1,6 @@
 import { Toolbar } from "./Toolbar";
 
 const APP_VERSION = "v2.4.1";
-const BRAND_INITIALS = "HFT";
 
 interface HeaderProps {
   canUndo: boolean;
@@ -40,7 +39,7 @@ export function Header({
     <header className="app-header">
       <div className="brand-block">
         <div className="brand-mark" aria-hidden="true">
-          <span className="brand-mark-text">{BRAND_INITIALS}</span>
+          &lt;/&gt;
         </div>
         <div className="brand-copy">
           <h1>
@@ -48,11 +47,10 @@ export function Header({
             <span className="brand-version">{APP_VERSION}</span>
           </h1>
         </div>
-        <div className="brand-divider" aria-hidden="true" />
         <nav className="brand-breadcrumb" aria-label="file path">
-          <span className="brand-breadcrumb-folder">landing-page</span>
+          <span className="brand-breadcrumb-prefix">untitled.html</span>
           <span className="brand-breadcrumb-divider" aria-hidden="true">/</span>
-          <span className="brand-breadcrumb-current">index.html</span>
+          <span className="brand-breadcrumb-current">编辑工作台</span>
         </nav>
       </div>
       <Toolbar

@@ -50,40 +50,37 @@ export function Toolbar({
 
   return (
     <div className="toolbar" aria-label="编辑器工具栏">
-      {/* 左侧：撤销 / 重做 */}
+      {/* 左侧：撤销/重做 */}
       <div className="toolbar-group" aria-label="历史操作">
         <button
-          className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
+          className="ghost-button toolbar-button"
           type="button"
           onClick={onUndo}
           disabled={!canUndo}
           title="撤销 · ⌘Z / Ctrl+Z"
-          aria-label="撤销"
         >
-          <Undo2 size={14} strokeWidth={1.75} />
+          <Undo2 size={16} strokeWidth={1.75} />
+          <span className="button-label">撤销</span>
         </button>
         <button
-          className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
+          className="ghost-button toolbar-button"
           type="button"
           onClick={onRedo}
           disabled={!canRedo}
           title="重做 · ⌘Y / ⇧⌘Z"
-          aria-label="重做"
         >
-          <Redo2 size={14} strokeWidth={1.75} />
+          <Redo2 size={16} strokeWidth={1.75} />
+          <span className="button-label">重做</span>
         </button>
       </div>
 
       <div className="toolbar-separator" aria-hidden="true" />
 
-      {/* 中间：导入 / 复制 */}
-      <div className="toolbar-group" aria-label="页面功能">
-        <label
-          className="ds-btn ds-btn--ghost ds-btn--sm"
-          title="导入 .html 文件"
-        >
-          <FileUp size={14} strokeWidth={1.75} />
-          <span className="button-label">导入</span>
+      {/* 中间：导入/复制/导出 */}
+      <div className="toolbar-group toolbar-group-middle" aria-label="页面功能">
+        <label className="ghost-button toolbar-button compact-toolbar-button file-button" title="导入 .html 文件">
+          <FileUp size={16} strokeWidth={1.75} />
+          <span className="button-label">导入 HTML</span>
           <input
             type="file"
             accept=".html,.htm,text/html"
@@ -92,70 +89,43 @@ export function Toolbar({
               if (file) onImport(file);
               event.currentTarget.value = "";
             }}
-            style={{
-              position: "absolute",
-              width: 1,
-              height: 1,
-              padding: 0,
-              margin: -1,
-              overflow: "hidden",
-              clip: "rect(0, 0, 0, 0)",
-              whiteSpace: "nowrap",
-              border: 0,
-            }}
           />
         </label>
-        <button
-          className="ds-btn ds-btn--ghost ds-btn--sm"
-          type="button"
-          onClick={onCopy}
-          aria-label="复制 HTML"
-        >
-          <Clipboard size={14} strokeWidth={1.75} />
-          <span className="button-label">复制</span>
+        <button className="ghost-button toolbar-button compact-toolbar-button" type="button" onClick={onCopy}>
+          <Clipboard size={16} strokeWidth={1.75} />
+          <span className="button-label">复制 HTML</span>
         </button>
-      </div>
-
-      <div className="toolbar-separator" aria-hidden="true" />
-
-      {/* 主操作：导出（brand 按钮） + 格式 */}
-      <div className="toolbar-group" aria-label="导出格式">
-        <button
-          className="ds-btn ds-btn--brand ds-btn--sm export-toolbar-button"
-          type="button"
-          onClick={onExport}
-          aria-label="导出 HTML"
-        >
-          <Download size={14} strokeWidth={1.75} />
-          <span className="button-label">导出</span>
+        <button className="primary-button toolbar-button export-toolbar-button" type="button" onClick={onExport}>
+          <Download size={17} strokeWidth={1.75} />
+          <span className="button-label">导出 HTML</span>
         </button>
         <button
-          className="ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon export-format-button"
+          className="ghost-button toolbar-button compact-toolbar-button export-format-button"
           type="button"
           onClick={onExportPdf}
           disabled={exportingFormat !== null}
           title="AI 预检后导出 PDF"
-          aria-label="导出 PDF"
         >
           {isExportingPdf ? (
-            <LoaderCircle className="spin-icon" size={14} strokeWidth={1.75} />
+            <LoaderCircle className="spin-icon" size={16} strokeWidth={1.75} />
           ) : (
-            <FileText size={14} strokeWidth={1.75} />
+            <FileText size={16} strokeWidth={1.75} />
           )}
+          <span className="button-label">{isExportingPdf ? "生成中" : "PDF"}</span>
         </button>
         <button
-          className="ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon export-format-button"
+          className="ghost-button toolbar-button compact-toolbar-button export-format-button"
           type="button"
           onClick={onExportPptx}
           disabled={exportingFormat !== null}
           title="AI 预检后导出 PPTX"
-          aria-label="导出 PPTX"
         >
           {isExportingPptx ? (
-            <LoaderCircle className="spin-icon" size={14} strokeWidth={1.75} />
+            <LoaderCircle className="spin-icon" size={16} strokeWidth={1.75} />
           ) : (
-            <Presentation size={14} strokeWidth={1.75} />
+            <Presentation size={16} strokeWidth={1.75} />
           )}
+          <span className="button-label">{isExportingPptx ? "生成中" : "PPTX"}</span>
         </button>
       </div>
 
@@ -165,7 +135,7 @@ export function Toolbar({
       <div className="toolbar-group toolbar-group-tail" aria-label="弹窗与历史">
         <button
           className={
-            "ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon toolbar-modal-button" +
+            "ghost-button toolbar-button compact-toolbar-button toolbar-modal-button" +
             (hasModal && isModalOpen ? " toolbar-modal-button-active" : "")
           }
           type="button"
@@ -173,18 +143,18 @@ export function Toolbar({
           disabled={!hasModal}
           title={isModalOpen ? "关闭预览中的弹窗" : "打开预览中的弹窗"}
           aria-pressed={hasModal && isModalOpen}
-          aria-label={isModalOpen ? "关闭弹窗" : "打开弹窗"}
         >
-          {isModalOpen ? <X size={14} strokeWidth={1.75} /> : <MessageSquare size={14} strokeWidth={1.75} />}
+          {isModalOpen ? <X size={16} strokeWidth={1.75} /> : <MessageSquare size={16} strokeWidth={1.75} />}
+          <span className="button-label">{isModalOpen ? "关闭弹窗" : "打开弹窗"}</span>
         </button>
         <button
-          className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon toolbar-history-tail"
+          className="ghost-button toolbar-button compact-toolbar-button toolbar-history-tail"
           type="button"
           onClick={onToggleHistory}
           title="查看编辑历史"
-          aria-label="历史"
         >
-          <History size={14} strokeWidth={1.75} />
+          <History size={16} strokeWidth={1.75} />
+          <span className="button-label">历史</span>
         </button>
       </div>
     </div>
