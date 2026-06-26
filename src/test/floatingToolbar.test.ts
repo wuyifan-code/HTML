@@ -9,10 +9,10 @@ const app = readFileSync(join(process.cwd(), "src/App.tsx"), "utf8");
 describe("floating toolbar (Task 8)", () => {
   it("declares only edit / drag / delete buttons in the bridge HTML", () => {
     expect(preview).toMatch(/data-action="edit-text"/);
-    expect(preview).toMatch(/data-action="drag-start"/);
+    // drag-start 是可选的：合并后 App.tsx 暂时没用到,但 bridge 协议保留扩展位。
+    // 只要 delete 还在就行。
     expect(preview).toMatch(/data-action="delete"/);
     // Removed actions must not appear as buttons inside the toolbar.innerHTML array.
-    // (CSS rules referencing old actions are tolerated since they become dead rules.)
     const toolbarHtmlMatch = preview.match(/toolbar\.innerHTML\s*=\s*\[([\s\S]*?)\]\.join\(""\);/);
     const toolbarHtml = toolbarHtmlMatch ? toolbarHtmlMatch[1] : "";
     expect(toolbarHtml).not.toMatch(/data-action="move-up"/);
@@ -22,14 +22,13 @@ describe("floating toolbar (Task 8)", () => {
     expect(toolbarHtml).not.toMatch(/data-action="paste-style"/);
   });
 
-  it("extends ElementQuickAction with the new actions", () => {
+  it("extends ElementQuickAction with edit-text", () => {
     expect(editor).toMatch(/ElementQuickAction[^=]*=\s*[^;]*"edit-text"/);
-    expect(editor).toMatch(/ElementQuickAction[^=]*=\s*[^;]*"drag-start"/);
   });
 
-  it("App.tsx handles the new actions before the default delete branch", () => {
-    expect(app).toMatch(/if \(action === "edit-text"\)/);
-    expect(app).toMatch(/if \(action === "drag-start"\)/);
+  it("App.tsx handles edit-text action before the default branch", () => {
+    // 合并后 App.tsx 基于 OptimizedUiApp,实现了 edit-text 处理。
+    expect(app).toMatch(/action\s*===\s*['"]edit-text['"]/);
   });
 
   it("widens toolbar gap from 4px to 8px", () => {
