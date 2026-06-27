@@ -26,12 +26,12 @@ describe("ExportPreviewDialog — warnings wiring", () => {
     const downloadBtn = screen.getByRole("button", { name: /下载 edited-page\.html/ });
     expect(downloadBtn).not.toBeDisabled();
     expect(document.querySelector(".export-warning-list")).toBeNull();
-    expect(document.querySelector(".export-check-warning")).toBeNull();
+    expect(document.querySelector(".export-status-pill.is-warning")).toBeNull();
   });
 
-  it("html 含 internal marker (data-hft-id)：展示 .export-check-warning，下载按钮 disabled", () => {
+  it("html 含 internal marker (data-hft-id)：展示 .export-status-pill.is-warning，下载按钮 disabled", () => {
     renderDialog({ html: '<div data-hft-id="x">x</div>' });
-    expect(document.querySelector(".export-check-warning")).not.toBeNull();
+    expect(document.querySelector(".export-status-pill.is-warning")).not.toBeNull();
     const downloadBtn = screen.getByRole("button", { name: /下载 edited-page\.html/ });
     expect(downloadBtn).toBeDisabled();
   });

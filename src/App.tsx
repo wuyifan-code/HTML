@@ -1575,7 +1575,10 @@ export default function App() {
       {isHistoryOpen ? (
         <section className="history-drawer" aria-label="历史记录">
           <div className="history-drawer-head">
-            <strong>历史记录</strong>
+            <div>
+              <strong>历史记录</strong>
+              <p>{timeline.length} 个历史点 · 当前 #{currentIndex + 1}</p>
+            </div>
             <button className="icon-btn" type="button" aria-label="关闭历史记录" onClick={() => setIsHistoryOpen(false)}>×</button>
           </div>
           <div className="history-drawer-list">
@@ -1589,9 +1592,16 @@ export default function App() {
                   setStatusMessage("已跳转历史记录");
                 }}
               >
-                <span>{index === currentIndex ? "当前" : `#${index + 1}`}</span>
-                <strong>{summaries[index]?.title ?? (index === 0 ? "初始状态" : "编辑记录")}</strong>
-                <small>{summaries[index]?.detail ?? `${entry.html.length.toLocaleString()} 字符`}</small>
+                <span className="history-drawer-item__node" aria-hidden="true">
+                  <span className="history-drawer-item__dot" />
+                </span>
+                <span className="history-drawer-item__index">
+                  {index === currentIndex ? "当前" : `#${index + 1}`}
+                </span>
+                <span className="history-drawer-item__body">
+                  <strong>{summaries[index]?.title ?? (index === 0 ? "初始状态" : "编辑记录")}</strong>
+                  <small>{summaries[index]?.detail ?? `${entry.html.length.toLocaleString()} 字符`}</small>
+                </span>
               </button>
             ))}
           </div>
@@ -2373,25 +2383,60 @@ export default function App() {
             onClick={(event) => event.stopPropagation()}
           >
             <header className="cheatsheet-head">
-              <h2>快捷键</h2>
+              <div>
+                <h2>快捷键</h2>
+                <p>不离开键盘完成所有操作</p>
+              </div>
               <button className="icon-btn" type="button" aria-label="关闭" onClick={() => setIsCheatsheetOpen(false)}>×</button>
             </header>
-            <dl className="cheatsheet-list">
-              <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>Z</kbd></dt><dd>撤销</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>Y</kbd></dt><dd>重做</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>Shift</kbd> + <kbd>Ctrl/⌘</kbd> + <kbd>Z</kbd></dt><dd>重做（备选）</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>O</kbd></dt><dd>导入 HTML</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>Shift</kbd> + <kbd>Ctrl/⌘</kbd> + <kbd>C</kbd></dt><dd>复制干净 HTML</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd> + <kbd>S</kbd></dt><dd>导出</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>E</kbd></dt><dd>导出预览</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>D</kbd></dt><dd>复制当前元素</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>I</kbd></dt><dd>在右侧检查器编辑文字</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>F</kbd></dt><dd>聚焦结构树搜索</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>B</kbd> · <kbd>L</kbd> · <kbd>R</kbd> · <kbd>J</kbd></dt><dd>粗体 / 左对齐 / 右对齐 / 两端对齐</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>1</kbd> · <kbd>2</kbd> · <kbd>3</kbd> · <kbd>4</kbd></dt><dd>切换 viewport 预设</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>?</kbd></dt><dd>显示本面板</dd></div>
-              <div className="cheatsheet-row"><dt><kbd>Esc</kbd></dt><dd>关闭弹窗 / 取消选择</dd></div>
-            </dl>
+            <div className="cheatsheet-body">
+              <section className="cheatsheet-section">
+                <h3 className="cheatsheet-section__title">编辑</h3>
+                <div className="cheatsheet-list">
+                  <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd><span>+</span><kbd>Z</kbd></dt><dd>撤销</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd><span>+</span><kbd>Y</kbd></dt><dd>重做</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>Shift</kbd><span>+</span><kbd>Ctrl/⌘</kbd><span>+</span><kbd>Z</kbd></dt><dd>重做（备选）</dd></div>
+                </div>
+              </section>
+
+              <section className="cheatsheet-section">
+                <h3 className="cheatsheet-section__title">文件</h3>
+                <div className="cheatsheet-list">
+                  <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd><span>+</span><kbd>O</kbd></dt><dd>导入 HTML</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd><span>+</span><kbd>S</kbd></dt><dd>导出</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>Shift</kbd><span>+</span><kbd>Ctrl/⌘</kbd><span>+</span><kbd>C</kbd></dt><dd>复制干净 HTML</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>E</kbd></dt><dd>导出预览</dd></div>
+                </div>
+              </section>
+
+              <section className="cheatsheet-section">
+                <h3 className="cheatsheet-section__title">画布</h3>
+                <div className="cheatsheet-list">
+                  <div className="cheatsheet-row"><dt><kbd>D</kbd></dt><dd>复制当前元素</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>I</kbd></dt><dd>在右侧检查器编辑文字</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>F</kbd></dt><dd>聚焦结构树搜索</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>1</kbd><span>·</span><kbd>2</kbd><span>·</span><kbd>3</kbd><span>·</span><kbd>4</kbd></dt><dd>切换 viewport 预设</dd></div>
+                </div>
+              </section>
+
+              <section className="cheatsheet-section">
+                <h3 className="cheatsheet-section__title">样式</h3>
+                <div className="cheatsheet-list">
+                  <div className="cheatsheet-row"><dt><kbd>B</kbd></dt><dd>粗体</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>L</kbd></dt><dd>左对齐</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>R</kbd></dt><dd>右对齐</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>J</kbd></dt><dd>两端对齐</dd></div>
+                </div>
+              </section>
+
+              <section className="cheatsheet-section">
+                <h3 className="cheatsheet-section__title">其它</h3>
+                <div className="cheatsheet-list">
+                  <div className="cheatsheet-row"><dt><kbd>?</kbd></dt><dd>显示本面板</dd></div>
+                  <div className="cheatsheet-row"><dt><kbd>Esc</kbd></dt><dd>关闭弹窗 / 取消选择</dd></div>
+                </div>
+              </section>
+            </div>
           </section>
         </div>
       ) : null}
