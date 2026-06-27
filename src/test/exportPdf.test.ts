@@ -21,7 +21,7 @@ function makeHtmlToImage(width = 800, height = 600): HtmlToImageLike {
 
 function makePdfLib(imageWidth = 800, imageHeight = 600): PdfLibLike {
   const drawnImages: Array<{ x: number; y: number; w: number; h: number }> = [];
-  const drawnRects: Array<{ x: number; y: number; w: number; h: number; color: [number, number, number] }> = [];
+  const drawnRects: Array<{ x: number; y: number; w: number; h: number; color: unknown }> = [];
   const pages: Array<{ width: number; height: number }> = [];
   const instance = {
     embedPng: vi.fn().mockResolvedValue({ width: imageWidth, height: imageHeight }),
@@ -47,6 +47,7 @@ function makePdfLib(imageWidth = 800, imageHeight = 600): PdfLibLike {
   };
   return {
     PDFDocument: { create: vi.fn().mockResolvedValue(instance) },
+    rgb: (r: number, g: number, b: number) => ({ red: r, green: g, blue: b }),
   } as unknown as PdfLibLike;
 }
 
@@ -91,7 +92,7 @@ describe("buildPdfBlob", () => {
   it("draws a white background rectangle on every page before drawing the image", async () => {
     // We need access to the mock's tracking arrays. Refactor: call buildPdfBlob
     // with a loadPdfLib that exposes a drawRectangle spy we can inspect.
-    const drawRects: Array<{ x: number; y: number; w: number; h: number; color: [number, number, number] }> = [];
+    const drawRects: Array<{ x: number; y: number; w: number; h: number; color: unknown }> = [];
     const drawImages: Array<{ x: number; y: number; w: number; h: number }> = [];
     const callOrder: string[] = [];
     const customInstance = {
@@ -111,7 +112,8 @@ describe("buildPdfBlob", () => {
     };
     const customLib: PdfLibLike = {
       PDFDocument: { create: vi.fn().mockResolvedValue(customInstance) },
-    } as unknown as PdfLibLike;
+      rgb: (r: number, g: number, b: number) => ({ red: r, green: g, blue: b }),
+    } satisfies PdfLibLike;
 
     await buildPdfBlob("<html><body><h1>hi</h1></body></html>", {
       htmlToImage: makeHtmlToImage(),
@@ -120,7 +122,7 @@ describe("buildPdfBlob", () => {
     });
 
     expect(drawRects).toHaveLength(1);
-    expect(drawRects[0].color).toEqual([1, 1, 1]);
+    expect(drawRects[0].color).toEqual({ red: 1, green: 1, blue: 1 });
     expect(drawRects[0].x).toBe(0);
     expect(drawRects[0].y).toBe(0);
     expect(drawRects[0].w).toBeGreaterThan(0);

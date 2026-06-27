@@ -22,7 +22,7 @@ export interface PdfLibLike {
   PDFDocument: {
     create: () => Promise<PdfDocumentInstance>;
   };
-  rgb?: (red: number, green: number, blue: number) => unknown;
+  rgb: (red: number, green: number, blue: number) => unknown;
 }
 
 export interface PdfDocumentInstance {
@@ -38,7 +38,8 @@ export interface PdfPageInstance {
     y: number;
     width: number;
     height: number;
-    color: [number, number, number];
+    /** pdf-lib 接受 rgb() 函数返回的 RGB 颜色对象 */
+    color: unknown;
   }) => void;
 }
 
@@ -106,7 +107,9 @@ export async function buildPdfBlob(
     // 透明区域没有 alpha=255 的不透明背景，叠在黑底 PDF 上就成了"黑块"。
     // 与 exportPptx.ts:107 `slide.background = { color: "FFFFFF" }` 行为对齐:
     // 先铺一层白色背景矩形，再画图片。
-    pdfPage.drawRectangle({ x: 0, y: 0, width, height, color: [1, 1, 1] });
+    // 关键修复: color 必须用 pdf-lib 的 rgb() 函数创建,该函数返回 PDFRgb 实例对象。
+    // 不能用原始数组 [1,1,1] 或普通对象 {red:1,green:1,blue:1},它们会被 pdf-lib 拒绝。
+    pdfPage.drawRectangle({ x: 0, y: 0, width, height, color: pdfLib.rgb(1, 1, 1) });
     pdfPage.drawImage(image, { x: 0, y: 0, width, height });
   }
 
@@ -188,7 +191,7 @@ async function defaultLoadPdfLib(): Promise<PdfLibLike> {
   if (!bundle?.PDFDocument?.create) {
     throw new ExportError("pdf-lib 预打包模块加载失败", "library-load-failed");
   }
-  return { PDFDocument: bundle.PDFDocument, rgb: bundle.rgb };
+  return { PDFDocument: bundle.PDFDocument, rgb: bundle.rgb as (red: number, green: number, blue: number) => unknown };
 }
 
 /**
