@@ -1,10 +1,27 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent } from "react";
+import ClaudeLogo from "@lobehub/icons/es/Claude/components/Color";
+import DeepSeekLogo from "@lobehub/icons/es/DeepSeek/components/Color";
+import DoubaoLogo from "@lobehub/icons/es/Doubao/components/Color";
+import GeminiLogo from "@lobehub/icons/es/Gemini/components/Color";
+import GrokLogo from "@lobehub/icons/es/Grok/components/Mono";
+import GroqLogo from "@lobehub/icons/es/Groq/components/Mono";
+import KimiLogo from "@lobehub/icons/es/Kimi/components/Mono";
+import MinimaxLogo from "@lobehub/icons/es/Minimax/components/Color";
+import MistralLogo from "@lobehub/icons/es/Mistral/components/Color";
+import OpenAILogo from "@lobehub/icons/es/OpenAI/components/Mono";
+import OpenRouterLogo from "@lobehub/icons/es/OpenRouter/components/Mono";
+import QwenLogo from "@lobehub/icons/es/Qwen/components/Color";
+import SiliconCloudLogo from "@lobehub/icons/es/SiliconCloud/components/Color";
+import TogetherLogo from "@lobehub/icons/es/Together/components/Color";
+import WenxinLogo from "@lobehub/icons/es/Wenxin/components/Color";
+import ZhipuLogo from "@lobehub/icons/es/Zhipu/components/Color";
 import { ColorField } from "./components/ColorField";
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { PretextMeasureBadge } from "./components/PretextMeasureBadge";
 import { useEditorHistory } from "./hooks/useEditorHistory";
 import { useElementSize } from "./hooks/useElementSize";
 import { sampleHtml } from "./sampleHtml";
+import brandLogoUrl from "../AZ8HKFTTZ9-pQONQ2lSOHw-AZ8HKFTTkbiLxaIKgzNoOQ.jpg";
 import type { AiTreeAnnotation, DomTreeNode } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
 import { copyHtmlToClipboard } from "./utils/clipboard";
@@ -40,6 +57,7 @@ import {
   mergeAiModelOptions,
   type AiModelFetchStatus,
   type AiModelOption,
+  type AiProviderDefinition,
   type AiProviderId,
 } from "./utils/aiStructure";
 
@@ -50,6 +68,44 @@ const AI_LEGACY_GEMMA_KEY_STORAGE = "html-finetune.gemma-api-key";
 type SourceTab = "structure" | "source";
 type ZoomMode = "fit" | "88" | "100";
 type InspectorTab = "content" | "style" | "interaction";
+type PreviewContentBounds = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+type AiLogoSurface = "plain" | "light";
+type AiLogoComponent = ComponentType<{
+  className?: string;
+  color?: string;
+  size?: number | string;
+  style?: CSSProperties;
+  title?: string;
+}>;
+type AiLogoDescriptor = {
+  Icon: AiLogoComponent;
+  title: string;
+  surface?: AiLogoSurface;
+  color?: string;
+};
+const AI_PROVIDER_LOGOS: Record<AiProviderId, AiLogoDescriptor> = {
+  google: { Icon: GeminiLogo, title: "Google Gemini", surface: "plain" },
+  openai: { Icon: OpenAILogo, title: "OpenAI", surface: "light", color: "#101828" },
+  anthropic: { Icon: ClaudeLogo, title: "Anthropic Claude", surface: "plain" },
+  deepseek: { Icon: DeepSeekLogo, title: "DeepSeek", surface: "plain" },
+  qwen: { Icon: QwenLogo, title: "Qwen", surface: "plain" },
+  kimi: { Icon: KimiLogo, title: "Kimi / Moonshot", surface: "light", color: "#1783ff" },
+  zhipu: { Icon: ZhipuLogo, title: "GLM / Z.AI", surface: "plain" },
+  volcengine: { Icon: DoubaoLogo, title: "Doubao", surface: "plain" },
+  qianfan: { Icon: WenxinLogo, title: "Baidu Wenxin / Qianfan", surface: "plain" },
+  minimax: { Icon: MinimaxLogo, title: "MiniMax", surface: "plain" },
+  mistral: { Icon: MistralLogo, title: "Mistral AI", surface: "plain" },
+  xai: { Icon: GrokLogo, title: "xAI Grok", surface: "light", color: "#101828" },
+  groq: { Icon: GroqLogo, title: "Groq", surface: "light", color: "#101828" },
+  together: { Icon: TogetherLogo, title: "Together AI", surface: "plain" },
+  openrouter: { Icon: OpenRouterLogo, title: "OpenRouter", surface: "light", color: "#101828" },
+  siliconflow: { Icon: SiliconCloudLogo, title: "SiliconFlow", surface: "plain" },
+};
 type CopiedStyle = {
   fontFamily: string;
   fontSize: string;
@@ -83,9 +139,9 @@ const BLOCKING_EXPORT_WARNING_TYPES: ExportWarning["type"][] = [
   "empty-html",
 ];
 const DEFAULT_SOURCE_WIDTH = 280;
-const DEFAULT_INSPECTOR_WIDTH = 320;
+const DEFAULT_INSPECTOR_WIDTH = 360;
 const MIN_SOURCE_WIDTH = 220;
-const MIN_INSPECTOR_WIDTH = 260;
+const MIN_INSPECTOR_WIDTH = 320;
 const MIN_STAGE_WIDTH = 520;
 
 function clamp(value: number, min: number, max: number): number {
@@ -235,6 +291,7 @@ export default function App() {
   const [lastSyncedAt, setLastSyncedAt] = useState(() => Date.now());
   const [isAiCardCollapsed, setIsAiCardCollapsed] = useState(false);
   const [isPreviewReady, setIsPreviewReady] = useState(false);
+  const [previewContentBounds, setPreviewContentBounds] = useState<PreviewContentBounds | null>(null);
   const [aiProvider, setAiProvider] = useState<AiProviderId>("google");
   const [aiApiKeys, setAiApiKeys] = useState<Record<string, string>>(() => loadStoredAiKeys());
   const [rememberAiKeys, setRememberAiKeys] = useState<Record<string, boolean>>(() =>
@@ -297,6 +354,37 @@ export default function App() {
     [aiAnnotations]
   );
   const matchingViewportPreset = findMatchingPresetKey(viewportSize.width, viewportSize.height);
+  const isContentFitPreview = zoomMode === "fit" && previewContentBounds !== null;
+  const previewFrameBounds = useMemo(
+    () =>
+      isContentFitPreview && previewContentBounds
+        ? previewContentBounds
+        : { x: 0, y: 0, width: viewportSize.width, height: viewportSize.height },
+    [isContentFitPreview, previewContentBounds, viewportSize.height, viewportSize.width]
+  );
+  const previewIframeStyle = useMemo(
+    () =>
+      isContentFitPreview
+        ? ({
+            width: viewportSize.width,
+            height: viewportSize.height,
+            transform: `translate(${-previewFrameBounds.x}px, ${-previewFrameBounds.y}px)`,
+          } as CSSProperties)
+        : undefined,
+    [isContentFitPreview, previewFrameBounds.x, previewFrameBounds.y, viewportSize.height, viewportSize.width]
+  );
+  const previewScale = useMemo(
+    () => resolveZoomScale(zoomMode, previewFrameBounds, stageSize),
+    [previewFrameBounds, stageSize, zoomMode]
+  );
+  const previewShellStyle = useMemo(
+    () =>
+      ({
+        width: Math.max(1, Math.round(previewFrameBounds.width * previewScale)),
+        height: Math.max(1, Math.round(previewFrameBounds.height * previewScale)),
+      }) as CSSProperties,
+    [previewFrameBounds.height, previewFrameBounds.width, previewScale]
+  );
 
   useEffect(() => {
     latestHtmlRef.current = state.html;
@@ -332,7 +420,24 @@ export default function App() {
 
   useEffect(() => {
     setIsPreviewReady(false);
+    setPreviewContentBounds(null);
   }, [previewSrcDoc]);
+
+  const measurePreviewContent = useCallback(() => {
+    previewFrameRef.current?.contentWindow?.postMessage(
+      { type: "HTML_FINETUNE_OPTIMIZED_MEASURE_CONTENT" },
+      "*"
+    );
+  }, []);
+
+  useEffect(() => {
+    if (!isPreviewReady) return;
+    const frameId = window.requestAnimationFrame(() => {
+      measurePreviewContent();
+      window.setTimeout(measurePreviewContent, 120);
+    });
+    return () => window.cancelAnimationFrame(frameId);
+  }, [isPreviewReady, measurePreviewContent, previewSrcDoc, selectedId]);
 
   // Scroll the selected tree node into view (predictive return)
   useEffect(() => {
@@ -454,6 +559,19 @@ export default function App() {
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
       if (!data) return;
+      if (data.type === "HTML_FINETUNE_OPTIMIZED_CONTENT_BOUNDS") {
+        const bounds = data.bounds;
+        const hasValidBounds =
+          bounds &&
+          typeof bounds.x === "number" &&
+          typeof bounds.y === "number" &&
+          typeof bounds.width === "number" &&
+          typeof bounds.height === "number" &&
+          bounds.width > 0 &&
+          bounds.height > 0;
+        setPreviewContentBounds(hasValidBounds ? bounds : null);
+        return;
+      }
       if (data.type === "HTML_FINETUNE_OPTIMIZED_STATUS" && typeof data.message === "string") {
         setStatusMessage(data.message.slice(0, 180));
         return;
@@ -672,6 +790,19 @@ export default function App() {
     },
     [reset, showToast]
   );
+
+  const handleSourceDrop = useCallback(
+    (event: ReactDragEvent<HTMLDivElement>) => {
+      event.preventDefault();
+      handleFile(event.dataTransfer.files?.[0]);
+    },
+    [handleFile]
+  );
+
+  const handleSourceDragOver = useCallback((event: ReactDragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }, []);
 
   const handleApplyText = useCallback(() => {
     if (!selected) return;
@@ -1357,7 +1488,9 @@ export default function App() {
       <header className="app-topbar" role="banner">
         <div className="app-topbar__left">
           <div className="brand-block" aria-label="产品标识">
-            <div className="brand-mark">&lt;/&gt;</div>
+            <div className="brand-mark" aria-hidden="true">
+              <img src={brandLogoUrl} alt="" />
+            </div>
             <div className="brand-copy">
               <h1>
                 HTML FineTune
@@ -1366,9 +1499,6 @@ export default function App() {
             </div>
           </div>
           <nav className="brand-breadcrumb" aria-label="文件路径">
-            <span className="brand-breadcrumb-folder">landing-page</span>
-            <span className="brand-breadcrumb-divider" aria-hidden="true">/</span>
-            <span className="brand-breadcrumb-current">index.html</span>
           </nav>
         </div>
 
@@ -1515,25 +1645,18 @@ export default function App() {
                 <div className={"ai-scan-card__body" + (isAiCardCollapsed ? " is-hidden" : "")}>
                   <div className="ai-scan-row">
                     <label htmlFor="aiProvider">厂商</label>
-                    <div className="ds-input">
-                      <select
-                        id="aiProvider"
-                        value={aiProvider}
-                        onChange={(event) => {
-                          const nextProvider = event.target.value as AiProviderId;
-                          setAiProvider(nextProvider);
-                          setAiModels((models) => ({
-                            ...models,
-                            [nextProvider]: models[nextProvider] || AI_PROVIDER_MAP[nextProvider].defaultModel,
-                          }));
-                          setAiModelFetchError("");
-                        }}
-                      >
-                        {AI_PROVIDER_DEFINITIONS.map((provider) => (
-                          <option key={provider.id} value={provider.id}>{provider.label}</option>
-                        ))}
-                      </select>
-                    </div>
+                    <AiProviderPicker
+                      provider={aiProvider}
+                      providers={AI_PROVIDER_DEFINITIONS}
+                      onProviderChange={(nextProvider) => {
+                        setAiProvider(nextProvider);
+                        setAiModels((models) => ({
+                          ...models,
+                          [nextProvider]: models[nextProvider] || AI_PROVIDER_MAP[nextProvider].defaultModel,
+                        }));
+                        setAiModelFetchError("");
+                      }}
+                    />
                   </div>
                   <div className="ai-scan-row">
                     <label htmlFor="aiApiKey">Key</label>
@@ -1585,7 +1708,11 @@ export default function App() {
                       <span>{aiStatus === "running" ? "扫描中" : "AI 扫描"}</span>
                     </button>
                   </div>
-                  {aiError ? <p className="meta ai-error">{aiError}</p> : null}
+                  {aiError ? (
+                    <p className="meta ai-error" tabIndex={0} title={aiError} role="status">
+                      {aiError}
+                    </p>
+                  ) : null}
                 </div>
               </div>
 
@@ -1626,9 +1753,15 @@ export default function App() {
           ) : null}
 
           {sourceTab === "source" ? (
-            <div className="inspector-scroll">
-              <div className="source-editor-meta">
-                <span className="source-editor-language">HTML</span>
+            <div className="source-editor" onDrop={handleSourceDrop} onDragOver={handleSourceDragOver}>
+              <div className="source-import-dropzone">
+                <div>
+                  <strong>拖入 HTML 文件</strong>
+                  <span>{sourceLineCount.toLocaleString()} 行 · {sourceCharCount.toLocaleString()} 字符 · {isSourceDirty ? "未应用" : "已同步"}</span>
+                </div>
+                <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" onClick={() => fileInputRef.current?.click()}>
+                  导入
+                </button>
                 <span>{sourceLineCount.toLocaleString()} 行</span>
                 <span>{sourceCharCount.toLocaleString()} 字符</span>
                 {isSourceDirty ? <span className="source-dirty">未应用</span> : <span>已同步</span>}
@@ -1739,24 +1872,30 @@ export default function App() {
             </div>
           </div>
           <div className="stage" ref={stageRef}>
-            <article
-              className="page-preview"
-              aria-label="页面预览"
-              style={{
-                width: viewportSize.width,
-                height: viewportSize.height,
-                transform: zoomToTransform(zoomMode, viewportSize, stageSize),
-              }}
-            >
-              <iframe
-                ref={previewFrameRef}
-                className="live-preview-frame"
-                title="实时 HTML 预览"
-                srcDoc={previewSrcDoc}
-                sandbox="allow-scripts allow-forms allow-popups"
-                onLoad={() => setIsPreviewReady(true)}
-              />
-            </article>
+            <div className="page-preview-shell" style={previewShellStyle}>
+              <article
+                className={"page-preview" + (isContentFitPreview ? " page-preview--content-fit" : "")}
+                aria-label="页面预览"
+                style={{
+                  width: previewFrameBounds.width,
+                  height: previewFrameBounds.height,
+                  transform: `scale(${previewScale})`,
+                }}
+              >
+                <iframe
+                  ref={previewFrameRef}
+                  className="live-preview-frame"
+                  title="实时 HTML 预览"
+                  srcDoc={previewSrcDoc}
+                  sandbox="allow-scripts allow-forms allow-popups"
+                  style={previewIframeStyle}
+                  onLoad={() => {
+                    setIsPreviewReady(true);
+                    window.setTimeout(measurePreviewContent, 40);
+                  }}
+                />
+              </article>
+            </div>
           </div>
         </section>
 
@@ -2366,6 +2505,102 @@ function hasInlineStyleSnapshot(selected: SelectedSnapshot): boolean {
   ].some((value) => value.trim().length > 0);
 }
 
+function getProviderLogo(providerId: AiProviderId): AiLogoDescriptor {
+  return AI_PROVIDER_LOGOS[providerId];
+}
+
+function AiLogoMark({ logo, className = "" }: { logo: AiLogoDescriptor; className?: string }) {
+  const Icon = logo.Icon;
+  return (
+    <span
+      className={`ai-logo-mark ai-logo-mark-${logo.surface ?? "plain"}${className ? ` ${className}` : ""}`}
+      title={logo.title}
+      aria-hidden="true"
+      style={logo.color ? ({ color: logo.color } as CSSProperties) : undefined}
+    >
+      <Icon size={18} />
+    </span>
+  );
+}
+
+function AiProviderPicker({
+  provider,
+  providers,
+  onProviderChange,
+}: {
+  provider: AiProviderId;
+  providers: AiProviderDefinition[];
+  onProviderChange: (value: AiProviderId) => void;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const pickerRef = useRef<HTMLDivElement | null>(null);
+  const selectedProvider = providers.find((item) => item.id === provider) ?? providers[0];
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!pickerRef.current?.contains(event.target as Node)) setIsOpen(false);
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsOpen(false);
+    };
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen]);
+
+  return (
+    <div className="ai-provider-picker" ref={pickerRef}>
+      <button
+        className="ai-provider-trigger"
+        type="button"
+        aria-label="AI provider"
+        aria-haspopup="listbox"
+        aria-expanded={isOpen}
+        onClick={() => setIsOpen((value) => !value)}
+      >
+        <AiLogoMark logo={getProviderLogo(selectedProvider.id)} />
+        <span>{selectedProvider.label}</span>
+        <IconChevronDown />
+      </button>
+      {isOpen ? (
+        <div className="ai-provider-menu" role="listbox" aria-label="AI provider list">
+          {providers.map((item) => {
+            const isSelected = item.id === provider;
+            return (
+              <button
+                key={item.id}
+                className={`ai-provider-option${isSelected ? " ai-provider-option-active" : ""}`}
+                type="button"
+                role="option"
+                aria-selected={isSelected}
+                onClick={() => {
+                  setIsOpen(false);
+                  onProviderChange(item.id);
+                }}
+              >
+                <AiLogoMark logo={getProviderLogo(item.id)} />
+                <span className="ai-provider-option-text">
+                  <span className="ai-provider-option-name">{item.shortLabel}</span>
+                  <span className="ai-provider-option-detail">{item.label}</span>
+                </span>
+                {isSelected ? (
+                  <span className="ai-provider-check" aria-hidden="true">
+                    ✓
+                  </span>
+                ) : null}
+              </button>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function TreeItemNode({
   node,
   isSelected,
@@ -2674,6 +2909,63 @@ function buildPreviewSrcDoc(html: string, selectedId: string | null): string {
         window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_STATUS", message: String(message || "") }, "*");
       }
 
+      function hasDirectText(element) {
+        return Array.from(element.childNodes).some((node) => node.nodeType === Node.TEXT_NODE && Boolean((node.textContent || "").trim()));
+      }
+
+      function measureContentBounds() {
+        const documentElement = document.documentElement;
+        const viewportWidth = documentElement.clientWidth || window.innerWidth;
+        const viewportHeight = documentElement.clientHeight || window.innerHeight;
+        const maxDocumentWidth = Math.max(viewportWidth, documentElement.scrollWidth, document.body.scrollWidth);
+        const maxDocumentHeight = Math.max(viewportHeight, documentElement.scrollHeight, document.body.scrollHeight);
+        const bounds = { left: Infinity, top: Infinity, right: 0, bottom: 0 };
+
+        document.body.querySelectorAll("*").forEach((element) => {
+          const tagName = element.tagName.toLowerCase();
+          if (["script", "style", "link", "meta", "noscript"].includes(tagName)) return;
+          if (element.id === "html-finetune-quickbar" || element.closest("#html-finetune-quickbar")) return;
+
+          const style = window.getComputedStyle(element);
+          if (!style || style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return;
+
+          const semanticMedia = ["img", "svg", "canvas", "video", "picture", "iframe"].includes(tagName);
+          const semanticControl = ["a", "button", "input", "textarea", "select"].includes(tagName);
+          if (!hasDirectText(element) && !semanticMedia && !semanticControl) return;
+
+          const rect = element.getBoundingClientRect();
+          if (rect.width < 1 || rect.height < 1) return;
+          if (rect.width > viewportWidth * 0.92 && rect.height > viewportHeight * 0.7) return;
+
+          bounds.left = Math.min(bounds.left, rect.left);
+          bounds.top = Math.min(bounds.top, rect.top);
+          bounds.right = Math.max(bounds.right, rect.right);
+          bounds.bottom = Math.max(bounds.bottom, rect.bottom);
+        });
+
+        if (!Number.isFinite(bounds.left) || bounds.right <= bounds.left || bounds.bottom <= bounds.top) return null;
+
+        const padding = 28;
+        const minWidth = Math.min(viewportWidth, 360);
+        const minHeight = Math.min(viewportHeight, 260);
+        const x = Math.max(0, Math.min(maxDocumentWidth, Math.floor(bounds.left - padding)));
+        const y = Math.max(0, Math.min(maxDocumentHeight, Math.floor(bounds.top - padding)));
+        const right = Math.max(x + 1, Math.min(maxDocumentWidth, Math.ceil(bounds.right + padding)));
+        const bottom = Math.max(y + 1, Math.min(maxDocumentHeight, Math.ceil(bounds.bottom + padding)));
+        const width = Math.min(maxDocumentWidth - x, Math.max(minWidth, right - x));
+        const height = Math.min(maxDocumentHeight - y, Math.max(minHeight, bottom - y));
+
+        if (width > viewportWidth * 0.9 && height > viewportHeight * 0.9) return null;
+        return { x, y, width: Math.round(width), height: Math.round(height) };
+      }
+
+      function sendContentBounds() {
+        window.parent.postMessage({
+          type: "HTML_FINETUNE_OPTIMIZED_CONTENT_BOUNDS",
+          bounds: measureContentBounds()
+        }, "*");
+      }
+
       let quickbarTarget = null;
 
       function sendAction(action) {
@@ -2832,11 +3124,26 @@ function buildPreviewSrcDoc(html: string, selectedId: string | null): string {
 
       window.addEventListener("message", (event) => {
         const data = event.data || {};
+        if (data.type === "HTML_FINETUNE_OPTIMIZED_MEASURE_CONTENT") {
+          sendContentBounds();
+          return;
+        }
         if (data.type !== "HTML_FINETUNE_OPTIMIZED_MODAL") return;
         if (data.action === "open") openModal();
         if (data.action === "close") closeModal();
       });
 
+      window.addEventListener("load", sendContentBounds);
+      window.addEventListener("resize", sendContentBounds);
+      document.querySelectorAll("img").forEach((image) => {
+        if (image.complete) return;
+        image.addEventListener("load", sendContentBounds, { once: true });
+        image.addEventListener("error", sendContentBounds, { once: true });
+      });
+      requestAnimationFrame(() => {
+        sendContentBounds();
+        setTimeout(sendContentBounds, 120);
+      });
       sendStatus("预览桥接已就绪");
     })();
   `;
@@ -2914,23 +3221,23 @@ function toNodeIcon(tagName: string): string {
   return tagName.slice(0, 3).toUpperCase();
 }
 
-function zoomToTransform(
+function resolveZoomScale(
   mode: ZoomMode,
   viewportSize: { width: number; height: number },
   stageSize: { width: number; height: number }
-): string | undefined {
-  if (mode === "100") return "scale(1)";
+): number {
+  if (mode === "100") return 1;
   if (mode === "fit") {
-    if (stageSize.width === 0 || stageSize.height === 0) return "scale(0.72)";
+    if (stageSize.width === 0 || stageSize.height === 0) return 0.72;
     // 预留 32px 边距,避免 page-preview 贴边
     const scale = Math.min(
       (stageSize.width - 32) / viewportSize.width,
       (stageSize.height - 32) / viewportSize.height,
       1
     );
-    return `scale(${scale.toFixed(3)})`;
+    return Math.max(0.05, Number(scale.toFixed(3)));
   }
-  return "scale(0.88)";
+  return 0.88;
 }
 
 function formatRelativeTime(timestamp: number): string {
