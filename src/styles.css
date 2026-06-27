@@ -3346,15 +3346,51 @@ span.meta { display: inline-block; }
 .app-side-panel--right { width: var(--inspector-col); border-left: 1px solid var(--border-neutral-l1); }
 .app-side-panel--collapsed { width: 0 !important; border-right: none; border-left: none; opacity: 0; }
 
-/* 面板折叠: 完全收起, 展开按钮在顶栏 */
-.app-shell.is-source-collapsed .panel:first-of-type,
+/* .panel 的折叠由 app-shell 上的 class 控制 */
+.app-shell.is-source-collapsed .panel:first-of-type {
+  width: 0 !important; min-width: 0 !important; border-right: none; overflow: visible;
+}
+.app-shell.is-source-collapsed .panel:first-of-type .panel-collapse-btn {
+  position: absolute;
+  left: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  pointer-events: auto;
+  background: var(--bg-base-default);
+  border: 1px solid var(--border-neutral-l1);
+  border-left: none;
+  border-radius: 0 var(--radius-8) var(--radius-8) 0;
+  width: 20px;
+  height: 40px;
+}
+.app-shell.is-source-collapsed .panel:first-of-type > *:not(.panel-collapse-btn):not(.panel-head):not(.panel-resizer),
+.app-shell.is-source-collapsed .panel:first-of-type .panel-head > *:not(.panel-collapse-btn) {
+  display: none;
+}
+
 .app-shell.is-inspector-collapsed .panel.inspector {
-  width: 0 !important;
-  min-width: 0 !important;
-  overflow: hidden;
-  opacity: 0;
-  pointer-events: none;
-  border: none;
+  width: 0 !important; min-width: 0 !important; border-left: none; overflow: visible;
+}
+.app-shell.is-inspector-collapsed .panel.inspector .panel-collapse-btn {
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  pointer-events: auto;
+  background: var(--bg-base-default);
+  border: 1px solid var(--border-neutral-l1);
+  border-right: none;
+  border-radius: var(--radius-8) 0 0 var(--radius-8);
+  width: 20px;
+  height: 40px;
+}
+.app-shell.is-inspector-collapsed .panel.inspector *:not(.panel-collapse-btn):not(.inspector-tabs-wrap):not(.inspector-title) {
+  display: none;
+}
+.app-shell.is-inspector-collapsed .panel.inspector .inspector-title {
+  display: none;
 }
 
 /* Predictive return: when collapsing left, content slides out left; right slides out right */
