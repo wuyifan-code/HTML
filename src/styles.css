@@ -3759,17 +3759,23 @@ span.meta { display: inline-block; }
 .inspector-selection__metrics {
   display: flex;
   align-items: center;
-  gap: var(--spacer-12);
+  flex-wrap: wrap;
+  gap: var(--spacer-4) var(--spacer-10);
   margin-top: var(--spacer-8);
   font-size: 11px;
   color: var(--text-tertiary);
   font-family: var(--font-family-metric);
   font-variant-numeric: tabular-nums;
+  row-gap: 4px;
 }
 .inspector-selection__metrics > span {
   font-family: var(--font-family-metric);
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.005em;
+  white-space: nowrap;
+  padding: 2px 6px;
+  border-radius: var(--radius-4);
+  background: color-mix(in srgb, var(--bg-overlay-l1) 60%, transparent);
 }
 
 .inspector-empty {

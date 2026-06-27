@@ -83,9 +83,9 @@ const BLOCKING_EXPORT_WARNING_TYPES: ExportWarning["type"][] = [
   "empty-html",
 ];
 const DEFAULT_SOURCE_WIDTH = 280;
-const DEFAULT_INSPECTOR_WIDTH = 300;
+const DEFAULT_INSPECTOR_WIDTH = 320;
 const MIN_SOURCE_WIDTH = 220;
-const MIN_INSPECTOR_WIDTH = 240;
+const MIN_INSPECTOR_WIDTH = 260;
 const MIN_STAGE_WIDTH = 520;
 
 function clamp(value: number, min: number, max: number): number {
