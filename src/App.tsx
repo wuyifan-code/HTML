@@ -21,7 +21,7 @@ import { PretextMeasureBadge } from "./components/PretextMeasureBadge";
 import { useEditorHistory } from "./hooks/useEditorHistory";
 import { useElementSize } from "./hooks/useElementSize";
 import { sampleHtml } from "./sampleHtml";
-import brandLogoUrl from "../AZ8HKFTTZ9-pQONQ2lSOHw-AZ8HKFTTkbiLxaIKgzNoOQ.jpg";
+import brandLogoUrl from "../converted_icon_exact_embedded.svg";
 import type { AiTreeAnnotation, DomTreeNode } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
 import { copyHtmlToClipboard } from "./utils/clipboard";
