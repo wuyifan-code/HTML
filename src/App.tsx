@@ -284,8 +284,6 @@ export default function App() {
   const [copiedStyle, setCopiedStyle] = useState<CopiedStyle | null>(null);
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [isFocusMode, setIsFocusMode] = useState(false);
-  const [isSourceCollapsed, setIsSourceCollapsed] = useState(false);
-  const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
   const [sourceWidth, setSourceWidth] = useState(DEFAULT_SOURCE_WIDTH);
   const [inspectorWidth, setInspectorWidth] = useState(DEFAULT_INSPECTOR_WIDTH);
   const [hasImportedHtml, setHasImportedHtml] = useState(false);
@@ -1093,14 +1091,6 @@ export default function App() {
     showToast("AI 标注已清空");
   }, [showToast]);
 
-  const handleToggleSourcePanel = useCallback(() => {
-    setIsSourceCollapsed((value) => {
-      const nextValue = !value;
-      setStatusMessage(nextValue ? "结构面板已折叠" : "结构面板已展开");
-      return nextValue;
-    });
-  }, []);
-
   const handleToggleTreeNode = useCallback((hftId: string) => {
     setCollapsedTreeIds((ids) => {
       const nextIds = new Set(ids);
@@ -1122,14 +1112,6 @@ export default function App() {
     setCollapsedTreeIds(new Set(collapsibleTreeIds));
     setStatusMessage("结构树已全部折叠");
   }, [collapsibleTreeIds]);
-
-  const handleToggleInspectorPanel = useCallback(() => {
-    setIsInspectorCollapsed((value) => {
-      const nextValue = !value;
-      setStatusMessage(nextValue ? "属性面板已折叠" : "属性面板已展开");
-      return nextValue;
-    });
-  }, []);
 
   const handleStartPanelResize = useCallback(
     (panel: "source" | "inspector") => (event: ReactPointerEvent<HTMLButtonElement>) => {
@@ -1483,8 +1465,6 @@ export default function App() {
         className={[
           "app-shell",
           isFocusMode ? "is-focus-mode" : "",
-          isSourceCollapsed ? "is-source-collapsed" : "",
-          isInspectorCollapsed ? "is-inspector-collapsed" : "",
         ].filter(Boolean).join(" ")}
       >
       <header className="app-topbar" role="banner">
@@ -1651,7 +1631,6 @@ export default function App() {
                 onClick={() => setSourceTab("source")}
               >源码</button>
             </div>
-            <button className="icon-btn panel-collapse-btn" type="button" aria-label="折叠结构面板" onClick={handleToggleSourcePanel}>‹</button>
           </div>
 
           {sourceTab === "structure" ? (
@@ -1951,7 +1930,6 @@ export default function App() {
           />
           <div className="inspector-tabs-wrap">
             <span className="inspector-title">样式检查器</span>
-            <button className="icon-btn panel-collapse-btn" type="button" aria-label="折叠属性面板" onClick={handleToggleInspectorPanel}>›</button>
           </div>
           {selected ? (
             <div className="inspector-selection" data-dom-id="inspector-selection">

@@ -52,14 +52,14 @@ function makePdfLib(imageWidth = 800, imageHeight = 600): PdfLibLike {
 }
 
 describe("computePdfPageSize", () => {
-  it("scales image pixels to PDF points using 72/96 ratio", () => {
-    const result = computePdfPageSize(960, 540, 960, 540);
+  it("scales CSS pixels to PDF points using 72/96 ratio", () => {
+    const result = computePdfPageSize(960, 540, 1920, 1080);
     expect(result.width).toBe(720); // 960 * 0.75
     expect(result.height).toBe(405); // 540 * 0.75
   });
 
-  it("falls back to css dimensions when image dimensions are zero", () => {
-    const result = computePdfPageSize(800, 600, 0, 0);
+  it("falls back to image dimensions when CSS dimensions are zero", () => {
+    const result = computePdfPageSize(0, 0, 800, 600);
     expect(result.width).toBe(600);
     expect(result.height).toBe(450);
   });

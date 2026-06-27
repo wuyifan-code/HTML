@@ -146,8 +146,8 @@ export function computePdfPageSize(
   imageHeight: number
 ): { width: number; height: number } {
   // 用 imageWidth/Height 优先,因为它来自真实 PNG;fallback 用 css 尺寸
-  const w = imageWidth > 0 ? imageWidth : cssWidth;
-  const h = imageHeight > 0 ? imageHeight : cssHeight;
+  const w = cssWidth > 0 ? cssWidth : imageWidth;
+  const h = cssHeight > 0 ? cssHeight : imageHeight;
   // 1 CSS pixel ≈ 0.75 point(96 DPI → 72 DPI)
   const SCALE = 72 / 96;
   return {

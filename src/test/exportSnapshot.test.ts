@@ -191,6 +191,67 @@ describe("capturePreviewAsPng", () => {
     expect(pages[0].label).toBe("Page");
   });
 
+  it("prefers an explicit .page container over inner main content", async () => {
+    const pageEl = {
+      classList: { contains: (name: string) => name === "page", add: () => undefined, remove: () => undefined },
+      hasAttribute: () => false,
+      id: "",
+      style: {
+        _map: new Map<string, string>(),
+        setProperty(k: string, v: string) {
+          this._map.set(k, v);
+        },
+        getPropertyValue(k: string) {
+          return k === "width" ? "210mm" : k === "height" ? "297mm" : this._map.get(k) ?? "";
+        },
+        getPropertyPriority() {
+          return "";
+        },
+        removeProperty(k: string) {
+          this._map.delete(k);
+        },
+      },
+      scrollWidth: 794,
+      scrollHeight: 1123,
+      getBoundingClientRect: () => ({
+        width: 794,
+        height: 1123,
+        left: 0,
+        top: 0,
+        right: 794,
+        bottom: 1123,
+        x: 0,
+        y: 0,
+        toJSON() {
+          return {};
+        },
+      }),
+    } as unknown as HTMLElement;
+    const mainEl = { id: "main" } as unknown as HTMLElement;
+    const doc = {
+      body: {},
+      images: [],
+      querySelectorAll: (sel: string) => (sel.includes(".page") ? [pageEl] : []),
+      querySelector: (sel: string) => (sel === "main" ? mainEl : null),
+      fonts: { ready: Promise.resolve() },
+    } as unknown as Document;
+    const iframe = fakeIframe({ contentDocument: doc }) as unknown as HTMLIFrameElement;
+    const htmlToImage = { toPng: vi.fn().mockResolvedValue(TINY_PNG_DATA_URL) };
+
+    const pages = await capturePreviewAsPng({
+      html: "<html><body><div class='page'><main>content</main></div></body></html>",
+      htmlToImage,
+      createIframe: () => iframe,
+      waitForAssets: async () => undefined,
+      settle: async () => undefined,
+      measureTarget: () => ({ width: 794, height: 1123 }),
+      activateSlide: () => undefined,
+    });
+
+    expect(pages).toHaveLength(1);
+    expect(htmlToImage.toPng).toHaveBeenCalledWith(pageEl, expect.objectContaining({ width: 794, height: 1123 }));
+  });
+
   it("throws snapshot-no-slide-target when fallback target is missing", async () => {
     const doc = {
       body: {},

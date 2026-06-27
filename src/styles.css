@@ -320,20 +320,24 @@ input, select, textarea { font-family: inherit; }
 .brand-copy .brand-version {
   display: inline-flex;
   align-items: center;
-  padding: 0 var(--spacer-6);
-  height: 16px;
-  border-radius: var(--radius-4);
-  background: var(--bg-overlay-l1);
-  color: var(--text-tertiary);
-  font-size: 10px;
-  line-height: 16px;
-  font-weight: 500;
-  font-family: var(--font-family-metric);
-  font-style: normal;
-  -webkit-text-fill-color: currentColor;
+  padding: 0;
+  height: auto;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 12px;
+  line-height: 1;
+  font-weight: 700;
+  font-family: inherit;
+  font-style: italic;
+  -webkit-text-fill-color: transparent;
+  background-image: linear-gradient(135deg, #3039b8 0%, #0f766e 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
   font-variant-numeric: tabular-nums;
-  letter-spacing: 0;
+  letter-spacing: 0.02em;
   vertical-align: middle;
+  transform: translateY(1px) skewX(-7deg);
 }
 .brand-divider {
   width: 1px;
@@ -581,7 +585,6 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 .panel-title svg { width: 14px; height: 14px; color: var(--icon-tertiary); }
 .panel-head-actions { display: inline-flex; align-items: center; gap: var(--spacer-8); }
 
-.panel-collapse-btn,
 .ds-btn--icon.ds-btn--sm {
   width: 24px;
   height: 24px;
@@ -598,27 +601,19 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
               color 140ms cubic-bezier(0.2, 0, 0, 1),
               transform 140ms cubic-bezier(0.2, 0, 0, 1);
 }
-.panel-collapse-btn:hover,
 .ds-btn--icon.ds-btn--sm:hover {
   background: var(--bg-overlay-l2);
   color: var(--icon-default);
 }
-.panel-collapse-btn:active,
 .ds-btn--icon.ds-btn--sm:active {
   transform: scale(0.92);
   background: var(--bg-overlay-l3);
 }
-.panel-collapse-btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 2px color-mix(in srgb, var(--bg-brand) 35%, transparent);
-}
-.panel-collapse-btn svg,
 .ds-btn--icon.ds-btn--sm svg {
   width: 14px;
   height: 14px;
   transition: transform 140ms cubic-bezier(0.2, 0, 0, 1);
 }
-.panel-collapse-btn:hover svg { transform: scale(1.1); }
 
 /* ================================================================
    Tabs (Source / Tree) — matches design "结构树 / 源码" tabs
@@ -3560,17 +3555,21 @@ span.meta { display: inline-block; }
 .brand-version {
   display: inline-flex;
   align-items: center;
-  height: 16px;
-  padding: 0 var(--spacer-6);
-  font-size: 10px;
-  line-height: 16px;
-  color: var(--text-tertiary);
-  background: var(--bg-overlay-l1);
-  border-radius: var(--radius-4);
-  font-weight: 500;
-  font-family: var(--font-family-metric);
-  font-style: normal;
-  -webkit-text-fill-color: currentColor;
+  height: auto;
+  padding: 0;
+  font-family: inherit;
+  font-size: 12px;
+  font-style: italic;
+  font-weight: 700;
+  line-height: 1;
+  color: inherit;
+  background: linear-gradient(135deg, #3039b8 0%, #0f766e 100%);
+  border-radius: 0;
+  letter-spacing: 0.02em;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transform: translateY(1px) skewX(-7deg);
 }
 
 .brand-divider {
@@ -3646,52 +3645,6 @@ span.meta { display: inline-block; }
 .app-side-panel--collapsed { width: 0 !important; border-right: none; border-left: none; opacity: 0; }
 
 /* .panel 的折叠由 app-shell 上的 class 控制 */
-.app-shell.is-source-collapsed .panel:first-of-type {
-  width: 0 !important; min-width: 0 !important; border-right: none; overflow: visible;
-}
-.app-shell.is-source-collapsed .panel:first-of-type .panel-collapse-btn {
-  position: absolute;
-  left: -4px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  pointer-events: auto;
-  background: var(--bg-base-default);
-  border: 1px solid var(--border-neutral-l1);
-  border-left: none;
-  border-radius: 0 var(--radius-8) var(--radius-8) 0;
-  width: 20px;
-  height: 40px;
-}
-.app-shell.is-source-collapsed .panel:first-of-type > *:not(.panel-collapse-btn):not(.panel-head):not(.panel-resizer),
-.app-shell.is-source-collapsed .panel:first-of-type .panel-head > *:not(.panel-collapse-btn) {
-  display: none;
-}
-
-.app-shell.is-inspector-collapsed .panel.inspector {
-  width: 0 !important; min-width: 0 !important; border-left: none; overflow: visible;
-}
-.app-shell.is-inspector-collapsed .panel.inspector .panel-collapse-btn {
-  position: absolute;
-  right: -4px;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  pointer-events: auto;
-  background: var(--bg-base-default);
-  border: 1px solid var(--border-neutral-l1);
-  border-right: none;
-  border-radius: var(--radius-8) 0 0 var(--radius-8);
-  width: 20px;
-  height: 40px;
-}
-.app-shell.is-inspector-collapsed .panel.inspector *:not(.panel-collapse-btn):not(.inspector-tabs-wrap):not(.inspector-title) {
-  display: none;
-}
-.app-shell.is-inspector-collapsed .panel.inspector .inspector-title {
-  display: none;
-}
-
 /* Predictive return: when collapsing left, content slides out left; right slides out right */
 .app-side-panel--left:not(.app-side-panel--collapsed) > * {
   animation: panel-content-return-left 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
