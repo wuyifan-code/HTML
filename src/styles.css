@@ -3346,6 +3346,42 @@ span.meta { display: inline-block; }
 .app-side-panel--right { width: var(--inspector-col); border-left: 1px solid var(--border-neutral-l1); }
 .app-side-panel--collapsed { width: 0 !important; border-right: none; border-left: none; opacity: 0; }
 
+/* 面板折叠: 面板缩为 40px 窄条,只露出头部(含展开按钮) */
+.app-shell.is-source-collapsed .panel:first-of-type,
+.app-shell.is-inspector-collapsed .panel.inspector {
+  width: 40px !important;
+  min-width: 40px !important;
+  overflow: hidden;
+  border: none;
+}
+.app-shell.is-source-collapsed .panel:first-of-type > *:not(.panel-head):not(.panel-resizer),
+.app-shell.is-inspector-collapsed .panel.inspector > *:not(.inspector-tabs-wrap):not(.inspector-selection) {
+  opacity: 0;
+  pointer-events: none;
+}
+.app-shell.is-source-collapsed .panel:first-of-type .panel-head .panel-title,
+.app-shell.is-source-collapsed .panel:first-of-type .panel-head-actions {
+  display: none;
+}
+.app-shell.is-inspector-collapsed .panel.inspector .inspector-title {
+  display: none;
+}
+.app-shell.is-source-collapsed .panel:first-of-type .panel-collapse-btn,
+.app-shell.is-inspector-collapsed .panel.inspector .panel-collapse-btn {
+  margin: auto;
+  display: flex;
+  opacity: 1;
+}
+.app-shell.is-source-collapsed .panel:first-of-type .panel-head,
+.app-shell.is-inspector-collapsed .panel.inspector .inspector-tabs-wrap {
+  justify-content: center;
+  padding: 0;
+}
+.app-shell.is-source-collapsed .panel:first-of-type .panel-head .inspector-title::before,
+.app-shell.is-inspector-collapsed .panel.inspector .inspector-title::before {
+  background: none;
+}
+
 /* Predictive return: when collapsing left, content slides out left; right slides out right */
 .app-side-panel--left:not(.app-side-panel--collapsed) > * {
   animation: panel-content-return-left 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
