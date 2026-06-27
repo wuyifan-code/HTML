@@ -28,6 +28,7 @@ export interface HtmlToImageOptions {
   pixelRatio?: number;
   cacheBust?: boolean;
   backgroundColor?: string;
+  skipFonts?: boolean;
   imagePlaceholder?: string;
   /**
    * 当 <img> 加载失败时(html-to-image 内部把 image 转为 dataURL)被调用。
@@ -154,6 +155,7 @@ const pages: RenderedPage[] = [];
         pixelRatio: input.pixelRatio ?? DEFAULT_PIXEL_RATIO,
         cacheBust: true,
         backgroundColor: "#ffffff",
+        skipFonts: true,
         imagePlaceholder: TRANSPARENT_PIXEL,
         // 关键: deck 里的 <img src="..."> 用相对路径,
         // 在 srcdoc iframe 里会 404。如果让 html-to-image 走默认 reject 路径,
@@ -306,12 +308,18 @@ function waitForIframeLoad(
 
 function findDefaultSlides(documentRef: Document): HTMLElement[] {
   const matches = Array.from(
-    documentRef.querySelectorAll<HTMLElement>("section.slide, .slide, [data-slide]")
+    documentRef.querySelectorAll<HTMLElement>(
+      "section.slide, .slide, [data-slide], [data-page], [data-pdf-page], .page"
+    )
   );
-  return matches.filter((el) => isSlideCandidate(el));
+  return matches.filter((el) => isSlideCandidate(el) || isPageCandidate(el, documentRef));
 }
 
 function findDefaultFallbackTarget(documentRef: Document): HTMLElement {
+  const page = Array.from(
+    documentRef.querySelectorAll<HTMLElement>("[data-page], [data-pdf-page], .page")
+  ).find((el) => isPageCandidate(el, documentRef));
+  if (page) return page;
   const main = documentRef.querySelector<HTMLElement>("main");
   if (main) return main;
   return documentRef.body;
@@ -327,6 +335,35 @@ function isSlideCandidate(el: Element): boolean {
     el.hasAttribute("data-slide") ||
     /^slide[-_]?\d+$/i.test(el.id || "")
   );
+}
+
+function isPageCandidate(el: Element, documentRef: Document): boolean {
+  if (!el || typeof (el as HTMLElement).style === "undefined") return false;
+  if (el.hasAttribute("data-page") || el.hasAttribute("data-pdf-page")) return true;
+  if (!el.classList.contains("page")) return false;
+
+  const target = el as HTMLElement;
+  const inlineWidth = target.style.getPropertyValue("width");
+  const inlineHeight = target.style.getPropertyValue("height");
+  if (inlineWidth || inlineHeight) return true;
+
+  const view = documentRef.defaultView;
+  if (view) {
+    const computed = view.getComputedStyle(target);
+    const hasExplicitPageSize =
+      isExplicitCssSize(computed.width) ||
+      isExplicitCssSize(computed.height) ||
+      isExplicitCssSize(computed.minWidth) ||
+      isExplicitCssSize(computed.minHeight);
+    if (hasExplicitPageSize) return true;
+  }
+
+  const rect = target.getBoundingClientRect();
+  return rect.width >= 480 && rect.height >= 640;
+}
+
+function isExplicitCssSize(value: string): boolean {
+  return /^\d*\.?\d+(px|mm|cm|in|pt|pc|vh|vw|vmin|vmax|%)$/i.test(value.trim());
 }
 
 function activateSlideDefault(slides: HTMLElement[], activeIndex: number, frameWindow: Window): void {
