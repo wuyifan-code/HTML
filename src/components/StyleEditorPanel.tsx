@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, PointerEvent as ReactPointerEvent } from "react";
 import { MousePointerClick, PanelRightOpen, Type } from "lucide-react";
 import { CustomSelect } from "./CustomSelect";
+import { Tooltip } from "./Tooltip";
 import { ColorField } from "./ColorField";
 import type { EditableAttributes, EditableEffects, EditableStyleKey, SelectedElementSnapshot } from "../types/editor";
 import { FONT_SELECT_OPTIONS, normalizeFontValue } from "../utils/fontLibrary";
@@ -41,16 +42,17 @@ export function StyleEditorPanelImpl({
   if (isCollapsed) {
     return (
       <aside className="panel collapsed-panel collapsed-inspector-panel" aria-label="样式检查器已收起">
-        <button
-          className="collapse-rail-button"
-          type="button"
-          onClick={onToggleCollapse}
-          aria-label="展开样式检查器"
-          title="展开样式检查器"
-        >
-          <PanelRightOpen size={18} strokeWidth={1.75} />
-          <span>展开检查器</span>
-        </button>
+        <Tooltip content="展开样式检查器" placement="left">
+          <button
+            className="collapse-rail-button"
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label="展开样式检查器"
+          >
+            <PanelRightOpen size={18} strokeWidth={1.75} />
+            <span>展开检查器</span>
+          </button>
+        </Tooltip>
       </aside>
     );
   }

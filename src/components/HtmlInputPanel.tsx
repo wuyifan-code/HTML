@@ -35,6 +35,7 @@ import {
   Sparkles,
   Trash2,
 } from "lucide-react";
+import { Tooltip } from "./Tooltip";
 import type { AiAnalysisStatus, AiTreeAnnotation, DomTreeNode, SourcePanelPlacement } from "../types/editor";
 import type { AiModelFetchStatus, AiModelOption, AiProviderDefinition, AiProviderId } from "../utils/aiStructure";
 
@@ -199,16 +200,17 @@ function HtmlInputPanelComponent({
   if (isCollapsed) {
     return (
       <section className="panel collapsed-panel collapsed-source-panel" aria-label="HTML 源码已收起">
-        <button
-          className="collapse-rail-button"
-          type="button"
-          onClick={onToggleCollapse}
-          aria-label="展开 HTML 源码"
-          title="展开 HTML 源码"
-        >
-          <PanelLeftOpen size={18} strokeWidth={1.75} />
-          <span>展开源码</span>
-        </button>
+        <Tooltip content="展开 HTML 源码" placement="right">
+          <button
+            className="collapse-rail-button"
+            type="button"
+            onClick={onToggleCollapse}
+            aria-label="展开 HTML 源码"
+          >
+            <PanelLeftOpen size={18} strokeWidth={1.75} />
+            <span>展开源码</span>
+          </button>
+        </Tooltip>
       </section>
     );
   }
@@ -263,24 +265,26 @@ function HtmlInputPanelComponent({
               onClear={onClearAiAnnotations}
             />
           ) : null}
-          <button
-            className="icon-button"
-            type="button"
-            onClick={onTogglePlacement}
-            aria-label={isBottomPlacement ? "将源码区移回左侧" : "将源码区移到底部"}
-            title={isBottomPlacement ? "源码区移回左侧" : "源码区移到底部"}
-          >
-            {isBottomPlacement ? <PanelLeft size={18} strokeWidth={1.75} /> : <PanelBottom size={18} strokeWidth={1.75} />}
-          </button>
-          <button
-            className="icon-button"
-            type="button"
-            onClick={onToggleCollapse}
-            aria-label="收起 HTML 源码"
-            title="收起 HTML 源码"
-          >
-            <PanelLeftClose size={18} strokeWidth={1.75} />
-          </button>
+          <Tooltip content={isBottomPlacement ? "源码区移回左侧" : "源码区移到底部"} placement="bottom">
+            <button
+              className="icon-button"
+              type="button"
+              onClick={onTogglePlacement}
+              aria-label={isBottomPlacement ? "将源码区移回左侧" : "将源码区移到底部"}
+            >
+              {isBottomPlacement ? <PanelLeft size={18} strokeWidth={1.75} /> : <PanelBottom size={18} strokeWidth={1.75} />}
+            </button>
+          </Tooltip>
+          <Tooltip content="收起 HTML 源码" placement="bottom">
+            <button
+              className="icon-button"
+              type="button"
+              onClick={onToggleCollapse}
+              aria-label="收起 HTML 源码"
+            >
+              <PanelLeftClose size={18} strokeWidth={1.75} />
+            </button>
+          </Tooltip>
         </div>
       </div>
       <div className="source-panel-shell">
@@ -464,18 +468,19 @@ function AiTreePopover(props: AiTreeControlsProps) {
 
   return (
     <div className="ai-toolbar-popover" ref={popoverRef}>
-      <button
-        className={`ai-toolbar-trigger ai-toolbar-trigger-${status}${isOpen ? " ai-toolbar-trigger-open" : ""}`}
-        type="button"
-        aria-label="AI 结构扫描设置"
-        aria-expanded={isOpen}
-        aria-haspopup="dialog"
-        title="AI 结构扫描"
-        onClick={() => setIsOpen((value) => !value)}
-      >
-        <AiLogoMark className="ai-toolbar-logo" logo={modelLogo} />
-        <span>{triggerLabel}</span>
-      </button>
+      <Tooltip content="AI 结构扫描" placement="bottom">
+        <button
+          className={`ai-toolbar-trigger ai-toolbar-trigger-${status}${isOpen ? " ai-toolbar-trigger-open" : ""}`}
+          type="button"
+          aria-label="AI 结构扫描设置"
+          aria-expanded={isOpen}
+          aria-haspopup="dialog"
+          onClick={() => setIsOpen((value) => !value)}
+        >
+          <AiLogoMark className="ai-toolbar-logo" logo={modelLogo} />
+          <span>{triggerLabel}</span>
+        </button>
+      </Tooltip>
       {isOpen ? (
         <div className="ai-toolbar-panel" role="dialog" aria-label="AI 结构扫描设置">
           <AiTreeControls {...props} />

@@ -4694,3 +4694,137 @@ span.meta { display: inline-block; }
   background: var(--bg-base-secondary);
   color: var(--text-secondary);
 }
+
+/* ================================================================
+   Tooltip — 自定义浮层，取代原生 title
+   ================================================================ */
+.ds-tooltip {
+  position: fixed;
+  z-index: 9999;
+  max-width: 280px;
+  padding: 6px 10px;
+  border-radius: var(--radius-8);
+  background: rgba(17, 24, 39, 0.94);
+  color: #f8fafc;
+  font-family: var(--font-family-default);
+  font-size: var(--text-sm);
+  font-weight: var(--font-weight-default);
+  line-height: 1.45;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+  word-wrap: break-word;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition:
+    opacity 130ms var(--ease-standard),
+    transform 130ms var(--ease-standard);
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.18),
+    0 12px 28px rgba(15, 23, 42, 0.14);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+}
+.ds-tooltip.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* 当 placement 改变时，translateY 方向要跟随 */
+.ds-tooltip[data-placement="top"] {
+  transform: translateY(4px);
+}
+.ds-tooltip[data-placement="top"].is-visible {
+  transform: translateY(0);
+}
+.ds-tooltip[data-placement="bottom"] {
+  transform: translateY(-4px);
+}
+.ds-tooltip[data-placement="bottom"].is-visible {
+  transform: translateY(0);
+}
+.ds-tooltip[data-placement="left"] {
+  transform: translateX(4px);
+}
+.ds-tooltip[data-placement="left"].is-visible {
+  transform: translateX(0);
+}
+.ds-tooltip[data-placement="right"] {
+  transform: translateX(-4px);
+}
+.ds-tooltip[data-placement="right"].is-visible {
+  transform: translateX(0);
+}
+
+/* 多行模式：用于非常长或带换行的提示 */
+.ds-tooltip[data-multiline="true"] {
+  white-space: normal;
+  text-align: start;
+  max-width: 320px;
+}
+
+/* Tooltip 内的 kbd 键帽 */
+.ds-tooltip kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin: 0 2px;
+  border-radius: var(--radius-4);
+  background: rgba(255, 255, 255, 0.16);
+  color: rgba(248, 250, 252, 0.95);
+  font-family: var(--font-family-mono);
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* iframe 内 tooltip 样式（受 srcdoc 注入；命名空间隔离） */
+#html-finetune-tip {
+  position: fixed !important;
+  z-index: 2147483647 !important;
+  max-width: 240px !important;
+  padding: 5px 9px !important;
+  border-radius: 6px !important;
+  background: rgba(17, 24, 39, 0.94) !important;
+  color: #f8fafc !important;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif !important;
+  font-size: 11.5px !important;
+  line-height: 1.4 !important;
+  letter-spacing: 0.01em !important;
+  text-align: center !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  opacity: 0 !important;
+  transform: translateY(4px) !important;
+  transition:
+    opacity 130ms cubic-bezier(0.2, 0, 0, 1),
+    transform 130ms cubic-bezier(0.2, 0, 0, 1) !important;
+  box-shadow:
+    0 2px 6px rgba(15, 23, 42, 0.2),
+    0 10px 24px rgba(15, 23, 42, 0.14) !important;
+  backdrop-filter: blur(10px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(10px) saturate(140%) !important;
+}
+#html-finetune-tip.is-visible {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
+#html-finetune-tip[data-placement="top"] {
+  transform: translateY(4px) !important;
+}
+#html-finetune-tip[data-placement="top"].is-visible {
+  transform: translateY(0) !important;
+}
+#html-finetune-tip[data-placement="bottom"] {
+  transform: translateY(-4px) !important;
+}
+#html-finetune-tip[data-placement="bottom"].is-visible {
+  transform: translateY(0) !important;
+}

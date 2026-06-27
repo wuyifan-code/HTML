@@ -18,6 +18,7 @@ import ZhipuLogo from "@lobehub/icons/es/Zhipu/components/Color";
 import { ColorField } from "./components/ColorField";
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { PretextMeasureBadge } from "./components/PretextMeasureBadge";
+import { Tooltip, TooltipProvider } from "./components/Tooltip";
 import { useEditorHistory } from "./hooks/useEditorHistory";
 import { useElementSize } from "./hooks/useElementSize";
 import { sampleHtml } from "./sampleHtml";
@@ -1477,14 +1478,15 @@ export default function App() {
   );
 
   return (
-    <div
-      className={[
-        "app-shell",
-        isFocusMode ? "is-focus-mode" : "",
-        isSourceCollapsed ? "is-source-collapsed" : "",
-        isInspectorCollapsed ? "is-inspector-collapsed" : "",
-      ].filter(Boolean).join(" ")}
-    >
+    <TooltipProvider>
+      <div
+        className={[
+          "app-shell",
+          isFocusMode ? "is-focus-mode" : "",
+          isSourceCollapsed ? "is-source-collapsed" : "",
+          isInspectorCollapsed ? "is-inspector-collapsed" : "",
+        ].filter(Boolean).join(" ")}
+      >
       <header className="app-topbar" role="banner">
         <div className="app-topbar__left">
           <div className="brand-block" aria-label="产品标识">
@@ -1503,62 +1505,80 @@ export default function App() {
         </div>
 
         <div className="app-topbar__center app-toolbar" aria-label="历史操作">
-          <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="撤销 · Ctrl/⌘+Z" aria-label="撤销" data-dom-id="btn-undo" onClick={undo} disabled={!canUndo}>
-            <IconUndo />
-          </button>
-          <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="重做 · Ctrl/⌘+Y 或 Shift+Ctrl/⌘+Z" aria-label="重做" data-dom-id="btn-redo" onClick={redo} disabled={!canRedo}>
-            <IconRedo />
-          </button>
+          <Tooltip content="撤销 · Ctrl/⌘+Z" placement="bottom">
+            <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" aria-label="撤销" data-dom-id="btn-undo" onClick={undo} disabled={!canUndo}>
+              <IconUndo />
+            </button>
+          </Tooltip>
+          <Tooltip content="重做 · Ctrl/⌘+Y 或 Shift+Ctrl/⌘+Z" placement="bottom">
+            <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" aria-label="重做" data-dom-id="btn-redo" onClick={redo} disabled={!canRedo}>
+              <IconRedo />
+            </button>
+          </Tooltip>
         </div>
 
         <div className="app-topbar__right" aria-label="主要操作">
-          <label className="ds-btn ds-btn--ghost ds-btn--sm" data-dom-id="btn-import" title="导入 .html 文件">
-            <IconImport />
-            <span>导入</span>
-            <input
-              type="file"
-              accept=".html,.htm,text/html"
-              onChange={(event) => {
-                handleFile(event.currentTarget.files?.[0]);
-                event.currentTarget.value = "";
-              }}
-              style={{
-                position: "absolute",
-                width: 1,
-                height: 1,
-                padding: 0,
-                margin: -1,
-                overflow: "hidden",
-                clip: "rect(0, 0, 0, 0)",
-                whiteSpace: "nowrap",
-                border: 0,
-              }}
-            />
-          </label>
-          <button className="ds-btn ds-btn--ghost ds-btn--sm" type="button" title="复制干净 HTML · Shift+Ctrl/⌘+C" aria-label="复制 HTML" data-dom-id="btn-copy" onClick={handleCopy}>
-            <IconDownload />
-            <span>复制</span>
-          </button>
+          <Tooltip content="导入 .html 文件" placement="bottom">
+            <label className="ds-btn ds-btn--ghost ds-btn--sm" data-dom-id="btn-import">
+              <IconImport />
+              <span>导入</span>
+              <input
+                type="file"
+                accept=".html,.htm,text/html"
+                onChange={(event) => {
+                  handleFile(event.currentTarget.files?.[0]);
+                  event.currentTarget.value = "";
+                }}
+                style={{
+                  position: "absolute",
+                  width: 1,
+                  height: 1,
+                  padding: 0,
+                  margin: -1,
+                  overflow: "hidden",
+                  clip: "rect(0, 0, 0, 0)",
+                  whiteSpace: "nowrap",
+                  border: 0,
+                }}
+              />
+            </label>
+          </Tooltip>
+          <Tooltip content="复制干净 HTML · Shift+Ctrl/⌘+C" placement="bottom">
+            <button className="ds-btn ds-btn--ghost ds-btn--sm" type="button" aria-label="复制 HTML" data-dom-id="btn-copy" onClick={handleCopy}>
+              <IconDownload />
+              <span>复制</span>
+            </button>
+          </Tooltip>
           <span className="app-toolbar-sep" aria-hidden="true"></span>
-          <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" title="导出 PDF" aria-label="导出 PDF" data-dom-id="btn-pdf" onClick={handleExportPdf} disabled={exportingFormat !== null}>
-            <IconDownload />
-            <span>PDF</span>
-          </button>
-          <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" title="导出 PPTX" aria-label="导出 PPTX" data-dom-id="btn-pptx" onClick={handleExportPptx} disabled={exportingFormat !== null}>
-            <IconDownload />
-            <span>PPTX</span>
-          </button>
-          <button className="ds-btn ds-btn--brand ds-btn--sm" type="button" title="导出 HTML · Ctrl/⌘+S" aria-label="导出 HTML" data-dom-id="btn-export" onClick={handleOpenExportPreview}>
-            <IconDownload />
-            <span>导出</span>
-          </button>
+          <Tooltip content="导出 PDF" placement="bottom">
+            <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" aria-label="导出 PDF" data-dom-id="btn-pdf" onClick={handleExportPdf} disabled={exportingFormat !== null}>
+              <IconDownload />
+              <span>PDF</span>
+            </button>
+          </Tooltip>
+          <Tooltip content="导出 PPTX" placement="bottom">
+            <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" aria-label="导出 PPTX" data-dom-id="btn-pptx" onClick={handleExportPptx} disabled={exportingFormat !== null}>
+              <IconDownload />
+              <span>PPTX</span>
+            </button>
+          </Tooltip>
+          <Tooltip content="导出 HTML · Ctrl/⌘+S" placement="bottom">
+            <button className="ds-btn ds-btn--brand ds-btn--sm" type="button" aria-label="导出 HTML" data-dom-id="btn-export" onClick={handleOpenExportPreview}>
+              <IconDownload />
+              <span>导出</span>
+            </button>
+          </Tooltip>
           <span className="app-toolbar-sep" aria-hidden="true"></span>
-          <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="查看历史" aria-label="查看历史" data-dom-id="btn-history" onClick={() => setIsHistoryOpen((value) => !value)}>
-            <IconHistory />
-          </button>
-          <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="快捷键 (?)" aria-label="快捷键" data-dom-id="btn-cheatsheet" onClick={() => setIsCheatsheetOpen((value) => !value)}>
-            <IconKeyboard />
-          </button>
+          <Tooltip content="查看历史" placement="bottom">
+            <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" aria-label="查看历史" data-dom-id="btn-history" onClick={() => setIsHistoryOpen((value) => !value)}>
+              <IconHistory />
+            </button>
+          </Tooltip>
+          <Tooltip content="快捷键 (?)" placement="bottom">
+            <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" aria-label="快捷键" data-dom-id="btn-cheatsheet" onClick={() => setIsCheatsheetOpen((value) => !value)}>
+              <IconKeyboard />
+            </button>
+          </Tooltip>
           <input
             ref={fileInputRef}
             hidden
@@ -2440,7 +2460,8 @@ export default function App() {
           </section>
         </div>
       ) : null}
-    </div>
+      </div>
+    </TooltipProvider>
   );
 }
 

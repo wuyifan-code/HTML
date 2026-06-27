@@ -1,6 +1,7 @@
 import { memo } from "react";
 import { History, RotateCcw, RotateCw, X } from "lucide-react";
 import type { HistoryDisplayItem } from "../utils/historySummary";
+import { Tooltip } from "./Tooltip";
 
 interface HistoryPanelProps {
   items: HistoryDisplayItem[];
@@ -28,9 +29,11 @@ function HistoryPanelImpl({
           <History size={17} strokeWidth={1.75} />
           <span>历史</span>
         </div>
-        <button className="icon-button" type="button" onClick={onClose} aria-label="关闭历史面板" title="关闭">
-          <X size={16} strokeWidth={1.75} />
-        </button>
+        <Tooltip content="关闭" placement="bottom">
+          <button className="icon-button" type="button" onClick={onClose} aria-label="关闭历史面板">
+            <X size={16} strokeWidth={1.75} />
+          </button>
+        </Tooltip>
       </div>
 
       <div className="history-actions">

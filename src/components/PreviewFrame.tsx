@@ -21,6 +21,7 @@ import {
 } from "../utils/iframeMessages";
 import { findMatchingPresetKey, VIEWPORT_PRESETS } from "../utils/viewportPresets";
 import { CustomSelect } from "./CustomSelect";
+import { Tooltip } from "./Tooltip";
 
 interface PreviewFrameProps {
   html: string;
@@ -224,62 +225,68 @@ function PreviewFrameComponent({
               matchValue={(opt) => opt.value === presetKey}
               placeholder="预设"
             />
-            <button
-              className={`ghost-button compact-action viewport-fit-btn${isFit ? " viewport-fit-btn-active" : ""}`}
-              type="button"
-              onClick={onFitToggle}
-              title={isFit ? "退出适配，使用自定义尺寸" : "按内容尺寸自适应"}
-            >
-              <Shrink size={14} strokeWidth={1.75} />
-              <span>适配</span>
-            </button>
+            <Tooltip content={isFit ? "退出适配，使用自定义尺寸" : "按内容尺寸自适应"} placement="bottom">
+              <button
+                className={`ghost-button compact-action viewport-fit-btn${isFit ? " viewport-fit-btn-active" : ""}`}
+                type="button"
+                onClick={onFitToggle}
+              >
+                <Shrink size={14} strokeWidth={1.75} />
+                <span>适配</span>
+              </button>
+            </Tooltip>
           </div>
           <div className="zoom-control-cluster" aria-label="缩放控制">
-            <button
-              className="ghost-button compact-action zoom-btn"
-              type="button"
-              onClick={handleZoomOut}
-              disabled={displayZoom <= 0.25}
-              title="缩小"
-            >
-              <ZoomOut size={14} strokeWidth={1.75} />
-            </button>
-            <button
-              className="zoom-pill-button"
-              type="button"
-              onClick={handleZoomReset}
-              title="重置为 100%"
-            >
-              {autoFit ? "适应" : `${Math.round(displayZoom * 100)}%`}
-            </button>
-            <button
-              className="ghost-button compact-action zoom-btn"
-              type="button"
-              onClick={handleZoomIn}
-              disabled={displayZoom >= 2}
-              title="放大"
-            >
-              <ZoomIn size={14} strokeWidth={1.75} />
-            </button>
-            <button
-              className={`ghost-button compact-action zoom-fit-btn${autoFit ? " zoom-fit-active" : ""}`}
-              type="button"
-              onClick={handleAutoFit}
-              title={autoFit ? "已开启自适应，点击关闭" : "自适应画布"}
-            >
-              <Scan size={14} strokeWidth={1.75} />
-              <span>适应</span>
-            </button>
+            <Tooltip content="缩小" placement="bottom">
+              <button
+                className="ghost-button compact-action zoom-btn"
+                type="button"
+                onClick={handleZoomOut}
+                disabled={displayZoom <= 0.25}
+              >
+                <ZoomOut size={14} strokeWidth={1.75} />
+              </button>
+            </Tooltip>
+            <Tooltip content="重置为 100%" placement="bottom">
+              <button
+                className="zoom-pill-button"
+                type="button"
+                onClick={handleZoomReset}
+              >
+                {autoFit ? "适应" : `${Math.round(displayZoom * 100)}%`}
+              </button>
+            </Tooltip>
+            <Tooltip content="放大" placement="bottom">
+              <button
+                className="ghost-button compact-action zoom-btn"
+                type="button"
+                onClick={handleZoomIn}
+                disabled={displayZoom >= 2}
+              >
+                <ZoomIn size={14} strokeWidth={1.75} />
+              </button>
+            </Tooltip>
+            <Tooltip content={autoFit ? "已开启自适应，点击关闭" : "自适应画布"} placement="bottom">
+              <button
+                className={`ghost-button compact-action zoom-fit-btn${autoFit ? " zoom-fit-active" : ""}`}
+                type="button"
+                onClick={handleAutoFit}
+              >
+                <Scan size={14} strokeWidth={1.75} />
+                <span>适应</span>
+              </button>
+            </Tooltip>
           </div>
-          <button
-            className="ghost-button compact-action preview-focus-button"
-            type="button"
-            onClick={onToggleFocusPreview}
-            title={isFocusPreview ? "恢复三栏编辑器" : "隐藏编辑器，全屏预览"}
-          >
-            {isFocusPreview ? <Minimize2 size={15} strokeWidth={1.75} /> : <Maximize2 size={15} strokeWidth={1.75} />}
-            <span>{isFocusPreview ? "恢复" : "全屏"}</span>
-          </button>
+          <Tooltip content={isFocusPreview ? "恢复三栏编辑器" : "隐藏编辑器，全屏预览"} placement="bottom">
+            <button
+              className="ghost-button compact-action preview-focus-button"
+              type="button"
+              onClick={onToggleFocusPreview}
+            >
+              {isFocusPreview ? <Minimize2 size={15} strokeWidth={1.75} /> : <Maximize2 size={15} strokeWidth={1.75} />}
+              <span>{isFocusPreview ? "恢复" : "全屏"}</span>
+            </button>
+          </Tooltip>
         </div>
       </div>
       <div className={`iframe-shell iframe-shell-${viewportMode}`}>
@@ -556,12 +563,14 @@ function insertBeforeClosingTag(html: string, tag: "head" | "body", content: str
 function createBridgeScript(bridgeToken: string): string {
   const config = createEditableElementScriptConfig();
   const fontLibrary = getFontLibraryScriptConfig();
+  const tooltipEngine = createIframeTooltipEngine();
 
   return `<script>
     (() => {
       const bridgeToken = ${JSON.stringify(bridgeToken)};
       const config = ${JSON.stringify(config)};
       const fontLibrary = ${JSON.stringify(fontLibrary)};
+      ${tooltipEngine}
       const editableTags = new Set(config.editableTags.map((tag) => tag.toUpperCase()));
       const editableSvgTextTags = new Set(config.editableSvgTextTags.map((tag) => tag.toUpperCase()));
       const editableBlockTags = new Set(config.editableBlockTags.map((tag) => tag.toUpperCase()));
@@ -1661,8 +1670,140 @@ function createBridgeScript(bridgeToken: string): string {
         postModalState();
         postPreviewReady();
       }, 250);
+
+      // ============================================================
+      // 自定义 Tooltip 引擎（仅作用于浮动工具栏按钮，避免污染预览内容）
+      // 由 createIframeTooltipEngine() 在脚本顶部已注入
+      // ============================================================
+      setupIframeTooltip();
     })();
   </script>`;
+}
+
+/**
+ * 返回 iframe 内 Tooltip 引擎 IIFE 字符串（注入到 bridge script 顶部）。
+ * 监听 html-finetune-floating-toolbar 内按钮的 [data-tip] 或 [title] 属性，
+ * hover/focus 时显示深色半透明浮层，避免原生浏览器提示。
+ */
+function createIframeTooltipEngine(): string {
+  return `
+    function setupIframeTooltip() {
+      if (window.__hftTipEngine) return;
+      window.__hftTipEngine = true;
+
+      var SCOPE = "#html-finetune-floating-toolbar";
+      var DELAY = 100;
+      var MARGIN = 6;
+
+      var layer = document.createElement("div");
+      layer.id = "html-finetune-tip";
+      layer.setAttribute("role", "tooltip");
+      document.body.appendChild(layer);
+
+      var timer = null;
+      var currentAnchor = null;
+
+      function clearTimerFn() {
+        if (timer) { window.clearTimeout(timer); timer = null; }
+      }
+
+      function getText(anchor) {
+        var tip = anchor.getAttribute("data-tip");
+        if (tip) return tip;
+        var t = anchor.getAttribute("title");
+        if (t) {
+          anchor.setAttribute("data-tip", t);
+          anchor.removeAttribute("title");
+          return t;
+        }
+        return "";
+      }
+
+      function positionLayer(anchor) {
+        var rect = anchor.getBoundingClientRect();
+        var tipRect = layer.getBoundingClientRect();
+        var vw = window.innerWidth;
+        var vh = window.innerHeight;
+
+        var actual = "top";
+        if (rect.top - tipRect.height - MARGIN < 4) actual = "bottom";
+
+        var top, left;
+        if (actual === "top") {
+          top = rect.top - tipRect.height - MARGIN;
+          left = rect.left + rect.width / 2 - tipRect.width / 2;
+        } else {
+          top = rect.bottom + MARGIN;
+          left = rect.left + rect.width / 2 - tipRect.width / 2;
+        }
+
+        var pad = 4;
+        left = Math.max(pad, Math.min(left, vw - tipRect.width - pad));
+        top = Math.max(pad, Math.min(top, vh - tipRect.height - pad));
+
+        layer.setAttribute("data-placement", actual);
+        layer.style.top = top + "px";
+        layer.style.left = left + "px";
+      }
+
+      function showTip(anchor) {
+        var text = getText(anchor);
+        if (!text) return;
+        currentAnchor = anchor;
+        layer.textContent = text;
+        layer.style.visibility = "hidden";
+        layer.classList.remove("is-visible");
+        requestAnimationFrame(function(){
+          positionLayer(anchor);
+          layer.style.visibility = "visible";
+          requestAnimationFrame(function(){
+            layer.classList.add("is-visible");
+          });
+        });
+      }
+
+      function hideTip() {
+        clearTimerFn();
+        layer.classList.remove("is-visible");
+        currentAnchor = null;
+      }
+
+      function findAnchor(target) {
+        if (!(target instanceof Element)) return null;
+        var toolbar = document.querySelector(SCOPE);
+        if (!toolbar || !toolbar.contains(target)) return null;
+        return target.closest("button[data-tip], button[title], [data-tip], [title]");
+      }
+
+      document.addEventListener("mouseover", function(event){
+        var btn = findAnchor(event.target);
+        if (!btn || btn === currentAnchor) return;
+        clearTimerFn();
+        timer = window.setTimeout(function(){ showTip(btn); }, DELAY);
+      }, true);
+
+      document.addEventListener("mouseout", function(event){
+        var related = event.relatedTarget;
+        if (related instanceof Node && currentAnchor && currentAnchor.contains(related)) return;
+        if (related instanceof Element) {
+          var toolbar = document.querySelector(SCOPE);
+          if (toolbar && toolbar.contains(related)) return;
+        }
+        hideTip();
+      }, true);
+
+      document.addEventListener("focusin", function(event){
+        var btn = findAnchor(event.target);
+        if (!btn) return;
+        clearTimerFn();
+        timer = window.setTimeout(function(){ showTip(btn); }, DELAY);
+      }, true);
+
+      document.addEventListener("focusout", hideTip, true);
+      window.addEventListener("scroll", hideTip, true);
+      window.addEventListener("resize", hideTip);
+    }
+  `;
 }
 
 function createBridgeToken(): string {
