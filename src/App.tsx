@@ -1499,15 +1499,26 @@ export default function App() {
             </div>
           </div>
           <nav className="brand-breadcrumb" aria-label="文件路径">
+            <span className="brand-breadcrumb-folder">landing-page</span>
+            <span className="brand-breadcrumb-divider" aria-hidden="true">/</span>
+            <span className="brand-breadcrumb-current">index.html</span>
           </nav>
         </div>
 
-        <div className="app-topbar__center app-toolbar" aria-label="历史操作">
+        <div className="app-topbar__center app-toolbar" aria-label="面板与历史操作">
+          <button className={`ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon${isSourceCollapsed ? " is-on" : ""}`} type="button" title={isSourceCollapsed ? "展开结构面板" : "收起结构面板"} aria-label={isSourceCollapsed ? "展开结构面板" : "收起结构面板"} data-dom-id="btn-toggle-left" onClick={handleToggleSourcePanel}>
+            <IconPanelLeft />
+          </button>
+          <span className="app-toolbar-sep" aria-hidden="true"></span>
           <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="撤销 · Ctrl/⌘+Z" aria-label="撤销" data-dom-id="btn-undo" onClick={undo} disabled={!canUndo}>
             <IconUndo />
           </button>
           <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" title="重做 · Ctrl/⌘+Y 或 Shift+Ctrl/⌘+Z" aria-label="重做" data-dom-id="btn-redo" onClick={redo} disabled={!canRedo}>
             <IconRedo />
+          </button>
+          <span className="app-toolbar-sep" aria-hidden="true"></span>
+          <button className={`ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon${isInspectorCollapsed ? " is-on" : ""}`} type="button" title={isInspectorCollapsed ? "展开属性面板" : "收起属性面板"} aria-label={isInspectorCollapsed ? "展开属性面板" : "收起属性面板"} data-dom-id="btn-toggle-right" onClick={handleToggleInspectorPanel}>
+            <IconPanelRight />
           </button>
         </div>
 
@@ -1621,7 +1632,6 @@ export default function App() {
                 onClick={() => setSourceTab("source")}
               >源码</button>
             </div>
-            <button className="icon-btn panel-collapse-btn" type="button" aria-label="折叠结构面板" onClick={handleToggleSourcePanel}>‹</button>
           </div>
 
           {sourceTab === "structure" ? (
@@ -1921,7 +1931,6 @@ export default function App() {
           />
           <div className="inspector-tabs-wrap">
             <span className="inspector-title">样式检查器</span>
-            <button className="icon-btn panel-collapse-btn" type="button" aria-label="折叠属性面板" onClick={handleToggleInspectorPanel}>›</button>
           </div>
           {selected ? (
             <div className="inspector-selection" data-dom-id="inspector-selection">
@@ -3398,4 +3407,12 @@ function IconActivity() {
 
 function IconShield() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>;
+}
+
+function IconPanelLeft() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="9" y1="9" x2="21" y2="9"/></svg>;
+}
+
+function IconPanelRight() {
+  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="15" y2="9"/></svg>;
 }
