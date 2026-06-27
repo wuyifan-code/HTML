@@ -3684,6 +3684,10 @@ span.meta { display: inline-block; }
   gap: var(--spacer-6);
   padding-top: var(--spacer-2);
 }
+.ai-scan-loading { display: inline-flex; align-items: center; justify-content: center; width: 12px; height: 12px; flex-shrink: 0; }
+.ai-scan-loading .spinner { width: 10px; height: 10px; }
+.ai-scan-ok { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; flex-shrink: 0; color: var(--status-success-default); font-size: 10px; font-weight: 600; }
+.ai-scan-model-status { font-size: 10px; color: var(--text-tertiary); }
 
 /* --- Search bar ----------------------------------------------- */
 .search-bar { padding: var(--spacer-8) var(--spacer-12); flex-shrink: 0; }

@@ -21,7 +21,6 @@ import { PretextMeasureBadge } from "./components/PretextMeasureBadge";
 import { useEditorHistory } from "./hooks/useEditorHistory";
 import { useElementSize } from "./hooks/useElementSize";
 import { sampleHtml } from "./sampleHtml";
-import brandLogoUrl from "../AZ8HKFTTZ9-pQONQ2lSOHw-AZ8HKFTTkbiLxaIKgzNoOQ.jpg";
 import type { AiTreeAnnotation, DomTreeNode } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
 import { copyHtmlToClipboard } from "./utils/clipboard";
@@ -1044,7 +1043,7 @@ export default function App() {
 
   useEffect(() => {
     const trimmedKey = currentAiKey.trim();
-    if (trimmedKey.length < 8) {
+    if (!trimmedKey || trimmedKey.length < 3) {
       setAiModelFetchStatus("idle");
       setAiModelFetchError("");
       return;
@@ -1053,7 +1052,7 @@ export default function App() {
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
       void handleRefreshAiModels("auto", controller.signal);
-    }, 700);
+    }, 600);
 
     return () => {
       window.clearTimeout(timeoutId);
@@ -1488,9 +1487,7 @@ export default function App() {
       <header className="app-topbar" role="banner">
         <div className="app-topbar__left">
           <div className="brand-block" aria-label="产品标识">
-            <div className="brand-mark" aria-hidden="true">
-              <img src={brandLogoUrl} alt="" />
-            </div>
+            <div className="brand-mark" aria-hidden="true">&lt;/&gt;</div>
             <div className="brand-copy">
               <h1>
                 HTML FineTune
@@ -1665,6 +1662,7 @@ export default function App() {
                         id="aiApiKey"
                         type="password"
                         value={currentAiKey}
+                        placeholder={aiModelFetchStatus === "idle" ? "输入 Key 自动获取模型" : ""}
                         onChange={(event) => {
                           const nextKey = event.target.value;
                           setAiApiKeys((keys) => ({ ...keys, [aiProvider]: nextKey }));
@@ -1672,6 +1670,11 @@ export default function App() {
                       />
                     </div>
                   </div>
+                  {aiModelFetchStatus === "loading" ? (
+                    <p className="ai-scan-model-status">正在获取模型...</p>
+                  ) : aiModelFetchStatus === "ready" ? (
+                    <p className="ai-scan-model-status">已加载 {currentAiModels.length} 个模型</p>
+                  ) : null}
                   <div className="ai-scan-row">
                     <label htmlFor="aiModel">模型</label>
                     <div className="ds-input">
@@ -1689,6 +1692,13 @@ export default function App() {
                           <option key={model.value} value={model.value}>{model.label}</option>
                         ))}
                       </datalist>
+                      {aiModelFetchStatus === "loading" ? (
+                        <span className="ai-scan-loading" aria-live="polite" title="正在获取模型列表">
+                          <span className="spinner" aria-hidden="true"></span>
+                        </span>
+                      ) : aiModelFetchStatus === "ready" ? (
+                        <span className="ai-scan-ok" aria-live="polite" title={`已加载 ${currentAiModels.length} 个模型`}>✓</span>
+                      ) : null}
                     </div>
                   </div>
                   <div className="ai-scan-actions">
