@@ -1499,9 +1499,6 @@ export default function App() {
             </div>
           </div>
           <nav className="brand-breadcrumb" aria-label="文件路径">
-            <span className="brand-breadcrumb-folder">examples</span>
-            <span className="brand-breadcrumb-divider" aria-hidden="true">/</span>
-            <span className="brand-breadcrumb-current">canvas-demo.html</span>
           </nav>
         </div>
 
