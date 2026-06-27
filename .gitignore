@@ -20,7 +20,3 @@ artifacts/
 .trae/
 .workbuddy/
 
-# Browser snapshot tools drop files in cwd root (random base64 names)
-AZ8H*.jpg
-*-pQONQ2lSOHw-*.jpg
-
