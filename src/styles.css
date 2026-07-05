@@ -7367,6 +7367,19 @@ body,
   }
 }
 
+/* ----- Numeric input commit micro-feedback (Apple spring) -----
+   .ds-input--numeric receives .is-changed for ~220ms after a commit
+   (Enter / blur / stepper button). Toggled via setTimeout in JSX. */
+.ds-input--numeric.is-changed {
+  animation: numeric-pop var(--motion-base) var(--ease-spring-pop) both;
+}
+
+@keyframes numeric-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(var(--press-scale-numeric)); }
+  100% { transform: scale(1); }
+}
+
 .mobile-panel-backdrop {
   display: none;
 }

@@ -76,12 +76,14 @@ describe("apple-level polish tokens", () => {
     expect(m![1]).toMatch(/var\(--ease-exit\)/);
   });
 
-  it("declares @keyframes numeric-pop used by .ds-input--numeric.is-changed", () => {
+  it("declares @keyframes numeric-pop with press-scale-numeric and an is-changed rule using spring-pop", () => {
     expect(css).toMatch(/@keyframes\s+numeric-pop/);
+    const kf = css.match(/@keyframes\s+numeric-pop\s*\{([\s\S]+?)\n\}/);
+    expect(kf).toBeTruthy();
+    expect(kf![1]).toMatch(/var\(--press-scale-numeric\)/);
     const m = css.match(/\.ds-input--numeric\.is-changed\s*\{([\s\S]+?)\}/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--press-scale-numeric\)/);
-    expect(m![1]).toMatch(/var\(--ease-spring-pop\)|var\(--motion-base\)/);
+    expect(m![1]).toMatch(/numeric-pop\s+var\(--motion-base\)\s+var\(--ease-spring-pop\)/);
   });
 
   it("prefers-reduced-motion fallback zeroes all animations and transitions", () => {
