@@ -43,11 +43,14 @@
   --icon-size-20: 20px;
   --icon-size-24: 24px;
 
-  /* ----- fonts ----- */
-  --font-family-default: "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-family-heading: "SF Pro", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-family-metric: "Inter", "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-family-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  /* ----- fonts -----
+     Apple system font stack first (calls SF on Apple devices via -apple-system),
+     then platform-specific Chinese fallbacks (PingFang SC on Apple, Microsoft YaHei on Windows).
+     `system-ui` is a deliberate catch-all when the named fonts are unavailable. */
+  --font-family-default: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-family-heading: -apple-system, BlinkMacSystemFont, "SF Pro", "PingFang SC", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-family-metric: -apple-system, BlinkMacSystemFont, "Inter", "SF Pro Text", "PingFang SC", system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-family-mono: ui-monospace, "SF Mono", Menlo, "JetBrains Mono", Consolas, monospace;
   --font-weight-default: 400;
   --font-weight-code: 450;
   --font-weight-medium: 500;
@@ -276,11 +279,13 @@ body {
   margin: 0;
   background: var(--bg-base-default);
   color: var(--text-default);
-  font-family: var(--font-family-default);
+  font-family: -apple-system, BlinkMacSystemFont, var(--font-family-default);
   font-size: var(--text-base);
   line-height: var(--leading-body);
   overflow: hidden;
   text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
   -webkit-font-smoothing: antialiased;
 }
 button, input, select, textarea { font: inherit; color: inherit; }

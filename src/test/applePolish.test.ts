@@ -93,3 +93,17 @@ describe("apple-level polish tokens", () => {
     expect(reduced![1]).toMatch(/transition-duration:\s*0\.001ms\s*!important/);
   });
 });
+
+describe("apple typography baseline", () => {
+  it("font-family-default begins with the Apple system font stack", () => {
+    const m = css.match(/--font-family-default:\s*([^;]+);/);
+    expect(m).toBeTruthy();
+    expect(m![1]).toMatch(/^-apple-system\s*,\s*BlinkMacSystemFont\s*,\s*"SF Pro Text"/);
+  });
+
+  it("body sets -webkit-font-smoothing: antialiased", () => {
+    const body = css.match(/\bbody\s*\{([\s\S]+?)\n\}/);
+    expect(body).toBeTruthy();
+    expect(body![1]).toMatch(/-webkit-font-smoothing:\s*antialiased/);
+  });
+});
