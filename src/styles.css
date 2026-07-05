@@ -4463,22 +4463,35 @@ span.meta { display: inline-block; }
   border-color: var(--border-neutral-l1);
   overflow: hidden;
   position: relative;
-  transition: width 320ms cubic-bezier(0.4, 0, 0.2, 1),
-              border-color 220ms var(--ease-standard),
-              opacity 220ms var(--ease-standard),
-              background-color 200ms var(--ease-standard);
+  transition:
+    width var(--motion-spring) var(--ease-soft-end),
+    border-color var(--motion-base) var(--ease-standard),
+    background-color var(--motion-base) var(--ease-standard);
 }
 .app-side-panel--left { width: var(--source-col); border-right: 1px solid var(--border-neutral-l1); }
 .app-side-panel--right { width: var(--inspector-col); border-left: 1px solid var(--border-neutral-l1); }
-.app-side-panel--collapsed { width: 0 !important; border-right: none; border-left: none; opacity: 0; }
+.app-side-panel--collapsed {
+  width: 0 !important;
+  border-left-color: transparent;
+  border-right-color: transparent;
+}
 
 /* .panel 的折叠由 app-shell 上的 class 控制 */
 /* Predictive return: when collapsing left, content slides out left; right slides out right */
 .app-side-panel--left:not(.app-side-panel--collapsed) > * {
-  animation: panel-content-return-left 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: panel-content-return-left var(--motion-spring) var(--ease-emphasized) both;
 }
 .app-side-panel--right:not(.app-side-panel--collapsed) > * {
-  animation: panel-content-return-right 320ms cubic-bezier(0.4, 0, 0.2, 1) both;
+  animation: panel-content-return-right var(--motion-spring) var(--ease-emphasized) both;
+}
+
+/* Directional exit (matches entry edge) — only fires when toggler adds
+   .app-side-panel--collapsing-out alongside .app-side-panel--collapsed. */
+.app-side-panel--left.app-side-panel--collapsing-out > * {
+  animation: panel-content-exit-left var(--motion-exit) var(--ease-exit) both;
+}
+.app-side-panel--right.app-side-panel--collapsing-out > * {
+  animation: panel-content-exit-right var(--motion-exit) var(--ease-exit) both;
 }
 @keyframes panel-content-return-left {
   from { opacity: 0; transform: translateX(-12px); }
@@ -4487,6 +4500,14 @@ span.meta { display: inline-block; }
 @keyframes panel-content-return-right {
   from { opacity: 0; transform: translateX(12px); }
   to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes panel-content-exit-left {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(-12px); }
+}
+@keyframes panel-content-exit-right {
+  from { opacity: 1; transform: translateX(0); }
+  to   { opacity: 0; transform: translateX(12px); }
 }
 
 .app-resizer {
