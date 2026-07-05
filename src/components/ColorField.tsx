@@ -85,7 +85,13 @@ function ColorFieldComponent({ label, value, onChange, full = false }: ColorFiel
     });
   }, []);
 
+  const closingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const handleClosingEnd = useCallback(() => {
+    if (closingTimerRef.current) {
+      clearTimeout(closingTimerRef.current);
+      closingTimerRef.current = null;
+    }
     setIsOpen(false);
     setIsClosing(false);
   }, []);
@@ -101,7 +107,18 @@ function ColorFieldComponent({ label, value, onChange, full = false }: ColorFiel
         window.setTimeout(focusSwatch, 0);
       }
     }
-  }, [isOpen]);
+    // setTimeout fallback for environments that don't fire animationend (jsdom + older engines).
+    closingTimerRef.current = setTimeout(() => {
+      closingTimerRef.current = null;
+      handleClosingEnd();
+    }, 260);
+  }, [handleClosingEnd, isOpen]);
+
+  useEffect(() => {
+    return () => {
+      if (closingTimerRef.current) clearTimeout(closingTimerRef.current);
+    };
+  }, []);
 
   const openPopover = useCallback(() => {
     updatePopoverPosition();
