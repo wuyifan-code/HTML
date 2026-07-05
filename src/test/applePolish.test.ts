@@ -54,8 +54,9 @@ describe("apple-level polish tokens", () => {
     expect(m![1]).toMatch(/var\(--border-neutral-l1\)/);
   });
 
-  it(".ds-input:focus uses --focus-halo and motion-fast easing", () => {
-    const m = css.match(/\.ds-input:focus\s*\{([\s\S]+?)\}/);
+  it(".ds-input:focus-within uses --focus-halo and motion-fast easing", () => {
+    // :focus-within is the canonical ds-input focus selector in this codebase.
+    const m = css.match(/\.ds-input:focus-within\s*\{([\s\S]+?)\}/);
     expect(m).toBeTruthy();
     expect(m![1]).toMatch(/var\(--focus-halo\)/);
     expect(m![1]).toMatch(/var\(--motion-fast\)/);

@@ -3349,10 +3349,11 @@ span.meta { display: inline-block; }
 .ds-input:focus-within {
   border-color: var(--bg-brand);
   background: var(--bg-base-default);
-  box-shadow:
-    0 0 0 4px color-mix(in srgb, var(--bg-brand) 18%, transparent),
-    inset 0 1px 0 color-mix(in srgb, #ffffff 50%, transparent);
-  transform: translateY(-1px);
+  box-shadow: var(--focus-halo);
+  transition:
+    border-color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    background var(--motion-fast) var(--ease-standard);
 }
 .ds-input input,
 .ds-input select {
