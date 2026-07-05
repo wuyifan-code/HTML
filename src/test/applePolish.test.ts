@@ -131,3 +131,26 @@ describe("apple dropdown spring entrance + menu press", () => {
     expect(kf![1]).toMatch(/scale\(0\.98\)/);
   });
 });
+
+describe("export dialog spring center-scale entrance + exit", () => {
+  it(".export-dialog animation uses spring-pop ease and transform-origin: center", () => {
+    const m = css.match(/\.export-dialog\s*\{([\s\S]+?)\n\}/);
+    expect(m).toBeTruthy();
+    expect(m![1]).toMatch(/var\(--ease-spring-pop\)/);
+    expect(m![1]).toMatch(/transform-origin:\s*center/);
+  });
+
+  it("@keyframes export-dialog-in uses scale(0.92) at start", () => {
+    const kf = css.match(/@keyframes\s+export-dialog-in\s*\{([\s\S]+?)\n\}/);
+    expect(kf).toBeTruthy();
+    expect(kf![1]).toMatch(/scale\(0\.92\)/);
+  });
+
+  it(".export-dialog.is-closing + @keyframes export-dialog-out declared", () => {
+    const cls = css.match(/\.export-dialog\.is-closing\s*\{([\s\S]+?)\}/);
+    expect(cls).toBeTruthy();
+    expect(cls![1]).toMatch(/var\(--motion-exit\)/);
+    expect(cls![1]).toMatch(/var\(--ease-exit\)/);
+    expect(css).toMatch(/@keyframes\s+export-dialog-out/);
+  });
+});

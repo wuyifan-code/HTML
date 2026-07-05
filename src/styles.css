@@ -2516,7 +2516,8 @@ span.meta { display: inline-block; }
   -webkit-backdrop-filter: var(--surface-vibrancy-strong);
   backdrop-filter: var(--surface-vibrancy-strong);
   box-shadow: var(--elev-window);
-  animation: export-dialog-in 280ms var(--ease-emphasized) both;
+  transform-origin: center;
+  animation: export-dialog-in 320ms var(--ease-spring-pop) both;
   will-change: transform, opacity;
 }
 .export-dialog-header {
@@ -2816,13 +2817,31 @@ span.meta { display: inline-block; }
   font-size: 12px;
 }
 @keyframes export-dialog-in {
-  from {
+  0% {
     opacity: 0;
-    transform: translateY(8px) scale(0.98);
+    transform: translateY(8px) scale(0.92);
   }
-  to {
+  60% {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.export-dialog.is-closing {
+  animation: export-dialog-out var(--motion-exit) var(--ease-exit) both;
+}
+@keyframes export-dialog-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(4px) scale(0.97);
   }
 }
 
