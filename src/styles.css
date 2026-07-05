@@ -1745,6 +1745,8 @@ span.meta { display: inline-block; }
   box-shadow: var(--elev-window);
   width: 260px;
   color: var(--text-default);
+  animation: color-popover-in var(--motion-spring) var(--ease-emphasized) both;
+  transform-origin: top left;
   will-change: transform, opacity;
 }
 .color-map {
@@ -7124,9 +7126,12 @@ body,
   padding: var(--spacer-12);
   border-radius: var(--radius-16);
   color: var(--text-default);
-  animation: color-popover-in 220ms var(--ease-emphasized) both;
+  animation: color-popover-in var(--motion-spring) var(--ease-emphasized) both;
   transform-origin: top left;
   will-change: transform, opacity;
+}
+.color-popover.is-closing {
+  animation: color-popover-out var(--motion-exit) var(--ease-exit) both;
 }
 
 .color-popover-header {
@@ -7348,6 +7353,17 @@ body,
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes color-popover-out {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.97);
   }
 }
 
