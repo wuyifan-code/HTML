@@ -107,3 +107,27 @@ describe("apple typography baseline", () => {
     expect(body![1]).toMatch(/-webkit-font-smoothing:\s*antialiased/);
   });
 });
+
+describe("apple dropdown spring entrance + menu press", () => {
+  it(".dropdown-panel uses spring tokens and surface-vibrancy backdrop", () => {
+    const m = css.match(/\.dropdown-panel\s*\{([\s\S]+?)\n\}/);
+    expect(m).toBeTruthy();
+    expect(m![1]).toMatch(/var\(--motion-spring\)/);
+    expect(m![1]).toMatch(/var\(--ease-emphasized\)/);
+    expect(m![1]).toMatch(/backdrop-filter:\s*var\(--surface-vibrancy-strong\)/);
+  });
+
+  it(".menu-action :active uses apple-style scale-down press", () => {
+    const m = css.match(/\.menu-action:active\s*\{([\s\S]+?)\}/);
+    expect(m).toBeTruthy();
+    expect(m![1]).toMatch(/transform:\s*scale\(0\.985\)/);
+  });
+
+  it("@keyframes dropdown-pop-in animates opacity + translateY + scale", () => {
+    const kf = css.match(/@keyframes\s+dropdown-pop-in\s*\{([\s\S]+?)\n\}/);
+    expect(kf).toBeTruthy();
+    expect(kf![1]).toMatch(/opacity:\s*0/);
+    expect(kf![1]).toMatch(/translateY\(-4px\)/);
+    expect(kf![1]).toMatch(/scale\(0\.98\)/);
+  });
+});
