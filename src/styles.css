@@ -397,16 +397,20 @@ input, select, textarea { font-family: inherit; }
 }
 
 .app-header {
+  position: relative;
   height: var(--topbar-height);
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0 var(--spacer-16);
-  background: var(--bg-base-default);
+  background: var(--surface-glass);
   border-bottom: 1px solid var(--border-neutral-l1);
   gap: var(--spacer-12);
   min-height: 0;
+  backdrop-filter: var(--surface-vibrancy);
+  -webkit-backdrop-filter: var(--surface-vibrancy);
 }
+.app-header:hover { backdrop-filter: var(--topbar-blur); -webkit-backdrop-filter: var(--topbar-blur); }
 
 .brand-block {
   display: flex;
@@ -567,7 +571,8 @@ input, select, textarea { font-family: inherit; }
   width: 1px;
   align-self: stretch;
   background: var(--border-neutral-l1);
-  margin: 0 var(--spacer-2);
+  margin: var(--spacer-2) var(--spacer-2);
+  flex-shrink: 0;
 }
 .toolbar-button {
   display: inline-flex;
