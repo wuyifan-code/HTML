@@ -3748,20 +3748,6 @@ span.meta { display: inline-block; }
   margin-left: var(--spacer-8);
 }
 
-/* === Header legacy aliases === */
-.topbar-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--spacer-8);
-  padding: 0 var(--spacer-12);
-  height: 24px;
-  border-radius: var(--radius-6);
-  background: var(--bg-base-secondary);
-  color: var(--text-tertiary);
-  font-size: 11px;
-}
-.topbar-meta strong { color: var(--text-default); font-weight: 500; }
-
 /* === Viewport size pill === */
 .canvas-meta {
   display: inline-flex;
