@@ -1,0 +1,86 @@
+@media (max-width: 760px) {
+  .app-topbar-brand {
+    width: auto;
+    flex-shrink: 1;
+  }
+
+  .app-topbar-actions {
+    width: auto;
+    flex-shrink: 1;
+  }
+
+  .nw-left-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 100;
+    width: min(320px, calc(100vw - 48px));
+    height: 100dvh;
+    background: var(--n-bg-elevated);
+    border-right: 1px solid var(--n-border-default);
+    transform: translateX(-100%);
+    transition: transform var(--n-duration-slow) var(--n-ease);
+    overflow-y: auto;
+  }
+
+  .nw-left-panel.is-open {
+    transform: translateX(0);
+  }
+
+  .nw-right-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 100;
+    width: min(320px, calc(100vw - 48px));
+    height: 100dvh;
+    background: var(--n-bg-elevated);
+    border-left: 1px solid var(--n-border-default);
+    transform: translateX(100%);
+    transition: transform var(--n-duration-slow) var(--n-ease);
+    overflow-y: auto;
+  }
+
+  .nw-right-panel.is-open {
+    transform: translateX(0);
+  }
+
+  .mobile-panel-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 99;
+    background: rgba(0, 0, 0, 0.2);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--n-duration-slow) var(--n-ease);
+  }
+
+  .mobile-panel-backdrop.is-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .nw-canvas {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .viewport-bar {
+    gap: 8px;
+    padding: 0 10px;
+  }
+
+  .segmented-viewport-control {
+    gap: 0;
+  }
+
+  .segmented-button {
+    padding: 0 8px;
+    font-size: 11px;
+  }
+
+  .viewport-bar__dim input {
+    width: 40px;
+    font-size: 11px;
+  }
+}
