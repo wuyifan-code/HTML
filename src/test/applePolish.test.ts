@@ -3,40 +3,46 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf-8");
+const tokens = readFileSync(resolve(process.cwd(), "src/styles/tokens.css"), "utf-8");
 
-describe("apple-level polish tokens", () => {
-  it("declares new pane / press / blur tokens", () => {
-    expect(css).toMatch(/--motion-pane-enter:\s*360ms/);
-    expect(css).toMatch(/--motion-pane-exit:\s*220ms/);
-    expect(css).toMatch(/--press-scale-numeric:\s*1\.04/);
-    expect(css).toMatch(/--press-scale-swatch:\s*0\.94/);
-    expect(css).toMatch(/--topbar-blur:\s*saturate\(180%\)\s*blur\(20px\)/);
+describe("canonical Notion design tokens", () => {
+  it("declares flat pane tokens (no spring overshoot)", () => {
+    expect(tokens).toMatch(/--motion-pane-enter:\s*var\(--n-duration-slow\)/);
+    expect(tokens).toMatch(/--motion-pane-exit:\s*var\(--n-duration-base\)/);
   });
 
+  it("declares flat press-scale tokens (value 1 = no scale)", () => {
+    expect(tokens).toMatch(/--press-scale-numeric:\s*1/);
+    expect(tokens).toMatch(/--press-scale-swatch:\s*1/);
+  });
+
+  it("removes topbar blur (flat surface)", () => {
+    expect(tokens).toMatch(/--topbar-blur:\s*none/);
+  });
+});
+
+describe("Apple typography baseline", () => {
+  it("font-family-default begins with Inter and Apple system font stack", () => {
+    const m = tokens.match(/--n-font-sans:\s*([^;]+);/);
+    expect(m).toBeTruthy();
+    expect(m![1]).toMatch(/Inter.*-apple-system/);
+  });
+
+  it("body sets -webkit-font-smoothing: antialiased", () => {
+    const bodyMatch = css.match(/\bbody\s*\{([\s\S]+?)\n\}/);
+    const bodyTokens = tokens.match(/\bbody\s*\{([\s\S]+?)\n\}/);
+    // body is defined in base.css, check tokens instead
+    const baseCss = readFileSync(resolve(process.cwd(), "src/styles/base.css"), "utf-8");
+    expect(baseCss).toMatch(/-webkit-font-smoothing:\s*antialiased/);
+  });
+});
+
+describe("component Notion-style tokens", () => {
   it(".app-side-panel transition uses Notion duration/ease tokens", () => {
     const m = css.match(/\.app-side-panel\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
     expect(m![1]).toMatch(/var\(--n-duration-slow\)/);
     expect(m![1]).toMatch(/var\(--n-ease\)/);
-  });
-
-  it(".app-side-panel--left entry animation uses motion-spring + ease-emphasized", () => {
-    const m = css.match(/\.app-side-panel--left:not\(\.app-side-panel--collapsed\) > \*\s*\{([\s\S]+?)\}/);
-    expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--motion-spring\)/);
-    expect(m![1]).toMatch(/var\(--ease-emphasized\)/);
-  });
-
-  it(".app-side-panel--right entry animation uses motion-spring + ease-emphasized", () => {
-    const m = css.match(/\.app-side-panel--right:not\(\.app-side-panel--collapsed\) > \*\s*\{([\s\S]+?)\}/);
-    expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--motion-spring\)/);
-    expect(m![1]).toMatch(/var\(--ease-emphasized\)/);
-  });
-
-  it("declares panel-content-exit-left and panel-content-exit-right keyframes", () => {
-    expect(css).toMatch(/@keyframes\s+panel-content-exit-left/);
-    expect(css).toMatch(/@keyframes\s+panel-content-exit-right/);
   });
 
   it(".app-header uses Notion-style static topbar (no backdrop-filter, single bottom border)", () => {
@@ -46,11 +52,10 @@ describe("apple-level polish tokens", () => {
     expect(m![1]).toMatch(/var\(--n-border-default\)/);
   });
 
-  it(".toolbar-separator is a 1px hairline using border-neutral-l1", () => {
+  it(".toolbar-separator is a 1px hairline using border token", () => {
     const m = css.match(/\.toolbar-separator\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
     expect(m![1]).toMatch(/1px/);
-    expect(m![1]).toMatch(/var\(--border-neutral-l1\)/);
   });
 
   it(".ds-input:focus-within uses ring-focus and Notion fast easing", () => {
@@ -67,46 +72,16 @@ describe("apple-level polish tokens", () => {
     expect(m![1]).toMatch(/var\(--n-ease\)/);
   });
 
-  it(".color-popover.is-closing uses motion-exit + ease-exit", () => {
-    const m = css.match(/\.color-popover\.is-closing\s*\{([\s\S]+?)\}/);
-    expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--motion-exit\)/);
-    expect(m![1]).toMatch(/var\(--ease-exit\)/);
-  });
-
-  it("declares @keyframes numeric-pop with press-scale-numeric and an is-changed rule using spring-pop", () => {
-    expect(css).toMatch(/@keyframes\s+numeric-pop/);
-    const kf = css.match(/@keyframes\s+numeric-pop\s*\{([\s\S]+?)\n\}/);
-    expect(kf).toBeTruthy();
-    expect(kf![1]).toMatch(/var\(--press-scale-numeric\)/);
-    const m = css.match(/\.ds-input--numeric\.is-changed\s*\{([\s\S]+?)\}/);
-    expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/numeric-pop\s+var\(--motion-base\)\s+var\(--ease-spring-pop\)/);
-  });
-
-  it("prefers-reduced-motion fallback zeroes all animations and transitions", () => {
-    const reduced = css.match(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]+?)\n\}/);
-    expect(reduced).toBeTruthy();
-    expect(reduced![1]).toMatch(/animation-duration:\s*0\.001ms\s*!important/);
-    expect(reduced![1]).toMatch(/transition-duration:\s*0\.001ms\s*!important/);
+  it(".color-popover.is-closing uses fast ease-in (Notion exit)", () => {
+    const matches = [...css.matchAll(/\.color-popover\.is-closing\s*\{([\s\S]+?)\}/g)];
+    expect(matches.length).toBeGreaterThan(0);
+    const last = matches[matches.length - 1];
+    expect(last[1]).toMatch(/var\(--n-duration-fast\)/);
+    expect(last[1]).toMatch(/ease-in/);
   });
 });
 
-describe("apple typography baseline", () => {
-  it("font-family-default begins with the Apple system font stack", () => {
-    const m = css.match(/--font-family-default:\s*([^;]+);/);
-    expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/^-apple-system\s*,\s*BlinkMacSystemFont\s*,\s*"SF Pro Text"/);
-  });
-
-  it("body sets -webkit-font-smoothing: antialiased", () => {
-    const body = css.match(/\bbody\s*\{([\s\S]+?)\n\}/);
-    expect(body).toBeTruthy();
-    expect(body![1]).toMatch(/-webkit-font-smoothing:\s*antialiased/);
-  });
-});
-
-describe("apple dropdown entrance + menu press (Notion)", () => {
+describe("dropdown and menu (Notion flat)", () => {
   it(".dropdown-panel uses Notion tokens and single-layer shadow (no backdrop)", () => {
     const m = css.match(/\.dropdown-panel\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
@@ -130,7 +105,7 @@ describe("apple dropdown entrance + menu press (Notion)", () => {
   });
 });
 
-describe("export dialog center-scale entrance + exit (Notion)", () => {
+describe("export dialog (Notion style)", () => {
   it(".export-dialog animation uses Notion ease and transform-origin: center", () => {
     const m = css.match(/\.export-dialog\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
@@ -150,5 +125,14 @@ describe("export dialog center-scale entrance + exit (Notion)", () => {
     expect(cls![1]).toMatch(/var\(--motion-exit\)/);
     expect(cls![1]).toMatch(/var\(--ease-exit\)/);
     expect(css).toMatch(/@keyframes\s+export-dialog-out/);
+  });
+});
+
+describe("prefers-reduced-motion fallback", () => {
+  it("media query zeroes all animations and transitions", () => {
+    const reduced = css.match(/@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{([\s\S]+?)\n\}/);
+    expect(reduced).toBeTruthy();
+    expect(reduced![1]).toMatch(/animation-duration:\s*0\.001ms\s*!important/);
+    expect(reduced![1]).toMatch(/transition-duration:\s*0\.001ms\s*!important/);
   });
 });

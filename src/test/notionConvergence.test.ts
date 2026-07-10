@@ -3,15 +3,15 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
-const marker = "Notion convergence layer";
+const tokens = readFileSync(resolve(process.cwd(), "src/styles/tokens.css"), "utf8");
+const marker = "Convergence layer";
 const start = css.lastIndexOf(marker);
 const convergence = start >= 0 ? css.slice(start) : "";
 
 describe("Notion convergence layer", () => {
-  it("exists as the final visual authority", () => {
+  it("exists as the token-based visual authority", () => {
     expect(start).toBeGreaterThan(0);
-    expect(convergence).toContain("--n-bg-sidebar: #202020");
-    expect(convergence).toContain("--surface-vibrancy: none");
+    expect(convergence).toContain("flat surfaces, single shadows");
   });
 
   it("flattens the shell and canvas instead of restoring material chrome", () => {
@@ -37,9 +37,21 @@ describe("Notion convergence layer", () => {
     expect(convergence).toMatch(/\.workspace\.workspace-mobile-shell \.stage \.nw-preview-card\s*\{[\s\S]*?width:\s*100%/);
   });
 
-  it("uses a quiet, light export preview instead of the legacy terminal treatment", () => {
+  it("uses a quiet, light export preview instead of legacy terminal treatment", () => {
     expect(convergence).toMatch(/\.export-dialog-code\s*\{[\s\S]*?background:\s*var\(--n-bg-subtle\)/);
     expect(convergence).toMatch(/\.export-dialog-code__chrome\s*\{[\s\S]*?display:\s*none/);
     expect(convergence).toMatch(/\.export-preview-code\s*\{[\s\S]*?color:\s*var\(--n-fg-default\)/);
+  });
+});
+
+describe("canonical token source", () => {
+  it("defines --n-* in tokens.css, not in styles.css", () => {
+    expect(css).not.toMatch(/--n-bg-base:\s*#ffffff/);
+    expect(tokens).toMatch(/--n-bg-base:\s*#ffffff/);
+  });
+
+  it("defines dark theme in tokens.css, not in styles.css convergence section", () => {
+    expect(tokens).toMatch(/\.dark\s*\{/);
+    expect(tokens).toMatch(/--n-bg-sidebar:\s*#202020/);
   });
 });

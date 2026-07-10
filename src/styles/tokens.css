@@ -1,0 +1,271 @@
+/* ================================================================
+   HTML FineTune — Canonical Notion Design Tokens
+   Single source of truth for all --n-* tokens.
+   ================================================================ */
+
+:root {
+  /* ----- surface ----- */
+  --n-bg-base:        #ffffff;
+  --n-bg-elevated:    #ffffff;
+  --n-bg-subtle:      #fbfbfa;
+  --n-bg-hover:       #f1f1f0;
+  --n-bg-sidebar:     #f7f6f3;
+  --n-bg-canvas:      #f7f6f3;
+  --n-bg-inverse:     #2f3437;
+
+  /* ----- text ----- */
+  --n-fg-default:     #37352f;
+  --n-fg-secondary:   #787774;
+  --n-fg-tertiary:    #9b9a97;
+  --n-fg-disabled:    #c4c4c2;
+  --n-fg-link:        #2383e2;
+  --n-fg-onbrand:     #ffffff;
+
+  /* ----- brand & accent ----- */
+  --n-brand:          #2383e2;
+  --n-brand-hover:    #1a72cf;
+  --n-brand-active:   #1761b3;
+  --n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --n-success:        #0f7b0f;
+  --n-warning:        #cb912f;
+  --n-danger:         #e03e3e;
+
+  /* ----- border ----- */
+  --n-border-default: #e9e9e7;
+  --n-border-strong:  #d3d3d0;
+  --n-border-focus:   rgba(35, 131, 226, 0.40);
+
+  /* ----- radius ----- */
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+
+  /* ----- shadow ----- */
+  --n-shadow-card:    0 1px 3px rgba(15,15,15,0.04), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-pop:     0 4px 12px rgba(15,15,15,0.05), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-overlay: 0 12px 32px rgba(15,15,15,0.14), 0 3px 8px rgba(15,15,15,0.08);
+  --n-ring-focus:     0 0 0 2px var(--n-bg-base), 0 0 0 4px var(--n-border-focus);
+
+  /* ----- font ----- */
+  --n-font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --n-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* ----- motion ----- */
+  --n-ease:           cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast:  120ms;
+  --n-duration-base:  180ms;
+  --n-duration-slow:  240ms;
+
+  /* ════════════════════════════════════════════════════════════
+     Backward-compatible aliases — map old token names to new
+     ════════════════════════════════════════════════════════════ */
+  /* surfaces */
+  --bg-base-default:  var(--n-bg-elevated);
+  --bg-base-secondary:var(--n-bg-subtle);
+  --bg-base-tertiary: var(--n-bg-sidebar);
+  --canvas-bg:        var(--n-bg-canvas);
+
+  /* overlays */
+  --bg-overlay-l1:    rgba(115, 115, 115, 0.08);
+  --bg-overlay-l2:    rgba(115, 115, 115, 0.12);
+  --bg-overlay-l3:    rgba(115, 115, 115, 0.16);
+  --bg-overlay-l4:    rgba(115, 115, 115, 0.20);
+  --bg-menu:          var(--n-bg-elevated);
+  --bg-tooltip:       var(--n-bg-elevated);
+  --bg-invert:        #262626;
+  --bg-invert-hover:  #404040;
+  --bg-invert-active: #171717;
+
+  /* brand */
+  --bg-brand:         var(--n-brand);
+  --bg-brand-hover:   var(--n-brand-hover);
+  --bg-brand-active:  var(--n-brand-active);
+  --bg-brand-disabled:rgba(35, 131, 226, 0.22);
+  --bg-brand-popup:   rgba(35, 131, 226, 0.14);
+
+  /* text */
+  --text-default:     var(--n-fg-default);
+  --text-default-hover:#262626;
+  --text-secondary:   var(--n-fg-secondary);
+  --text-tertiary:    var(--n-fg-tertiary);
+  --text-disabled:    var(--n-fg-disabled);
+  --text-onbrand:     var(--n-fg-onbrand);
+  --text-brand:       var(--n-brand);
+
+  /* icon */
+  --icon-default:     var(--n-fg-default);
+  --icon-secondary:   var(--n-fg-secondary);
+  --icon-tertiary:    var(--n-fg-tertiary);
+  --icon-disabled:    var(--n-fg-disabled);
+  --icon-onbrand:     var(--n-fg-onbrand);
+  --icon-brand:       var(--n-brand);
+
+  /* border */
+  --border-neutral-l1:#e9e9e7;
+  --border-neutral-l2:#d3d3d0;
+  --border-neutral-l3:#b8b8b5;
+  --border-contrast:  #000000;
+  --border-brand:     var(--n-brand);
+
+  /* accent / status */
+  --accent-teal:      #00b983;
+  --accent-coral:     #ff6b45;
+  --accent-amber:     #f2a90c;
+  --accent-lime:      #5fc000;
+  --accent-cyan:      #00b6f5;
+  --accent-blue:     var(--n-brand);
+  --status-success-default: var(--n-success);
+  --status-warning-default: var(--n-warning);
+  --status-error-default:   var(--n-danger);
+
+  /* font */
+  --font-family-default: var(--n-font-sans);
+  --font-family-heading: var(--n-font-sans);
+  --font-family-metric:  var(--n-font-sans);
+  --font-family-mono:    var(--n-font-mono);
+  --font-weight-default: 400;
+  --font-weight-code:    450;
+  --font-weight-medium:  500;
+  --font-weight-strong:  600;
+
+  /* layout */
+  --topbar-height:    56px;
+  --statusbar-height: 28px;
+  --source-col:       280px;
+  --inspector-col:    320px;
+
+  /* text sizes */
+  --text-xs:  11px;
+  --text-sm:  12px;
+  --text-base:14px;
+  --text-lg:  16px;
+  --text-xl:  18px;
+  --text-2xl: 22px;
+  --text-3xl: 28px;
+
+  /* spacing */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12:48px;
+
+  /* radius compat */
+  --radius-0:   0px;
+  --radius-2:   2px;
+  --radius-4:   4px;
+  --radius-6:   6px;
+  --radius-sm: var(--n-radius-sm);
+  --radius-md: var(--n-radius-md);
+  --radius-lg: var(--n-radius-lg);
+  --radius-pill: 999px;
+
+  /* leading */
+  --leading-body:  1.5;
+  --leading-tight: 1.2;
+
+  /* ----- elevation (flat shadows only, no glass) ----- */
+  --elev-flat:    none;
+  --elev-ring:    0 0 0 1px var(--n-border-default);
+  --elev-raised:  0 1px 2px rgba(15,15,15,0.04);
+  --elev-floating:0 2px 8px rgba(15,15,15,0.08);
+  --elev-window:  0 4px 16px rgba(15,15,15,0.12);
+
+  /* ----- surface (flat, no glass) ----- */
+  --surface-glass:          var(--n-bg-elevated);
+  --surface-glass-strong:   var(--n-bg-elevated);
+  --surface-glass-pressed:  var(--n-bg-hover);
+  --surface-vibrancy:       none;
+  --surface-vibrancy-strong:none;
+  --surface-vibrancy-soft:  none;
+
+  /* ----- interaction (no press-scale, flat feedback) ----- */
+  --press-scale-icon:   1;
+  --press-scale-button: 1;
+  --press-scale-card:   1;
+
+  /* compat layer for apple polish */
+  --motion-pane-enter: var(--n-duration-slow);
+  --motion-pane-exit:  var(--n-duration-base);
+  --press-scale-numeric: 1;
+  --press-scale-swatch:  1;
+  --topbar-blur: none;
+  --focus-ring:   0 0 0 3px rgba(35,131,226,0.22);
+  --focus-halo:   0 0 0 2px var(--n-bg-base), 0 0 0 4px var(--n-border-focus);
+  --hover-lift-y: 0;
+}
+
+.dark {
+  --n-bg-base:        #191919;
+  --n-bg-elevated:    #202020;
+  --n-bg-subtle:      #252525;
+  --n-bg-hover:       #2c2c2c;
+  --n-bg-sidebar:     #202020;
+  --n-bg-canvas:      #2c2c2c;
+  --n-bg-inverse:     #e8e8e8;
+
+  --n-fg-default:     rgba(255, 255, 255, 0.90);
+  --n-fg-secondary:   rgba(255, 255, 255, 0.66);
+  --n-fg-tertiary:    rgba(255, 255, 255, 0.45);
+  --n-fg-disabled:    rgba(255, 255, 255, 0.25);
+  --n-fg-link:        #4dabf7;
+  --n-fg-onbrand:     #191919;
+
+  --n-brand:          #4dabf7;
+  --n-brand-hover:    #5bb8ff;
+  --n-brand-active:   #3d9be6;
+  --n-brand-disabled: rgba(77, 171, 247, 0.35);
+  --n-success:        #4caf50;
+  --n-warning:        #f5c542;
+  --n-danger:         #f44336;
+
+  --n-border-default: rgba(255, 255, 255, 0.10);
+  --n-border-strong:  rgba(255, 255, 255, 0.16);
+  --n-border-focus:   rgba(77, 171, 247, 0.45);
+
+  --n-shadow-card:    0 1px 3px rgba(0,0,0,0.40);
+  --n-shadow-pop:     0 6px 16px rgba(0,0,0,0.50);
+  --n-shadow-overlay: 0 12px 32px rgba(0,0,0,0.60);
+  --n-ring-focus:     0 0 0 2px #191919, 0 0 0 4px rgba(77,171,247,0.45);
+
+  --n-font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --n-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  --n-ease:           cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast:  120ms;
+  --n-duration-base:  180ms;
+  --n-duration-slow:  240ms;
+
+  /* ----- backward compat overrides ----- */
+  --bg-base-default:  var(--n-bg-elevated);
+  --bg-base-secondary:var(--n-bg-subtle);
+  --bg-base-tertiary: var(--n-bg-sidebar);
+  --canvas-bg:        var(--n-bg-canvas);
+  --text-default:     var(--n-fg-default);
+  --text-secondary:   var(--n-fg-secondary);
+  --text-tertiary:    var(--n-fg-tertiary);
+  --text-disabled:    var(--n-fg-disabled);
+  --bg-brand:         var(--n-brand);
+  --bg-brand-hover:   var(--n-brand-hover);
+  --bg-brand-active:  var(--n-brand-active);
+  --border-neutral-l1:var(--n-border-default);
+  --border-neutral-l2:var(--n-border-strong);
+  --border-neutral-l3:rgba(255, 255, 255, 0.24);
+  --bg-invert:        #e8e8e8;
+  --bg-invert-hover:  #d4d4d4;
+  --bg-invert-active: #cccccc;
+  --surface-glass:          var(--n-bg-elevated);
+  --surface-glass-strong:   var(--n-bg-elevated);
+  --surface-glass-pressed:  var(--n-bg-hover);
+  --surface-vibrancy:       none;
+  --surface-vibrancy-strong:none;
+  --surface-vibrancy-soft:  none;
+  --elev-raised:  0 1px 3px rgba(0,0,0,0.30);
+  --elev-floating:0 2px 8px rgba(0,0,0,0.35);
+  --elev-window:  0 4px 16px rgba(0,0,0,0.40);
+  --focus-halo:   0 0 0 2px var(--n-bg-elevated), 0 0 0 4px var(--n-border-focus);
+  --focus-ring:   0 0 0 3px rgba(77,171,247,0.25);
+}

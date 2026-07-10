@@ -1,0 +1,58 @@
+/* ================================================================
+   HTML FineTune — Base Reset & Global Styles
+   ================================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { height: 100%; -webkit-text-size-adjust: 100%; }
+
+body {
+  min-height: 100%;
+  margin: 0;
+  background: var(--n-bg-base);
+  color: var(--n-fg-default);
+  font-family: var(--n-font-sans);
+  font-size: var(--text-base, 14px);
+  line-height: 1.5;
+  overflow: hidden;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; border: 0; background: transparent; padding: 0; }
+button:disabled { cursor: not-allowed; }
+
+svg { width: 18px; height: 18px; display: block; }
+
+h1, h2, h3, h4 {
+  font-family: var(--n-font-sans);
+  letter-spacing: -0.01em;
+  margin: 0;
+  text-wrap: balance;
+}
+
+p { margin: 0; text-wrap: pretty; }
+ul, ol { margin: 0; padding: 0; list-style: none; }
+input, select, textarea { font-family: inherit; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Scrollbar styles */
+* { scrollbar-color: var(--n-border-strong) transparent; }
+
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+
+*::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 4px;
+  background-color: var(--n-border-strong);
+}

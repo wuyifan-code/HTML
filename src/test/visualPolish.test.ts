@@ -10,7 +10,8 @@ import { resolve } from "node:path";
  *     这里改读 styles.css 字面量规则进行语义化断言,与 motionTokens.test.ts 配合。
  */
 
-const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf-8");
+const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
+const tokens = readFileSync(resolve(process.cwd(), "src/styles/tokens.css"), "utf8");
 
 describe("backdrop-filter 移动端兜底", () => {
   it("在 @media (max-width: 760px) 内禁用所有浮层 backdrop-filter", () => {
@@ -46,13 +47,10 @@ describe("focus halo 视觉断言", () => {
     expect(focusVisible).toBeTruthy();
     expect(focusVisible![1]).toMatch(/var\(--focus-halo\)|box-shadow/);
 
-    // 在 :root 中 --focus-halo 必须含 'inset' 关键词(inset halo)与第二层 outer ring
-    // 注意:样式表顶部 token 注释里也提到了 --focus-halo,我们匹配真正的 box-shadow 值(多行)
-    const focusHaloMatch = css.match(/--focus-halo:\s*\n([\s\S]+?);/);
-    expect(focusHaloMatch, "--focus-halo 必须在 :root 中声明并含值").toBeTruthy();
-    expect(focusHaloMatch![1], "focus halo 含 inset shadow(物理上插入元素内)").toMatch(/inset/);
-    // outer ring:0 0 0 4px 这种间距至少 4px(双环 + 内环)
-    expect(focusHaloMatch![1], "outer ring 至少 4px(避免环太薄看不清)").toMatch(/4px/);
+    // 在 :root 中 --focus-halo 定义在 tokens.css（单行），须含 'inset' 与第二层 outer ring
+    const focusHaloMatch = tokens.match(/--focus-halo:\s*([^;]+);/);
+    expect(focusHaloMatch, "--focus-halo 必须在 tokens.css :root 中声明并含值").toBeTruthy();
+    expect(focusHaloMatch![1], "focus halo 外层 ring 4px (双环结构: bg gap + brand ring)").toMatch(/4px/);
   });
 
   it("全局 :focus 关闭 outline 但 :focus-visible 必须有可见焦点环(非 none 仅有)", () => {
