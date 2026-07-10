@@ -8,6 +8,7 @@
 @import "./styles/shell.css";
 @import "./styles/controls.css";
 @import "./styles/overlays.css";
+@import "./styles/source-panel.css";
 
 /* ================================================================
    Safari 15 fallback — color-mix 与 :has() 的旧引擎兼容
