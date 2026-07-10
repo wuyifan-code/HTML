@@ -1536,7 +1536,7 @@ export default function App() {
         event.preventDefault();
         setIsHistoryOpen(false);
         setIsExportOpen(false);
-        setIsExportPreviewOpen(false);
+        setIsExportDialogOpen(false);
         setIsSelectionCleared(true);
         commit({ html: state.html, selectedId: null }, { record: false });
         setStatusMessage("已取消选择");

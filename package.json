@@ -11,6 +11,10 @@
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e-ui": "vitest run src/test/e2e-ui.test.tsx",
+    "e2e:serve": "node e2e-serve.cjs",
+    "e2e:export": "node e2e-export.cjs",
+    "e2e:ai": "node e2e-ai.cjs",
     "bundle:vendors": "node scripts/bundle-vendors.mjs"
   },
   "dependencies": {
@@ -27,6 +31,7 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jsdom": "^28.0.3",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",

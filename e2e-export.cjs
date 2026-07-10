@@ -16,7 +16,6 @@ const { chromium } = require("playwright");
 const JSZip = require("jszip");
 const { PNG } = require("pngjs");
 const pdfParseModule = require("pdf-parse");
-// pdf-parse v2.x exports PDFParse class with .destroy() / .getText()
 const PDFParse = pdfParseModule.PDFParse || pdfParseModule;
 
 const PREVIEW_URL = process.env.PREVIEW_URL || "http://localhost:4174/HTML/";
@@ -67,22 +66,13 @@ function listZipFiles(bytes) {
   return files;
 }
 
-/**
- * 用 pdf-parse (第三方 Mozilla PDF.js 包装) 独立验证 PDF
- * 返回 { numPages, text, info, version, imageCount }
- */
 async function verifyPdfWithPdfParse(bytes) {
-  // pdf-parse v2.x 提供 PDFParse 类 (browser/Node 双端可用)
-  // v1.x 提供函数式调用 .default(buffer). 兼容两种 API
   let result;
-  // 检测 class: v2.x PDFParse 是 class (function 但 prototype 有 constructor)
-  // v1.x 是普通函数;若按函数调用有 prototype.getText 等则是 class
   const isClass =
     typeof PDFParse === "function" &&
     PDFParse.prototype &&
     (PDFParse.prototype.getText || PDFParse.prototype.destroy);
   if (isClass) {
-    // v2.x: new PDFParse({data}).getText()
     const parser = new PDFParse({ data: bytes });
     try {
       const textResult = await parser.getText();
@@ -100,7 +90,6 @@ async function verifyPdfWithPdfParse(bytes) {
       }
     }
   } else if (typeof PDFParse === "function") {
-    // v1.x: 直接调用
     result = await PDFParse(bytes);
   } else if (typeof PDFParse === "object" && PDFParse) {
     throw new Error("pdf-parse 模块格式不支持");
@@ -115,14 +104,8 @@ async function verifyPdfWithPdfParse(bytes) {
   };
 }
 
-/**
- * 用 pdfjs-dist (Mozilla PDF.js 真正实现) 作为第三个独立验证器
- * pdf-parse 是它的封装, 这层直接调用 pdfjs 真实 API
- */
 async function verifyPdfWithPdfJsDist(bytes) {
-  // pdfjs-dist 是 ESM-only, 用 dynamic import
   const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  // Node 环境需要 disableWorker (无 worker)
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(bytes),
     disableWorker: true,
@@ -178,8 +161,8 @@ async function runPdfScenario(context) {
   const page = await context.newPage();
   page.on("pageerror", (err) => log("[page error]", err.message));
   await page.goto(PREVIEW_URL, { waitUntil: "networkidle", timeout: SCREENSHOT_TIMEOUT_MS });
-  await page.waitForSelector(".toolbar", { timeout: SCREENSHOT_TIMEOUT_MS });
-  const pdfButton = page.locator('button[title="AI 预检后导出 PDF"]');
+  await page.waitForSelector(".app-topbar", { timeout: SCREENSHOT_TIMEOUT_MS });
+  const pdfButton = page.locator('[aria-label="导出 PDF"]');
   const { download, path: dlPath, name } = await withTimeout(
     clickAndWaitForDownload(page, pdfButton),
     90_000,
@@ -195,7 +178,6 @@ async function runPdfScenario(context) {
     await page.close();
     return null;
   }
-  // ===== 第三方独立验证(pdf-parse) =====
   const pdfParseResult = await verifyPdfWithPdfParse(bytes);
   log(`pdf-parse: pages=${pdfParseResult.numPages}, version=${pdfParseResult.version}, textLen=${pdfParseResult.textLength}`);
   if (pdfParseResult.numPages < 1) {
@@ -208,7 +190,6 @@ async function runPdfScenario(context) {
   }
   log(`pdf-parse: PDF info = ${JSON.stringify(pdfParseResult.info)}`);
 
-  // 仍然保留 pdf-lib 自检(pdf-lib 是不同库,但用作尺寸 + image XObject 检查)
   const { PDFDocument } = await import("pdf-lib");
   const doc = await PDFDocument.load(bytes, { ignoreEncryption: true });
   const pageCount = doc.getPageCount();
@@ -222,15 +203,12 @@ async function runPdfScenario(context) {
   if (width / height > 5 || height / width > 5) {
     fail(`PDF 页面比例异常: ${width}x${height}`);
   }
-  // 验证 PDF 版本号
   if (!pdfParseResult.version) {
     fail("pdf-parse: PDF 版本号缺失");
   } else {
     log(`✓ PDF 版本: ${pdfParseResult.version}`);
   }
 
-  // ===== 第三方独立验证 #2: pdfjs-dist (Mozilla 真正的 PDF.js 实现) =====
-  // pdf-parse 是 pdfjs 的封装, 这一层直接用 pdfjs 真实 API, 独立交叉验证
   log("Running pdfjs-dist independent verifier...");
   let pdfjsResult = null;
   try {
@@ -246,7 +224,6 @@ async function runPdfScenario(context) {
       log(`✓ pdfjs-dist 独立验证通过: ${pdfjsResult.numPages} 页, textLen=${pdfjsResult.textLength}`);
     }
     if (pdfjsResult.textLength < 1) {
-      // PDF 仅含图片无文字层是合法场景, 不算错
       log(`pdfjs-dist: PDF 仅含图片无文字层,符合 sampleHtml 设计`);
     } else {
       log(`✓ pdfjs-dist 文本层 ${pdfjsResult.textLength} chars`);
@@ -274,8 +251,8 @@ async function runPptxScenario(context) {
   const page = await context.newPage();
   page.on("pageerror", (err) => log("[page error]", err.message));
   await page.goto(PREVIEW_URL, { waitUntil: "networkidle", timeout: SCREENSHOT_TIMEOUT_MS });
-  await page.waitForSelector(".toolbar", { timeout: SCREENSHOT_TIMEOUT_MS });
-  const pptxButton = page.locator('button[title="AI 预检后导出 PPTX"]');
+  await page.waitForSelector(".app-topbar", { timeout: SCREENSHOT_TIMEOUT_MS });
+  const pptxButton = page.locator('[aria-label="导出 PPTX"]');
   const { download, path: dlPath, name } = await withTimeout(
     clickAndWaitForDownload(page, pptxButton),
     90_000,
@@ -297,7 +274,6 @@ async function runPptxScenario(context) {
     return null;
   }
 
-  // ===== 第三方独立验证(jszip 解压) =====
   const zip = await JSZip.loadAsync(bytes);
   const fileList = Object.keys(zip.files);
   log(`jszip: ${fileList.length} files in zip`);
@@ -313,19 +289,16 @@ async function runPptxScenario(context) {
   if (!hasPptFolder) fail("jszip: PPTX 缺少 ppt/ 文件夹");
   if (slideMatches.length < 1) fail("jszip: PPTX 没有任何 slide");
 
-  // 验证 slide1.xml 是有效 XML + 包含 rId 引用
   if (slideMatches.length > 0) {
     const slideName = slideMatches.sort()[0];
     const slideXml = await zip.file(slideName).async("string");
     log(`slide xml[${slideName}] length: ${slideXml.length}, head: ${slideXml.slice(0, 200).replace(/\s+/g, ' ')}`);
-    // XML 必须包含 <p:sld> + <p:cSld> + rId 引用
     if (!/<p:sld[\s>]/i.test(slideXml)) {
       fail(`slide xml 缺少 <p:sld> 根: ${slideName}`);
     }
     if (!/<p:cSld/i.test(slideXml)) {
       fail(`slide xml 缺少 <p:cSld>: ${slideName}`);
     }
-    // 找 rId 引用(图片通过 rId 引用)
     const ridMatches = slideXml.match(/r:embed="(rId\d+)"/g) || [];
     log(`slide xml rId references: ${ridMatches.join(", ") || "(none)"}`);
     if (ridMatches.length < 1) {
@@ -333,12 +306,10 @@ async function runPptxScenario(context) {
     }
   }
 
-  // 验证 image1-1.png 存在 + PNG magic bytes
   if (mediaFiles.length > 0) {
     const mediaName = mediaFiles.sort()[0];
     const mediaBytes = await zip.file(mediaName).async("uint8array");
     log(`media[${mediaName}] size: ${mediaBytes.length} bytes`);
-    // PNG magic: 89 50 4E 47 0D 0A 1A 0A
     const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
     const isPng = PNG_MAGIC.every((b, i) => mediaBytes[i] === b);
     if (!isPng) {
@@ -352,7 +323,6 @@ async function runPptxScenario(context) {
     if (mediaBytes.length < 100) {
       fail(`media[${mediaName}] 字节过小,可能是空图片 (${mediaBytes.length})`);
     }
-    // 用 pngjs 真正解码 PNG 头,验证 width/height 非零
     try {
       const png = PNG.sync.read(Buffer.from(mediaBytes));
       log(
@@ -371,12 +341,10 @@ async function runPptxScenario(context) {
     fail("jszip: PPTX 没有任何 media 文件");
   }
 
-  // 验证 [Content_Types].xml 注册了 slide 与 image 类型 — 模拟 PowerPoint 打开时查找
   if (zip.file("[Content_Types].xml")) {
     const ctXml = await zip.file("[Content_Types].xml").async("string");
     log(`Content_Types.xml head: ${ctXml.slice(0, 500).replace(/\s+/g, ' ')}`);
     const slideOverrideMatch = ctXml.match(/slide\d+\.xml/);
-    // pptxgenjs 用 Default 扩展名匹配 PNG, content-types 可能用 image\d+\.png 或 png/jpeg extension
     const mediaOverrideMatch =
       ctXml.match(/<Override\s+PartName="\/ppt\/media\/image\d+(?:-\d+)?\.(png|jpe?g)"/i) ||
       ctXml.match(/png/i);
@@ -394,7 +362,6 @@ async function runPptxScenario(context) {
     fail("PPTX 缺少 [Content_Types].xml");
   }
 
-  // 验证 slide1.xml.rels 引用 image1-1.png
   if (slideMatches.length > 0) {
     const slideRelsName = slideMatches.sort()[0].replace("slides/", "slides/_rels/") + ".rels";
     if (zip.file(slideRelsName)) {
@@ -410,7 +377,6 @@ async function runPptxScenario(context) {
     }
   }
 
-  // 验证 slideLayout
   if (!fileList.some((n) => /slideLayout\d+\.xml$/.test(n))) {
     fail("jszip: PPTX 缺少 slideLayout");
   }

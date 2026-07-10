@@ -327,7 +327,7 @@ export function InspectorPanel({
                 inputMode="decimal"
                 placeholder="0"
                 value={draftPaddingLeft}
-                onChange={(event) => onPaddingLeftChange(event.target.value)}
+                onChange={(event) => onPaddingInlineChange(event.target.value)}
               />
             </label>
             <label className="field">
@@ -337,7 +337,7 @@ export function InspectorPanel({
                 inputMode="decimal"
                 placeholder="0"
                 value={draftPaddingRight}
-                onChange={(event) => onPaddingRightChange(event.target.value)}
+                onChange={(event) => onPaddingInlineChange(event.target.value)}
               />
             </label>
           </div>
@@ -463,10 +463,10 @@ export function InspectorPanel({
         onPaddingBottomChange(annotation.suggestion);
         break;
       case "paddingLeft":
-        onPaddingLeftChange(annotation.suggestion);
+        onPaddingInlineChange(annotation.suggestion);
         break;
       case "paddingRight":
-        onPaddingRightChange(annotation.suggestion);
+        onPaddingInlineChange(annotation.suggestion);
         break;
       case "width":
         onWidthChange(annotation.suggestion);

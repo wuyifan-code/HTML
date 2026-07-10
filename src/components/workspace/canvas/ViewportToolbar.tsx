@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import {
   IconMonitor,
   IconTablet,
@@ -30,7 +31,7 @@ const PRESETS: { key: ViewportPreset; label: string; width: number; height: numb
   { key: "mobile", label: "手机", width: 375, height: 667 },
 ];
 
-const PRESET_ICONS: Record<ViewportPreset, () => JSX.Element> = {
+const PRESET_ICONS: Record<ViewportPreset, () => ReactNode> = {
   desktop: IconMonitor,
   tablet: IconTablet,
   mobile: IconSmartphone,
