@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ColorField } from "./components/ColorField";
+import { ExportDialog, type ExportFormat } from "./components/ExportDialog";
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { PretextMeasureBadge } from "./components/PretextMeasureBadge";
 import { Tooltip, TooltipProvider } from "./components/Tooltip";
@@ -323,7 +324,8 @@ export default function App() {
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
   const [isExportOpen, setIsExportOpen] = useState(false);
-  const [isExportPreviewOpen, setIsExportPreviewOpen] = useState(false);
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [exportDialogFormat, setExportDialogFormat] = useState<ExportFormat>("html");
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "pptx" | null>(null);
   // Inspector tab 合并后,保留 setInspectorTab 为 noop 避免破坏既有调用点。
   // 后续清理可以删除所有调用并移除该函数。
@@ -1192,17 +1194,18 @@ export default function App() {
     }
   }, [cleanHtml, showToast]);
 
-  const handleOpenExportPreview = useCallback(() => {
+  const handleOpenExport = useCallback((format: ExportFormat) => {
     assertCleanExport(cleanHtml);
     exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
     setIsExportOpen(false);
     setIsMobileActionsOpen(false);
-    setIsExportPreviewOpen(true);
+    setExportDialogFormat(format);
+    setIsExportDialogOpen(true);
     setStatusMessage(exportWarnings.length ? `导出预览含 ${exportWarnings.length} 项警告` : "已生成导出前预览");
   }, [cleanHtml, exportWarnings]);
 
-  const handleCloseExportPreview = useCallback(() => {
-    setIsExportPreviewOpen(false);
+  const handleCloseExportDialog = useCallback(() => {
+    setIsExportDialogOpen(false);
     window.requestAnimationFrame(() => {
       exportTriggerRef.current?.focus();
     });
@@ -1243,7 +1246,7 @@ export default function App() {
       assertCleanExport(cleanHtml);
       exportHtml(cleanHtml);
       setIsExportOpen(false);
-      setIsExportPreviewOpen(false);
+      setIsExportDialogOpen(false);
       setStatusMessage("已导出 HTML");
       showToast("HTML 已导出");
     } catch (error) {
@@ -1447,7 +1450,8 @@ export default function App() {
     exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
     if (hasBlockingExportWarnings(exportWarnings)) {
       setIsExportOpen(false);
-      setIsExportPreviewOpen(true);
+      setExportDialogFormat("pdf");
+      setIsExportDialogOpen(true);
       setStatusMessage(`PDF 导出已暂停：${exportWarnings.length} 项导出警告`);
       showToast("请先检查导出预览");
       return;
@@ -1477,7 +1481,8 @@ export default function App() {
     exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
     if (hasBlockingExportWarnings(exportWarnings)) {
       setIsExportOpen(false);
-      setIsExportPreviewOpen(true);
+      setExportDialogFormat("pptx");
+      setIsExportDialogOpen(true);
       setStatusMessage(`PPTX 导出已暂停：${exportWarnings.length} 项导出警告`);
       showToast("请先检查导出预览");
       return;
@@ -1578,7 +1583,7 @@ export default function App() {
       }
       if (key === "e" && !event.shiftKey) {
         event.preventDefault();
-        handleOpenExportPreview();
+        handleOpenExport("html");
         return;
       }
       if (key === "d" && !isTextInput && selected) {
@@ -1648,7 +1653,7 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [applyShortcutStyle, applyViewportPreset, commit, handleCopy, handleExportHtml, handleImportClick, handleOpenExportPreview, isCheatsheetOpen, isInspectorCollapsed, isMobileActionsOpen, isMobileShell, isSourceCollapsed, redo, selected, showToast, state.html, undo]);
+  }, [applyShortcutStyle, applyViewportPreset, commit, handleCopy, handleExportHtml, handleImportClick, handleOpenExport, isCheatsheetOpen, isInspectorCollapsed, isMobileActionsOpen, isMobileShell, isSourceCollapsed, redo, selected, showToast, state.html, undo]);
 
   // 3. 空格键抓手机械拖拽平移与物理惯性滚动引擎
   // 注意:依赖 [stageSize.width, stageSize.height] 而不是 [stageRef.current],
@@ -1929,11 +1934,9 @@ export default function App() {
         onToggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")}
         isHistoryOpen={isHistoryOpen}
         onToggleHistory={() => setIsHistoryOpen(!isHistoryOpen)}
-        onOpenExportPreview={handleOpenExportPreview}
+        onExport={handleOpenExport}
         onImportClick={handleImportClick}
         onCopy={handleCopy}
-        onExportPdf={handleExportPdf}
-        onExportPptx={handleExportPptx}
         onToggleCheatsheet={() => setIsCheatsheetOpen(v => !v)}
         exportingFormat={exportingFormat}
         isMobileShell={isMobileShell}
@@ -2943,13 +2946,18 @@ export default function App() {
         viewportHeight={viewportSize.height}
       />
 
-      {isExportPreviewOpen ? (
-        <ExportPreviewDialog
+      {isExportDialogOpen ? (
+        <ExportDialog
           html={cleanHtml}
           warnings={exportWarnings}
-          onClose={handleCloseExportPreview}
-          onCopy={handleCopy}
-          onDownload={handleExportHtml}
+          onClose={handleCloseExportDialog}
+          onCopyHtml={handleCopy}
+          onDownloadHtml={handleExportHtml}
+          onExportPdf={handleExportPdf}
+          onExportPptx={handleExportPptx}
+          initialFormat={exportDialogFormat}
+          isExportingPdf={exportingFormat === "pdf"}
+          isExportingPptx={exportingFormat === "pptx"}
         />
       ) : null}
 

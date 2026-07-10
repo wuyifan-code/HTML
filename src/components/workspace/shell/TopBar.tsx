@@ -7,6 +7,8 @@ import {
 
 type ThemeMode = "dark" | "light";
 
+export type ExportFormat = "html" | "pdf" | "pptx";
+
 export interface TopBarProps {
   canUndo: boolean;
   canRedo: boolean;
@@ -16,11 +18,9 @@ export interface TopBarProps {
   onToggleTheme: () => void;
   isHistoryOpen: boolean;
   onToggleHistory: () => void;
-  onOpenExportPreview: () => void;
+  onExport: (format: ExportFormat) => void;
   onImportClick: () => void;
   onCopy: () => void;
-  onExportPdf: () => void;
-  onExportPptx: () => void;
   onToggleCheatsheet: () => void;
   exportingFormat: "pdf" | "pptx" | null;
   isMobileShell: boolean;
@@ -37,8 +37,8 @@ export function TopBar({
   canUndo, canRedo, onUndo, onRedo,
   theme, onToggleTheme,
   isHistoryOpen, onToggleHistory,
-  onOpenExportPreview,
-  onImportClick, onCopy, onExportPdf, onExportPptx,
+  onExport,
+  onImportClick, onCopy,
   onToggleCheatsheet,
   exportingFormat,
   isMobileShell, isMobileActionsOpen, onToggleMobileActions,
@@ -105,7 +105,7 @@ export function TopBar({
         <Tooltip content="导出 HTML · Ctrl/⌘+S" placement="bottom">
           <button ref={exportTriggerRef}
                   className="ds-btn ds-btn--brand ds-btn--sm mobile-primary-action" type="button"
-                  aria-label="导出 HTML" data-dom-id="btn-export" onClick={onOpenExportPreview}>
+                  aria-label="导出 HTML" data-dom-id="btn-export" onClick={() => onExport("html")}>
             <IconDownload />
             <span>导出</span>
           </button>
@@ -130,7 +130,7 @@ export function TopBar({
         <Tooltip content="导出 PDF" placement="bottom">
           <button className="ds-btn ds-btn--secondary ds-btn--sm topbar-export-secondary" type="button"
                   aria-label="导出 PDF" data-dom-id="btn-pdf"
-                  onClick={onExportPdf} disabled={exportingFormat !== null}>
+                  onClick={() => onExport("pdf")} disabled={exportingFormat !== null}>
             <IconDownload />
             <span>PDF</span>
           </button>
@@ -138,7 +138,7 @@ export function TopBar({
         <Tooltip content="导出 PPTX" placement="bottom">
           <button className="ds-btn ds-btn--secondary ds-btn--sm topbar-export-secondary" type="button"
                   aria-label="导出 PPTX" data-dom-id="btn-pptx"
-                  onClick={onExportPptx} disabled={exportingFormat !== null}>
+                  onClick={() => onExport("pptx")} disabled={exportingFormat !== null}>
             <IconDownload />
             <span>PPTX</span>
           </button>
@@ -162,8 +162,8 @@ export function TopBar({
           {isMobileActionsOpen && (
             <div className="mobile-actions-popover" id="mobile-actions-menu" role="menu" aria-label="更多操作">
               <button type="button" role="menuitem" onClick={onCopy}>复制 HTML</button>
-              <button type="button" role="menuitem" onClick={onExportPdf} disabled={exportingFormat !== null}>导出 PDF</button>
-              <button type="button" role="menuitem" onClick={onExportPptx} disabled={exportingFormat !== null}>导出 PPTX</button>
+              <button type="button" role="menuitem" onClick={() => onExport("pdf")} disabled={exportingFormat !== null}>导出 PDF</button>
+              <button type="button" role="menuitem" onClick={() => onExport("pptx")} disabled={exportingFormat !== null}>导出 PPTX</button>
               <button type="button" role="menuitem" onClick={onToggleHistory}>历史记录</button>
               <button type="button" role="menuitem" onClick={onToggleCheatsheet}>快捷键</button>
               <button type="button" role="menuitem" onClick={onToggleTheme}>切换主题</button>
