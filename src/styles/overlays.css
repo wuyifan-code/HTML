@@ -1,0 +1,200 @@
+.menu {
+  position: fixed;
+  z-index: 500;
+  min-width: 180px;
+  padding: 4px;
+  border: 1px solid var(--n-border-default);
+  border-radius: var(--n-radius-md);
+  background: var(--n-bg-elevated);
+  box-shadow: var(--elev-floating, 0 2px 8px rgba(15,15,15,0.08));
+  opacity: 0;
+  transform: translateY(-4px) scale(0.97);
+  transition:
+    opacity var(--n-duration-base) var(--n-ease),
+    transform var(--n-duration-base) var(--n-ease);
+  transform-origin: top center;
+}
+
+.menu.is-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: var(--n-radius-sm);
+  background: transparent;
+  color: var(--n-fg-default);
+  font-size: var(--text-sm, 12px);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--n-duration-fast) var(--n-ease);
+}
+
+.menu-item:hover,
+.menu-item-active {
+  background: var(--n-bg-hover);
+}
+
+.menu-item:disabled,
+.menu-item-disabled {
+  color: var(--n-fg-disabled);
+  cursor: not-allowed;
+}
+
+.menu-item:disabled:hover,
+.menu-item-disabled:hover {
+  background: transparent;
+}
+
+.menu-item-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--n-fg-tertiary);
+}
+
+.menu-item-label {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.menu-item-shortcut {
+  flex-shrink: 0;
+  color: var(--n-fg-tertiary);
+  font-family: var(--n-font-mono);
+  font-size: 10px;
+  letter-spacing: 0.02em;
+}
+
+.menu-divider {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--n-border-default);
+}
+
+.toast-region {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column-reverse;
+  align-items: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.toast-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--n-radius-md);
+  background: var(--n-bg-elevated);
+  color: var(--n-fg-default);
+  font-size: var(--text-sm, 12px);
+  line-height: 1.4;
+  white-space: nowrap;
+  pointer-events: auto;
+  border: 1px solid var(--n-border-default);
+  box-shadow: var(--elev-floating, 0 2px 8px rgba(15,15,15,0.08));
+  opacity: 0;
+  transform: translateY(12px);
+  transition:
+    opacity var(--n-duration-base) var(--n-ease),
+    transform var(--n-duration-base) var(--n-ease);
+}
+
+.toast-item.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.toast-item.toast-success {
+  border-color: var(--n-success);
+}
+
+.toast-item.toast-error {
+  border-color: var(--n-danger);
+}
+
+.toast-item.toast-info {
+  border-color: var(--n-brand);
+}
+
+.toast-item.toast-loading {
+  border-color: var(--n-fg-tertiary);
+}
+
+.toast-item-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-success .toast-item-icon {
+  color: var(--n-success);
+}
+
+.toast-error .toast-item-icon {
+  color: var(--n-danger);
+}
+
+.toast-info .toast-item-icon {
+  color: var(--n-brand);
+}
+
+.toast-loading .toast-item-icon {
+  color: var(--n-fg-tertiary);
+}
+
+.toast-item-message {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.toast-item-close {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: var(--n-radius-sm);
+  background: transparent;
+  color: var(--n-fg-tertiary);
+  cursor: pointer;
+  transition: background var(--n-duration-fast) var(--n-ease);
+}
+
+.toast-item-close:hover {
+  background: var(--n-bg-hover);
+  color: var(--n-fg-default);
+}
+
+@keyframes tr-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.toast-loading .toast-item-icon svg {
+  animation: tr-spin 800ms linear infinite;
+}

@@ -50,3 +50,12 @@ if (typeof globalThis.DOMParser === "undefined") {
   const { JSDOM } = require("jsdom");
   globalThis.DOMParser = new JSDOM().window.DOMParser;
 }
+
+// Override requestAnimationFrame to execute callbacks synchronously
+// for deterministic test behavior.
+const origRAF = globalThis.requestAnimationFrame.bind(globalThis);
+globalThis.requestAnimationFrame = (cb: FrameRequestCallback) => {
+  cb(performance.now());
+  return 0;
+};
+globalThis.cancelAnimationFrame = () => {};
