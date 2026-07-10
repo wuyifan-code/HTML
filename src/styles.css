@@ -5,6 +5,7 @@
 
 @import "./styles/tokens.css";
 @import "./styles/base.css";
+@import "./styles/shell.css";
 
 /* ================================================================
    Safari 15 fallback — color-mix 与 :has() 的旧引擎兼容

@@ -1,0 +1,172 @@
+/* ================================================================
+   HTML FineTune — Shell, TopBar & StatusBar
+   ================================================================ */
+
+/* --- App shell --- */
+.nw-app.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+/* --- TopBar --- */
+.app-topbar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  height: var(--topbar-height, 56px);
+  padding: 0 16px;
+  border-bottom: 1px solid var(--n-border-default);
+  background: var(--n-bg-base);
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+  min-width: 0;
+}
+
+.app-topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 280px;
+  flex-shrink: 0;
+}
+
+.app-topbar-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--n-fg-default);
+  line-height: 1;
+}
+
+.app-topbar-center {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.topbar-separator {
+  width: 1px;
+  height: 16px;
+  background: var(--n-border-default);
+  margin: 0 4px;
+}
+
+.app-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 320px;
+  flex-shrink: 0;
+  justify-content: flex-end;
+}
+
+/* --- StatusBar --- */
+.statusbar {
+  display: flex;
+  align-items: center;
+  height: var(--statusbar-height, 28px);
+  padding: 0 12px;
+  border-top: 1px solid var(--n-border-default);
+  background: var(--n-bg-base);
+  flex-shrink: 0;
+  gap: 12px;
+  font-size: 11px;
+  color: var(--n-fg-tertiary);
+}
+
+.statusbar-zone {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.statusbar-zone--left { flex: 1; justify-content: flex-start; }
+.statusbar-zone--center { flex: 0; justify-content: center; }
+.statusbar-zone--right { flex: 1; justify-content: flex-end; }
+
+.statusbar-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.statusbar-pill .dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--n-fg-tertiary);
+  flex-shrink: 0;
+}
+
+.statusbar-pill--ready .dot { background: var(--n-success); }
+.statusbar-pill--busy .dot { background: var(--n-brand); }
+.statusbar-pill--warning .dot { background: var(--n-warning); }
+.statusbar-pill--error .dot { background: var(--n-danger); }
+
+.statusbar-pill--live {
+  background: var(--n-bg-subtle);
+  padding: 2px 8px;
+  border-radius: var(--n-radius-sm);
+  font-size: 11px;
+  max-width: 320px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar-live-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.statusbar-sep {
+  width: 1px;
+  height: 12px;
+  background: var(--n-border-default);
+  flex-shrink: 0;
+}
+
+.statusbar-metric {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- nw-body workspace grid --- */
+.nw-body.workspace {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  position: relative;
+}
+
+.nw-left-panel,
+.nw-right-panel {
+  flex-shrink: 0;
+  overflow-y: auto;
+  position: relative;
+}
+
+.nw-left-panel { width: var(--source-col, 280px); }
+.nw-right-panel { width: var(--inspector-col, 320px); }
+
+.nw-canvas {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel.is-collapsed {
+  width: 0 !important;
+  overflow: hidden;
+  padding: 0;
+  margin: 0;
+  border: 0;
+}
