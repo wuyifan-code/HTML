@@ -11,6 +11,7 @@
 @import "./styles/source-panel.css";
 @import "./styles/canvas.css";
 @import "./styles/responsive.css";
+@import "./styles/inspector.css";
 
 /* ================================================================
    Safari 15 fallback — color-mix 与 :has() 的旧引擎兼容
