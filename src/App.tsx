@@ -9,7 +9,7 @@ import { useElementSize } from "./hooks/useElementSize";
 import { sampleHtml } from "./sampleHtml";
 import type { AiTreeAnnotation, DomTreeNode } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
-import { copyHtmlToClipboard } from "./utils/clipboard";
+import { copyHtmlToClipboard, readHtmlFromClipboard } from "./utils/clipboard";
 import {
   deleteHtmlElementByHftId,
   duplicateHtmlElementByHftId,
@@ -110,8 +110,10 @@ import {
 import { WorkspaceShell } from "./components/workspace/shell/WorkspaceShell";
 import { TopBar } from "./components/workspace/shell/TopBar";
 import { StatusBar } from "./components/workspace/shell/StatusBar";
+import { EmptyWorkspace } from "./components/workspace/EmptyWorkspace";
+import { hasMeaningfulHtml, createEmptyDocument } from "./utils/documentState";
 
-const initialHtml = injectEditableIds(sampleHtml).html;
+const initialHtml = createEmptyDocument().html;
 const AI_KEY_STORAGE = "html-finetune.ai-provider-keys";
 const AI_LEGACY_GEMMA_KEY_STORAGE = "html-finetune.gemma-api-key";
 
@@ -282,6 +284,7 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [collapsedTreeIds, setCollapsedTreeIds] = useState<Set<string>>(() => new Set());
   const [isSelectionCleared, setIsSelectionCleared] = useState(false);
+  const [isEmptyDoc, setIsEmptyDoc] = useState(true);
   const [sourceDraft, setSourceDraft] = useState(state.html);
   const hasHtmlUnclosedRisk = useMemo(() => {
     const openMatches = sourceDraft.match(/<(div|section|span|p|a|ul|li|ol|button)(?:\s[^>]*?)?>/g) || [];
@@ -359,6 +362,9 @@ export default function App() {
   const [aiError, setAiError] = useState("");
   const [aiAnnotations, setAiAnnotations] = useState<Record<string, AiTreeAnnotation>>({});
   const [aiPreflightNote, setAiPreflightNote] = useState("未运行");
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  interface Toast { id: string; message: string; }
+  const [toasts, setToasts] = useState<Toast[]>([]);
   const toastTimerRef = useRef<number | null>(null);
   const aiModelFetchRequestRef = useRef(0);
 
@@ -386,6 +392,7 @@ export default function App() {
   const previewSrcDoc = useMemo(() => buildPreviewSrcDoc(state.html, selectedId, bridgeTokenRef.current), [selectedId, state.html]);
   const cleanHtml = useMemo(() => cleanHtmlForExport(state.html), [state.html]);
   const exportWarnings = useMemo(() => getExportWarnings(cleanHtml), [cleanHtml]);
+  const isDocumentEmpty = useMemo(() => !hasMeaningfulHtml(state.html), [state.html]);
   const sourceLineCount = useMemo(() => countSourceLines(sourceDraft), [sourceDraft]);
   const sourceLineNumbers = useMemo(
     () => Array.from({ length: Math.max(1, sourceLineCount) }, (_, index) => String(index + 1)).join("\n"),
@@ -460,6 +467,10 @@ export default function App() {
   useEffect(() => {
     latestHtmlRef.current = state.html;
     setLastSyncedAt(Date.now());
+  }, [state.html]);
+
+  useEffect(() => {
+    setIsEmptyDoc(!hasMeaningfulHtml(state.html));
   }, [state.html]);
 
   useEffect(() => {
@@ -939,6 +950,7 @@ export default function App() {
           const nextHtml = injectEditableIds(String(reader.result ?? "")).html;
           setIsSelectionCleared(false);
           reset({ html: nextHtml, selectedId: null });
+          setIsEmptyDoc(false);
           setSourceTab("structure");
           setHasImportedHtml(true);
           setStatusMessage(`已导入 ${file.name}`);
@@ -954,9 +966,7 @@ export default function App() {
         showToast("文件读取失败");
       };
       reader.readAsText(file);
-    },
-    [reset, showToast]
-  );
+    }, [reset, showToast]);
 
   const handleSourceDrop = useCallback(
     (event: ReactDragEvent<HTMLDivElement>) => {
@@ -1146,6 +1156,29 @@ export default function App() {
     setIsMobileActionsOpen(false);
     fileInputRef.current?.click();
   }, []);
+
+  const handlePasteHtml = useCallback(async () => {
+    const html = await readHtmlFromClipboard();
+    if (!html) {
+      setStatusMessage("剪贴板中没有可用的 HTML 内容");
+      showToast("未找到 HTML");
+      return;
+    }
+    try {
+      const nextHtml = injectEditableIds(html).html;
+      setIsSelectionCleared(false);
+      reset({ html: nextHtml, selectedId: null });
+      setSourceTab("structure");
+      setHasImportedHtml(true);
+      setIsEmptyDoc(false);
+      setStatusMessage("已从剪贴板粘贴 HTML");
+      showToast("HTML 已粘贴");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "HTML 解析失败";
+      setStatusMessage(message);
+      showToast("粘贴失败");
+    }
+  }, [reset, showToast]);
 
   const handleCopy = useCallback(async () => {
     try {
@@ -1948,6 +1981,13 @@ export default function App() {
         ref={workspaceRef}
         style={workspaceStyle}
       >
+        {isEmptyDoc ? (
+          <EmptyWorkspace
+            onImportClick={handleImportClick}
+            onPasteClick={handlePasteHtml}
+            onDrop={(file) => handleFile(file)}
+          />
+        ) : (<>
         {isMobilePanelOpen ? (
           <button
             className="mobile-panel-backdrop"
@@ -2891,6 +2931,7 @@ export default function App() {
             </section>
           </div>
         </aside>
+        </>)}
       </main>
 
       <StatusBar
