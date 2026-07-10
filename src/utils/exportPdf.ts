@@ -145,10 +145,11 @@ export function computePdfPageSize(
   imageWidth: number,
   imageHeight: number
 ): { width: number; height: number } {
-  // 用 imageWidth/Height 优先,因为它来自真实 PNG;fallback 用 css 尺寸
+  // 优先用 CSS 像素换算成 point(96 DPI → 72 DPI,系数 0.75)。
+  // 之所以不直接用 imageWidth:html-to-image 输出的 PNG 是物理像素(受 devicePixelRatio 影响),
+  // 把它当 CSS 像素换算会把 PDF 页面放大 2x,所以 imageWidth 只在 cssWidth 缺失时作 fallback。
   const w = cssWidth > 0 ? cssWidth : imageWidth;
   const h = cssHeight > 0 ? cssHeight : imageHeight;
-  // 1 CSS pixel ≈ 0.75 point(96 DPI → 72 DPI)
   const SCALE = 72 / 96;
   return {
     width: Math.max(1, Math.round(w * SCALE)),

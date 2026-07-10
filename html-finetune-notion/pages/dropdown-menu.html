@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>下拉菜单 / 上下文菜单展示</title>
+    <style id="theme-vars">
+/* ════════════════════════════════════════════════════════════
+   Notion-style brand CSS — html-finetune-notion
+   ════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --color-n-bg-base:        #ffffff;
+  --color-n-bg-elevated:    #ffffff;
+  --color-n-bg-subtle:      #fbfbfa;
+  --color-n-bg-hover:       #f1f1f0;
+  --color-n-bg-sidebar:     #f7f6f3;
+  --color-n-bg-canvas:      #f7f6f3;
+  --color-n-bg-inverse:     #2f3437;
+  --color-n-fg-default:     #37352f;
+  --color-n-fg-secondary:   #787774;
+  --color-n-fg-tertiary:    #9b9a97;
+  --color-n-fg-disabled:    #c4c4c2;
+  --color-n-fg-link:        #2383e2;
+  --color-n-fg-onbrand:     #ffffff;
+  --color-n-brand:          #2383e2;
+  --color-n-brand-hover:    #1a72cf;
+  --color-n-brand-active:   #1761b3;
+  --color-n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --color-n-success:        #0f7b0f;
+  --color-n-warning:        #cb912f;
+  --color-n-danger:         #e03e3e;
+  --color-n-border-default: #e9e9e7;
+  --color-n-border-strong:  #d3d3d0;
+  --color-n-border-focus:   rgba(35, 131, 226, 0.40);
+  --color-n-ring-focus-out: rgba(35, 131, 226, 0.40);
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+  --n-ease: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast: 120ms;
+  --n-duration-base: 180ms;
+  --n-duration-slow: 240ms;
+}
+
+:root {
+  /* surface */
+  --n-bg-base:        #ffffff;
+  --n-bg-elevated:    #ffffff;
+  --n-bg-subtle:      #fbfbfa;
+  --n-bg-hover:       #f1f1f0;
+  --n-bg-sidebar:     #f7f6f3;
+  --n-bg-canvas:      #f7f6f3;
+  --n-bg-inverse:     #2f3437;
+
+  /* text */
+  --n-fg-default:     #37352f;
+  --n-fg-secondary:   #787774;
+  --n-fg-tertiary:    #9b9a97;
+  --n-fg-disabled:    #c4c4c2;
+  --n-fg-link:        #2383e2;
+  --n-fg-onbrand:     #ffffff;
+
+  /* brand & accent */
+  --n-brand:          #2383e2;
+  --n-brand-hover:    #1a72cf;
+  --n-brand-active:   #1761b3;
+  --n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --n-success:        #0f7b0f;
+  --n-warning:        #cb912f;
+  --n-danger:         #e03e3e;
+
+  /* border */
+  --n-border-default: #e9e9e7;
+  --n-border-strong:  #d3d3d0;
+  --n-border-focus:   rgba(35, 131, 226, 0.40);
+
+  /* radius */
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+
+  /* shadow */
+  --n-shadow-card:    0 1px 3px rgba(15,15,15,0.04), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-pop:     0 4px 12px rgba(15,15,15,0.05), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-overlay: 0 12px 32px rgba(15,15,15,0.14), 0 3px 8px rgba(15,15,15,0.08);
+  --n-ring-focus:     0 0 0 2px var(--n-bg-base), 0 0 0 4px var(--n-border-focus);
+
+  /* font */
+  --n-font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --n-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* motion */
+  --n-ease:           cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast:  120ms;
+  --n-duration-base:  180ms;
+  --n-duration-slow:  240ms;
+}
+
+.dark {
+  --n-bg-base:     #191919;
+  --n-bg-elevated: #202020;
+  --n-bg-subtle:   #252525;
+  --n-bg-sidebar:  #202020;
+  --n-bg-canvas:   #2c2c2c;
+  --n-bg-inverse:  #e8e8e8;
+  --n-fg-default:  rgba(255, 255, 255, 0.90);
+  --n-fg-secondary:rgba(255, 255, 255, 0.66);
+  --n-fg-tertiary: rgba(255, 255, 255, 0.45);
+  --n-fg-disabled: rgba(255, 255, 255, 0.25);
+  --n-fg-link:     #4dabf7;
+  --n-fg-onbrand:  #191919;
+  --n-brand:          #4dabf7;
+  --n-brand-hover:    #5bb8ff;
+  --n-brand-active:   #3d9be6;
+  --n-brand-disabled: rgba(77, 171, 247, 0.35);
+  --n-success:        #4caf50;
+  --n-warning:        #f5c542;
+  --n-danger:         #f44336;
+  --n-border-default: rgba(255, 255, 255, 0.10);
+  --n-border-strong:  rgba(255, 255, 255, 0.16);
+  --n-border-focus:   rgba(77, 171, 247, 0.45);
+  --n-shadow-card:    0 1px 3px rgba(0,0,0,0.40);
+  --n-shadow-pop:     0 6px 16px rgba(0,0,0,0.50);
+  --n-shadow-overlay: 0 12px 32px rgba(0,0,0,0.60);
+  --n-ring-focus:     0 0 0 2px #191919, 0 0 0 4px rgba(77,171,247,0.45);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+
+  @layer base {
+    body { background: var(--n-bg-base); color: var(--n-fg-default); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+
+      /* ===== Page canvas ===== */
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--n-bg-canvas);
+        font-family: var(--n-font-sans);
+      }
+      .canvas {
+        position: relative;
+        width: 1440px;
+        height: 900px;
+        background: var(--n-bg-canvas);
+        margin: 0 auto;
+        overflow: hidden;
+      }
+
+      /* ===== Menu base ===== */
+      .n-menu {
+        background: var(--n-bg-elevated);
+        border: 1px solid var(--n-border-default);
+        border-radius: var(--n-radius-md);
+        box-shadow: var(--n-shadow-pop);
+        padding: 4px;
+        font-family: var(--n-font-sans);
+        font-size: 14px;
+        color: var(--n-fg-default);
+        user-select: none;
+        position: absolute;
+      }
+
+      .n-menu-item {
+        display: flex;
+        align-items: center;
+        height: 32px;
+        padding: 0 12px;
+        gap: 8px;
+        border-radius: var(--n-radius-sm);
+        cursor: pointer;
+        white-space: nowrap;
+        position: relative;
+      }
+
+      .n-menu-item:hover:not(.is-disabled):not(.is-active-static) {
+        background: var(--n-bg-hover);
+      }
+
+      .n-menu-item.is-hover {
+        background: var(--n-bg-hover);
+      }
+
+      .n-menu-item.is-disabled {
+        color: var(--n-fg-disabled);
+        cursor: default;
+      }
+
+      .n-menu-item.is-danger {
+        color: var(--n-danger);
+      }
+
+      .n-menu-item .mi-icon {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        color: var(--n-fg-secondary);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .n-menu-item.is-disabled .mi-icon { color: var(--n-fg-disabled); }
+      .n-menu-item.is-danger .mi-icon { color: var(--n-danger); }
+
+      .n-menu-item .mi-label {
+        flex: 1;
+        font-size: 14px;
+        line-height: 1;
+      }
+
+      .n-menu-item .mi-shortcut {
+        margin-left: auto;
+        padding-left: 12px;
+        font-family: var(--n-font-mono);
+        font-size: 12px;
+        color: var(--n-fg-tertiary);
+        line-height: 1;
+        flex-shrink: 0;
+      }
+      .n-menu-item.is-disabled .mi-shortcut { color: var(--n-fg-disabled); }
+
+      .n-menu-item .mi-arrow {
+        margin-left: auto;
+        padding-left: 12px;
+        color: var(--n-fg-tertiary);
+        display: inline-flex;
+        align-items: center;
+        flex-shrink: 0;
+      }
+
+      .n-menu-item .mi-check {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        color: var(--n-fg-default);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      .n-menu-item .mi-radio {
+        width: 16px;
+        height: 16px;
+        flex-shrink: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .n-menu-item .mi-radio .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--n-fg-default);
+      }
+      .n-menu-item .mi-radio .dot-empty {
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        border: 1px solid var(--n-border-strong);
+        box-sizing: border-box;
+      }
+
+      .n-separator {
+        height: 1px;
+        background: var(--n-border-default);
+        margin: 4px 8px;
+      }
+
+      /* ===== Menu header (trigger showing open state) ===== */
+      .n-menu-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        height: 32px;
+        padding: 0 12px;
+        font-size: 14px;
+        color: var(--n-fg-default);
+        background: var(--n-bg-hover);
+        border-radius: var(--n-radius-sm);
+        margin: -4px -4px 4px -4px;
+        border-bottom: 1px solid var(--n-border-default);
+        border-top-left-radius: var(--n-radius-md);
+        border-top-right-radius: var(--n-radius-md);
+        border-bottom-left-radius: 0;
+        border-bottom-right-radius: 0;
+        font-weight: 500;
+      }
+      .n-menu-header .chev {
+        margin-left: auto;
+        color: var(--n-fg-tertiary);
+        display: inline-flex;
+        align-items: center;
+      }
+
+      /* ===== Menu section title ===== */
+      .n-menu-title {
+        padding: 6px 12px 6px 12px;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--n-fg-secondary);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        line-height: 1;
+      }
+
+      /* ===== Active option (provider picker) ===== */
+      .n-menu-item.is-active-option {
+        background: var(--n-bg-hover);
+        padding-left: 9px; /* 12 - 3 for left bar */
+      }
+      .n-menu-item.is-active-option::before {
+        content: "";
+        position: absolute;
+        left: 4px;
+        top: 4px;
+        bottom: 4px;
+        width: 3px;
+        background: var(--n-brand);
+        border-radius: 2px;
+      }
+
+      .n-menu-item .mi-desc {
+        font-size: 12px;
+        color: var(--n-fg-tertiary);
+        line-height: 1.2;
+        margin-top: 2px;
+      }
+      .n-menu-item .mi-text-group {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+        min-width: 0;
+      }
+
+      /* ===== Footer link ===== */
+      .n-menu-footer {
+        margin: 4px -4px -4px -4px;
+        padding: 8px 12px;
+        border-top: 1px solid var(--n-border-default);
+        font-size: 13px;
+        color: var(--n-fg-link);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border-bottom-left-radius: var(--n-radius-md);
+        border-bottom-right-radius: var(--n-radius-md);
+      }
+      .n-menu-footer:hover { background: var(--n-bg-hover); }
+
+      /* ===== Anchor label (corner tag) ===== */
+      .anchor-tag {
+        position: absolute;
+        font-size: 11px;
+        font-family: var(--n-font-mono);
+        color: var(--n-fg-tertiary);
+        background: var(--n-bg-subtle);
+        border: 1px solid var(--n-border-default);
+        padding: 3px 8px;
+        border-radius: var(--n-radius-sm);
+        white-space: nowrap;
+        letter-spacing: 0.02em;
+      }
+
+      /* ===== Menu widths ===== */
+      .w-file   { width: 220px; }
+      .w-ctx    { width: 200px; }
+      .w-vp     { width: 180px; }
+      .w-ai     { width: 240px; }
+
+      /* icon sizing */
+      .i-sm { width: 16px; height: 16px; flex-shrink: 0; }
+    </style>
+</head>
+<body>
+<main>
+  <div class="canvas">
+
+    <!-- ===== A. File menu (top-left anchored) ===== -->
+    <div class="anchor-tag" style="top:24px; left:40px;">A · 文件菜单 File Menu</div>
+    <div class="n-menu w-file" style="top:52px; left:40px;">
+      <div class="n-menu-header">
+        <span>文件</span>
+        <span class="chev"><i data-lucide="chevron-down" class="i-sm"></i></span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="file-plus" class="i-sm"></i></span>
+        <span class="mi-label">新建</span>
+        <span class="mi-shortcut">&#8984;N</span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="folder-open" class="i-sm"></i></span>
+        <span class="mi-label">打开…</span>
+        <span class="mi-shortcut">&#8984;O</span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="save" class="i-sm"></i></span>
+        <span class="mi-label">保存</span>
+        <span class="mi-shortcut">&#8984;S</span>
+      </div>
+      <div class="n-menu-item is-hover">
+        <span class="mi-icon"><i data-lucide="download" class="i-sm"></i></span>
+        <span class="mi-label">导出</span>
+        <span class="mi-shortcut">&#8984;E</span>
+      </div>
+      <div class="n-separator"></div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="history" class="i-sm"></i></span>
+        <span class="mi-label">最近文件</span>
+        <span class="mi-arrow"><i data-lucide="chevron-right" class="i-sm"></i></span>
+      </div>
+      <div class="n-separator"></div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="log-out" class="i-sm"></i></span>
+        <span class="mi-label">退出</span>
+      </div>
+    </div>
+
+    <!-- ===== B. Right-click context menu (center) ===== -->
+    <div class="anchor-tag" style="top:370px; left:620px; transform:translateX(-50%);">B · 右键菜单 Context Menu</div>
+    <div class="n-menu w-ctx" style="top:400px; left:620px; transform:translateX(-50%);">
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="copy" class="i-sm"></i></span>
+        <span class="mi-label">复制</span>
+        <span class="mi-shortcut">&#8984;C</span>
+      </div>
+      <div class="n-menu-item is-disabled">
+        <span class="mi-icon"><i data-lucide="clipboard" class="i-sm"></i></span>
+        <span class="mi-label">粘贴</span>
+        <span class="mi-shortcut">&#8984;V</span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="scissors" class="i-sm"></i></span>
+        <span class="mi-label">剪切</span>
+        <span class="mi-shortcut">&#8984;X</span>
+      </div>
+      <div class="n-separator"></div>
+      <div class="n-menu-item is-danger">
+        <span class="mi-icon"><i data-lucide="trash-2" class="i-sm"></i></span>
+        <span class="mi-label">删除</span>
+        <span class="mi-shortcut">Delete</span>
+      </div>
+      <div class="n-separator"></div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="search-code" class="i-sm"></i></span>
+        <span class="mi-label">检查元素</span>
+      </div>
+    </div>
+
+    <!-- ===== C. Viewport size dropdown (top-right) ===== -->
+    <div class="anchor-tag" style="top:24px; right:40px;">C · 视口选择 Viewport Select</div>
+    <div class="n-menu w-vp" style="top:52px; right:40px;">
+      <div class="n-menu-item is-hover">
+        <span class="mi-radio"><span class="dot"></span></span>
+        <span class="mi-label">桌面 (1440×900)</span>
+        <span class="mi-check"><i data-lucide="check" class="i-sm"></i></span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-radio"><span class="dot-empty"></span></span>
+        <span class="mi-label">平板 (768×1024)</span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-radio"><span class="dot-empty"></span></span>
+        <span class="mi-label">手机 (375×667)</span>
+      </div>
+      <div class="n-separator"></div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="settings-2" class="i-sm"></i></span>
+        <span class="mi-label">自定义…</span>
+      </div>
+    </div>
+
+    <!-- ===== D. AI provider picker (bottom-right) ===== -->
+    <div class="anchor-tag" style="bottom:24px; right:40px;">D · AI 服务商选择 Provider Picker</div>
+    <div class="n-menu w-ai" style="bottom:52px; right:40px;">
+      <div class="n-menu-title">选择 AI 服务商</div>
+      <div class="n-menu-item is-active-option">
+        <span class="mi-icon"><i data-lucide="sparkles" class="i-sm" style="color:var(--n-brand);"></i></span>
+        <span class="mi-text-group">
+          <span class="mi-label">OpenAI · GPT-4o</span>
+          <span class="mi-desc">通用多模态，响应快速</span>
+        </span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="brain" class="i-sm"></i></span>
+        <span class="mi-text-group">
+          <span class="mi-label">Anthropic · Claude</span>
+          <span class="mi-desc">长文理解与深度推理</span>
+        </span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="gem" class="i-sm"></i></span>
+        <span class="mi-text-group">
+          <span class="mi-label">Gemini · Pro</span>
+          <span class="mi-desc">Google 多模态模型</span>
+        </span>
+      </div>
+      <div class="n-menu-item">
+        <span class="mi-icon"><i data-lucide="cpu" class="i-sm"></i></span>
+        <span class="mi-text-group">
+          <span class="mi-label">本地模型</span>
+          <span class="mi-desc">离线运行，数据不出境</span>
+        </span>
+      </div>
+      <div class="n-menu-footer">
+        <i data-lucide="key-round" class="i-sm"></i>
+        <span>管理 API 密钥</span>
+      </div>
+    </div>
+
+  </div>
+</main>
+<script>lucide.createIcons();</script>
+</body>
+</html>

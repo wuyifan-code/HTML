@@ -1,0 +1,236 @@
+{
+  "data": [
+    {
+      "id": "page-empty-state",
+      "title": "空状态欢迎页",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076802000,
+      "canvasData": {
+        "x": 0,
+        "y": 600,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/empty-state.html"
+      }
+    },
+    {
+      "id": "page-workspace-light",
+      "title": "主工作区 (亮)",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076800000,
+      "canvasData": {
+        "x": 1480,
+        "y": 600,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/workspace-light.html"
+      }
+    },
+    {
+      "id": "page-workspace-dark",
+      "title": "主工作区 (暗)",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076801000,
+      "canvasData": {
+        "x": 2960,
+        "y": 600,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/workspace-dark.html"
+      }
+    },
+    {
+      "id": "page-dom-tree",
+      "title": "DOM 树面板",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076803000,
+      "canvasData": {
+        "x": 2960,
+        "y": 1540,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dom-tree.html"
+      }
+    },
+    {
+      "id": "page-viewport-preview",
+      "title": "手机/平板视口",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076804000,
+      "canvasData": {
+        "x": 4440,
+        "y": 600,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/viewport-preview.html"
+      }
+    },
+    {
+      "id": "page-mobile",
+      "title": "移动端抽屉布局",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076813000,
+      "canvasData": {
+        "x": 4440,
+        "y": 1540,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/mobile.html"
+      }
+    },
+    {
+      "id": "page-color-picker",
+      "title": "颜色选择器弹层",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076805000,
+      "canvasData": {
+        "x": 468,
+        "y": 1548,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/color-picker.html"
+      }
+    },
+    {
+      "id": "page-dropdown-menu",
+      "title": "下拉菜单/菜单",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076806000,
+      "canvasData": {
+        "x": 0,
+        "y": 1540,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/dropdown-menu.html"
+      }
+    },
+    {
+      "id": "page-toast-tooltip",
+      "title": "Toast + Tooltip 组件",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076807000,
+      "canvasData": {
+        "x": 0,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/toast-tooltip.html"
+      }
+    },
+    {
+      "id": "page-diagnostics",
+      "title": "诊断/错误面板",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076808000,
+      "canvasData": {
+        "x": 1480,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/diagnostics.html"
+      }
+    },
+    {
+      "id": "page-export-light",
+      "title": "导出预览 (亮)",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076809000,
+      "canvasData": {
+        "x": 5920,
+        "y": 600,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/export-light.html",
+        "interactions": [
+          {
+            "domId": "btn-cancel",
+            "targetPageId": "page-workspace-light",
+            "hideEdge": true,
+            "transitionLabel": "关闭导出"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-export-dark",
+      "title": "导出预览 (暗)",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076810000,
+      "canvasData": {
+        "x": 5920,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/export-dark.html"
+      }
+    },
+    {
+      "id": "page-history-light",
+      "title": "历史记录 (亮)",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076811000,
+      "canvasData": {
+        "x": 7400,
+        "y": 600,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/history-light.html",
+        "interactions": [
+          {
+            "domId": "btn-close-history",
+            "targetPageId": "page-workspace-light",
+            "hideEdge": true,
+            "transitionLabel": "关闭历史"
+          }
+        ]
+      }
+    },
+    {
+      "id": "page-history-dark",
+      "title": "历史记录 (暗)",
+      "type": "page",
+      "version": 1,
+      "createdAt": 1752076812000,
+      "canvasData": {
+        "x": 7400,
+        "y": 0,
+        "group": 0
+      },
+      "devMetadata": {
+        "htmlSrc": "pages/history-dark.html"
+      }
+    }
+  ],
+  "config": {
+    "autoLayout": false,
+    "deviceType": "desktop",
+    "projectName": "HTML FineTune - Notion Style",
+    "showEdge": false
+  }
+}

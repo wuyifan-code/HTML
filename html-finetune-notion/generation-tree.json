@@ -1,0 +1,8 @@
+{
+  "root": "workspace",
+  "children": {
+    "workspace": { "type": "leaf", "nodeId": "page-workspace", "output": "pages/workspace.html", "status": "planned", "dependsOn": [], "fragment": null },
+    "export-dialog": { "type": "leaf", "nodeId": "page-export-dialog", "output": "pages/export-dialog.html", "status": "planned", "dependsOn": [], "fragment": null },
+    "history-panel": { "type": "leaf", "nodeId": "page-history-panel", "output": "pages/history-panel.html", "status": "planned", "dependsOn": [], "fragment": null }
+  }
+}

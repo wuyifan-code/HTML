@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>颜色选择器</title>
+    <style id="theme-vars">
+/* ════════════════════════════════════════════════════════════
+   Notion-style brand CSS — html-finetune-notion
+   ════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --color-n-bg-base:        #ffffff;
+  --color-n-bg-elevated:    #ffffff;
+  --color-n-bg-subtle:      #fbfbfa;
+  --color-n-bg-hover:       #f1f1f0;
+  --color-n-bg-sidebar:     #f7f6f3;
+  --color-n-bg-canvas:      #f7f6f3;
+  --color-n-bg-inverse:     #2f3437;
+  --color-n-fg-default:     #37352f;
+  --color-n-fg-secondary:   #787774;
+  --color-n-fg-tertiary:    #9b9a97;
+  --color-n-fg-disabled:    #c4c4c2;
+  --color-n-fg-link:        #2383e2;
+  --color-n-fg-onbrand:     #ffffff;
+  --color-n-brand:          #2383e2;
+  --color-n-brand-hover:    #1a72cf;
+  --color-n-brand-active:   #1761b3;
+  --color-n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --color-n-success:        #0f7b0f;
+  --color-n-warning:        #cb912f;
+  --color-n-danger:         #e03e3e;
+  --color-n-border-default: #e9e9e7;
+  --color-n-border-strong:  #d3d3d0;
+  --color-n-border-focus:   rgba(35, 131, 226, 0.40);
+  --color-n-ring-focus-out: rgba(35, 131, 226, 0.40);
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+  --n-ease: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast: 120ms;
+  --n-duration-base: 180ms;
+  --n-duration-slow: 240ms;
+}
+
+:root {
+  --n-bg-base:        #ffffff;
+  --n-bg-elevated:    #ffffff;
+  --n-bg-subtle:      #fbfbfa;
+  --n-bg-hover:       #f1f1f0;
+  --n-bg-sidebar:     #f7f6f3;
+  --n-bg-canvas:      #f7f6f3;
+  --n-bg-inverse:     #2f3437;
+  --n-fg-default:     #37352f;
+  --n-fg-secondary:   #787774;
+  --n-fg-tertiary:    #9b9a97;
+  --n-fg-disabled:    #c4c4c2;
+  --n-fg-link:        #2383e2;
+  --n-fg-onbrand:     #ffffff;
+  --n-brand:          #2383e2;
+  --n-brand-hover:    #1a72cf;
+  --n-brand-active:   #1761b3;
+  --n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --n-success:        #0f7b0f;
+  --n-warning:        #cb912f;
+  --n-danger:         #e03e3e;
+  --n-border-default: #e9e9e7;
+  --n-border-strong:  #d3d3d0;
+  --n-border-focus:   rgba(35, 131, 226, 0.40);
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+  --n-shadow-card:    0 1px 3px rgba(15,15,15,0.04), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-pop:     0 4px 12px rgba(15,15,15,0.05), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-overlay: 0 12px 32px rgba(15,15,15,0.14), 0 3px 8px rgba(15,15,15,0.08);
+  --n-ring-focus:     0 0 0 2px var(--n-bg-base), 0 0 0 4px var(--n-border-focus);
+  --n-font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --n-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  --n-ease:           cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast:  120ms;
+  --n-duration-base:  180ms;
+  --n-duration-slow:  240ms;
+}
+
+/* ════════════════════════════════════════════════════════════
+   Page reset & layout
+   ════════════════════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  width: 1440px;
+  height: 900px;
+  overflow: hidden;
+  font-family: var(--n-font-sans);
+  background: var(--n-bg-canvas);
+  color: var(--n-fg-default);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ════════════════════════════════════════════════════════════
+   Workspace background (dimmed)
+   ════════════════════════════════════════════════════════════ */
+.workspace-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.4;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Top bar */
+.topbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 45px;
+  background: var(--n-bg-base);
+  border-bottom: 1px solid var(--n-border-default);
+}
+.topbar-sidebar {
+  position: absolute;
+  top: 0; left: 0;
+  width: 240px;
+  height: 45px;
+  background: var(--n-bg-sidebar);
+  border-right: 1px solid var(--n-border-default);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+}
+.ws-emoji {
+  width: 20px; height: 20px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px;
+}
+.ws-name {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--n-fg-default);
+}
+.topbar-main {
+  position: absolute;
+  top: 0; left: 240px; right: 0;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+}
+.breadcrumb {
+  display: flex; align-items: center; gap: 4px;
+  font-size: 14px; color: var(--n-fg-default);
+}
+.breadcrumb-sep { color: var(--n-fg-tertiary); margin: 0 2px; }
+.topbar-right {
+  margin-left: auto;
+  display: flex; align-items: center; gap: 4px;
+}
+.tb-btn {
+  width: 28px; height: 28px;
+  border-radius: var(--n-radius-sm);
+  display: flex; align-items: center; justify-content: center;
+  color: var(--n-fg-secondary);
+  font-size: 14px;
+}
+
+/* Sidebar */
+.sidebar {
+  position: absolute;
+  top: 45px; left: 0;
+  width: 240px;
+  bottom: 0;
+  background: var(--n-bg-sidebar);
+  border-right: 1px solid var(--n-border-default);
+  padding: 6px 4px;
+}
+.sidebar-section {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--n-fg-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-top: 8px;
+}
+.sidebar-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px;
+  font-size: 14px;
+  color: var(--n-fg-default);
+  border-radius: var(--n-radius-sm);
+  height: 28px;
+}
+.sidebar-item .ico {
+  width: 18px; text-align: center;
+  font-size: 13px;
+  color: var(--n-fg-secondary);
+}
+
+/* Canvas area */
+.canvas {
+  position: absolute;
+  top: 45px; left: 240px; right: 340px; bottom: 0;
+  background: var(--n-bg-base);
+  padding: 80px 96px 0;
+}
+.page-cover {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 160px;
+  background: #e8e5e0;
+}
+.page-content {
+  position: relative;
+  z-index: 1;
+}
+.page-title {
+  font-size: 40px;
+  font-weight: 700;
+  color: var(--n-fg-default);
+  margin-bottom: 24px;
+}
+.page-h1 {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--n-fg-default);
+  margin-bottom: 4px;
+  margin-top: 20px;
+}
+.page-para {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--n-fg-default);
+  margin-bottom: 12px;
+}
+.page-h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--n-fg-default);
+  margin-top: 20px;
+  margin-bottom: 4px;
+}
+
+/* Inspector panel (right) */
+.inspector {
+  position: absolute;
+  top: 45px; right: 0;
+  width: 340px;
+  bottom: 0;
+  background: var(--n-bg-base);
+  border-left: 1px solid var(--n-border-default);
+  padding: 16px;
+  overflow: hidden;
+}
+.insp-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--n-fg-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 12px;
+}
+.insp-section {
+  margin-bottom: 20px;
+}
+.insp-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--n-fg-secondary);
+  margin-bottom: 8px;
+}
+.insp-row {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 8px;
+}
+.insp-input {
+  flex: 1;
+  height: 30px;
+  border: 1px solid var(--n-border-default);
+  border-radius: var(--n-radius-sm);
+  padding: 0 8px;
+  font-size: 13px;
+  font-family: var(--n-font-sans);
+  color: var(--n-fg-default);
+  background: var(--n-bg-base);
+  display: flex;
+  align-items: center;
+}
+.insp-color-swatch {
+  width: 30px; height: 30px;
+  border-radius: var(--n-radius-sm);
+  border: 1px solid var(--n-border-default);
+  flex-shrink: 0;
+}
+.insp-divider {
+  height: 1px;
+  background: var(--n-border-default);
+  margin: 16px 0;
+}
+.insp-toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 0;
+  font-size: 13px;
+  color: var(--n-fg-default);
+}
+.toggle {
+  width: 32px; height: 18px;
+  background: var(--n-border-strong);
+  border-radius: 9px;
+  position: relative;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--n-brand); }
+.toggle-thumb {
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 14px; height: 14px;
+  background: var(--n-bg-base);
+  border-radius: 50%;
+}
+.toggle.on .toggle-thumb { left: 16px; }
+
+/* Anchor swatch button (full-opacity trigger, overlaid on dimmed inspector) */
+.anchor-point {
+  position: absolute;
+  top: 220px;
+  left: 1116px;
+  z-index: 50;
+}
+.anchor-swatch {
+  width: 30px; height: 30px;
+  border-radius: var(--n-radius-sm);
+  border: 1px solid var(--n-border-default);
+  background: #37352f;
+  position: relative;
+}
+
+/* ════════════════════════════════════════════════════════════
+   Color Picker Popover
+   ════════════════════════════════════════════════════════════ */
+.color-picker {
+  position: absolute;
+  top: 257px;
+  right: 16px;
+  width: 300px;
+  background: var(--n-bg-elevated);
+  border: 1px solid var(--n-border-default);
+  border-radius: var(--n-radius-lg);
+  box-shadow: var(--n-shadow-overlay);
+  padding: 16px;
+  z-index: 100;
+}
+/* Callout arrow pointing up to the anchor swatch */
+.color-picker::before {
+  content: '';
+  position: absolute;
+  top: -7px;
+  left: 7px;
+  width: 0; height: 0;
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-bottom: 7px solid var(--n-border-default);
+  z-index: 101;
+}
+.color-picker::after {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: 8px;
+  width: 0; height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-bottom: 6px solid var(--n-bg-elevated);
+  z-index: 102;
+}
+
+/* Header row */
+.cp-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.cp-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--n-fg-default);
+}
+.cp-current-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--n-radius-sm);
+  border: 1px solid var(--n-border-default);
+  background: #37352f;
+  flex-shrink: 0;
+}
+.cp-hex-input {
+  margin-left: auto;
+  width: 80px;
+  height: 28px;
+  border: 1px solid var(--n-border-default);
+  border-radius: var(--n-radius-sm);
+  padding: 0 8px;
+  font-size: 12px;
+  font-family: var(--n-font-mono);
+  color: var(--n-fg-default);
+  background: var(--n-bg-base);
+  outline: none;
+}
+
+/* Saturation/Brightness map — CSS grid, exact 268x140 */
+.cp-sb-map {
+  width: 268px;
+  height: 140px;
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  grid-template-rows: repeat(7, 1fr);
+  gap: 1px;
+  margin-bottom: 12px;
+  border-radius: var(--n-radius-sm);
+  overflow: hidden;
+  position: relative;
+}
+.cp-sb-tile {
+  /* sizes via grid, no explicit width/height needed */
+}
+.cp-sb-crosshair {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #ffffff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
+
+/* Sliders */
+.cp-slider {
+  margin-bottom: 10px;
+  position: relative;
+}
+.cp-slider-track {
+  width: 268px;
+  height: 8px;
+  display: flex;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.cp-hue-tile {
+  height: 8px;
+  flex: 1 1 0;
+}
+
+/* Opacity track — checker built with tiles (no CSS gradients) */
+.cp-opacity-track {
+  width: 268px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+.cp-checker-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: repeat(67, 4px);
+  grid-template-rows: repeat(2, 4px);
+  z-index: 0;
+}
+.cp-checker-cell {
+  width: 4px;
+  height: 4px;
+}
+.cp-opacity-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 8px;
+  width: 268px;
+  display: flex;
+  z-index: 1;
+}
+.cp-opacity-tile {
+  height: 8px;
+  flex: 1 1 0;
+}
+
+/* Slider thumb */
+.cp-slider-thumb {
+  position: absolute;
+  top: 4px;
+  width: 14px;
+  height: 14px;
+  background: var(--n-bg-elevated);
+  border: 2px solid var(--n-bg-elevated);
+  border-radius: 50%;
+  box-shadow: var(--n-shadow-card);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* Section labels */
+.cp-section-label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--n-fg-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 12px 0 8px;
+}
+
+/* Preset swatches grid — 8 per row, 24px */
+.cp-presets {
+  display: grid;
+  grid-template-columns: repeat(8, 24px);
+  gap: 4px;
+  margin-bottom: 4px;
+}
+.cp-preset {
+  width: 24px;
+  height: 24px;
+  border-radius: var(--n-radius-sm);
+  border: 1px solid var(--n-border-default);
+  position: relative;
+}
+.cp-preset.selected {
+  outline: 2px solid var(--n-brand);
+  outline-offset: 1px;
+}
+
+/* Recent colors — 8 per row, 20px */
+.cp-recent {
+  display: grid;
+  grid-template-columns: repeat(8, 20px);
+  gap: 4px;
+}
+.cp-recent-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--n-radius-sm);
+  border: 1px solid var(--n-border-default);
+}
+.cp-recent-empty {
+  width: 20px;
+  height: 20px;
+  border-radius: var(--n-radius-sm);
+  border: 1px dashed var(--n-border-default);
+  background: var(--n-bg-subtle);
+}
+    </style>
+</head>
+<body>
+
+<!-- Dimmed workspace background -->
+<div class="workspace-bg">
+  <!-- Top bar -->
+  <div class="topbar-sidebar">
+    <div class="ws-emoji">📝</div>
+    <div class="ws-name">我的工作空间</div>
+  </div>
+  <div class="topbar-main">
+    <div class="breadcrumb">
+      <span>个人页面</span>
+      <span class="breadcrumb-sep">/</span>
+      <span>设计系统</span>
+      <span class="breadcrumb-sep">/</span>
+      <span style="font-weight:600">颜色选择器</span>
+    </div>
+    <div class="topbar-right">
+      <div class="tb-btn">⟲</div>
+      <div class="tb-btn">⟳</div>
+      <div class="tb-btn">⋮</div>
+    </div>
+  </div>
+  <div class="topbar"></div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <div class="sidebar-section">工作空间</div>
+    <div class="sidebar-item"><span class="ico">🏠</span>主页</div>
+    <div class="sidebar-item"><span class="ico">🔍</span>搜索</div>
+    <div class="sidebar-item"><span class="ico">📥</span>收件箱</div>
+    <div class="sidebar-section">私人</div>
+    <div class="sidebar-item"><span class="ico">📄</span>会议纪要</div>
+    <div class="sidebar-item"><span class="ico">📄</span>阅读清单</div>
+    <div class="sidebar-item"><span class="ico">📄</span>设计系统</div>
+    <div class="sidebar-item"><span class="ico">📄</span>周末计划</div>
+    <div class="sidebar-section">共享</div>
+    <div class="sidebar-item"><span class="ico">👥</span>产品团队</div>
+    <div class="sidebar-item"><span class="ico">👥</span>设计评审</div>
+  </div>
+
+  <!-- Canvas -->
+  <div class="canvas">
+    <div class="page-cover"></div>
+    <div class="page-content">
+      <div class="page-title">🎨</div>
+      <div class="page-h1">颜色选择器规范</div>
+      <div class="page-para">本文档定义了颜色选择器组件的交互和视觉规范。点击右侧属性面板中的颜色色块可以打开颜色选择器。</div>
+      <div class="page-h2">使用场景</div>
+      <div class="page-para">颜色选择器用于在编辑文本颜色、背景颜色、标签颜色等场景中提供一致的取色体验。</div>
+    </div>
+  </div>
+
+  <!-- Inspector panel -->
+  <div class="inspector">
+    <div class="insp-title">属性</div>
+    <div class="insp-section">
+      <div class="insp-label">文本</div>
+      <div class="insp-row">
+        <div class="insp-input" style="color:var(--n-fg-tertiary)">文本内容…</div>
+      </div>
+    </div>
+    <div class="insp-divider"></div>
+    <div class="insp-section">
+      <div class="insp-label">颜色</div>
+      <div class="insp-row">
+        <div class="insp-color-swatch" style="background:#37352f"></div>
+        <div class="insp-input" style="font-family:var(--n-font-mono); font-size:12px">#37352f</div>
+      </div>
+    </div>
+    <div class="insp-divider"></div>
+    <div class="insp-section">
+      <div class="insp-label">排版</div>
+      <div class="insp-row">
+        <div class="insp-input">14px</div>
+        <div class="insp-input">Regular</div>
+      </div>
+    </div>
+    <div class="insp-divider"></div>
+    <div class="insp-section">
+      <div class="insp-toggle-row">
+        <span>粗体</span>
+        <div class="toggle"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="insp-toggle-row">
+        <span>斜体</span>
+        <div class="toggle"><div class="toggle-thumb"></div></div>
+      </div>
+      <div class="insp-toggle-row">
+        <span>下划线</span>
+        <div class="toggle on"><div class="toggle-thumb"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Anchor swatch (the trigger button with arrow) -->
+<div class="anchor-point">
+  <div class="anchor-swatch"></div>
+</div>
+
+<!-- Color Picker Popover -->
+<div class="color-picker">
+
+  <div class="cp-header">
+    <span class="cp-label">颜色</span>
+    <div class="cp-current-swatch"></div>
+    <input class="cp-hex-input" type="text" value="#37352f" spellcheck="false">
+  </div>
+
+  <!-- Saturation/Brightness map (12x7 tile grid via CSS grid) -->
+  <div class="cp-sb-map" id="sbMap"></div>
+
+  <!-- Hue slider (rainbow tiles) -->
+  <div class="cp-slider">
+    <div class="cp-slider-track" id="hueTrack"></div>
+    <div class="cp-slider-thumb" id="hueThumb" style="left:4px"></div>
+  </div>
+
+  <!-- Opacity slider (checkerboard tiles + opacity tile gradient) -->
+  <div class="cp-slider">
+    <div class="cp-opacity-track">
+      <div class="cp-checker-grid" id="checkerGrid"></div>
+      <div class="cp-opacity-fill" id="opacityFill"></div>
+    </div>
+    <div class="cp-slider-thumb" id="opacityThumb" style="left:264px"></div>
+  </div>
+
+  <div class="cp-section-label">预设颜色</div>
+  <div class="cp-presets">
+    <div class="cp-preset selected" style="background:#37352f"></div>
+    <div class="cp-preset" style="background:#2383e2"></div>
+    <div class="cp-preset" style="background:#e03e3e"></div>
+    <div class="cp-preset" style="background:#cb912f"></div>
+    <div class="cp-preset" style="background:#0f7b0f"></div>
+    <div class="cp-preset" style="background:#9065b0"></div>
+    <div class="cp-preset" style="background:#ffffff; border-color:var(--n-border-strong)"></div>
+    <div class="cp-preset" style="background:#787774"></div>
+
+    <div class="cp-preset" style="background:#ebeced"></div>
+    <div class="cp-preset" style="background:#ddebf6"></div>
+    <div class="cp-preset" style="background:#ffe2dd"></div>
+    <div class="cp-preset" style="background:#faecc8"></div>
+    <div class="cp-preset" style="background:#dbeddb"></div>
+    <div class="cp-preset" style="background:#e8deee"></div>
+    <div class="cp-preset" style="background:#f7f6f3"></div>
+    <div class="cp-preset" style="background:#5f5e5b"></div>
+  </div>
+
+  <div class="cp-section-label">最近使用</div>
+  <div class="cp-recent">
+    <div class="cp-recent-swatch" style="background:#37352f"></div>
+    <div class="cp-recent-swatch" style="background:#2383e2"></div>
+    <div class="cp-recent-swatch" style="background:#e03e3e"></div>
+    <div class="cp-recent-swatch" style="background:#cb912f"></div>
+    <div class="cp-recent-swatch" style="background:#0f7b0f"></div>
+    <div class="cp-recent-empty"></div>
+    <div class="cp-recent-empty"></div>
+    <div class="cp-recent-empty"></div>
+  </div>
+
+</div>
+
+<script>
+(function() {
+  // ── Saturation/Brightness map: 12 cols × 7 rows ──
+  var sbMap = document.getElementById('sbMap');
+  var sbColors = [
+    // Row 0 (top): light, high saturation
+    ['#ff6b6b','#ff8787','#ffa94d','#ffd43b','#a9e34b','#69db7c','#38d9a9','#4dabf7','#748ffc','#9775fa','#da77f2','#f783ac'],
+    // Row 1
+    ['#fa5252','#ff6b6b','#ff922b','#fcc419','#94d82d','#51cf66','#20c997','#339af0','#5c7cfa','#845ef7','#cc5de8','#e64980'],
+    // Row 2
+    ['#f03e3e','#e8590c','#fd7e14','#f59f00','#82c91e','#40c057','#12b886','#228be6','#4c6ef5','#7950f2','#be4bdb','#d6336c'],
+    // Row 3 (middle)
+    ['#c92a2a','#d9480f','#e67700','#e67700','#5c940d','#2f9e44','#0ca678','#1c7ed6','#4263eb','#7048e8','#ae3ec9','#c2255c'],
+    // Row 4
+    ['#a61e1e','#b34100','#c56000','#b87503','#4c7a0a','#238238','#087f5b','#1864ab','#3b5bdb','#6741d9','#9c36b5','#a61e4d'],
+    // Row 5
+    ['#7a1616','#873200','#944d00','#8a5d03','#3a5e08','#1b642c','#065a44','#134e86','#2f47b0','#5a31b5','#7a288a','#7a1639'],
+    // Row 6 (bottom): dark/desaturated
+    ['#37352f','#2f3e4d','#3d3328','#3a3820','#2a3d2a','#253530','#1e3a3a','#1e3350','#262d55','#2e2748','#332442','#35202e']
+  ];
+  for (var r = 0; r < 7; r++) {
+    for (var c = 0; c < 12; c++) {
+      var tile = document.createElement('div');
+      tile.className = 'cp-sb-tile';
+      tile.style.backgroundColor = sbColors[r][c];
+      sbMap.appendChild(tile);
+    }
+  }
+  // Crosshair near bottom-left (dark selected color)
+  var crosshair = document.createElement('div');
+  crosshair.className = 'cp-sb-crosshair';
+  // In a 12-col grid with 1px gap: column 0 center ≈ cell center
+  // Cell width ≈ (268 - 11)/12 ≈ 21.4px; cell height ≈ (140 - 6)/7 ≈ 19.1px
+  // Bottom-left dark tile is at col 0, row 6 → center approx
+  crosshair.style.left = '11px';
+  crosshair.style.top = '130px';
+  sbMap.appendChild(crosshair);
+
+  // ── Hue slider: 33 tiles spanning 264px (33*8=264), last tile stretches ──
+  var hueTrack = document.getElementById('hueTrack');
+  var hueStops = [
+    '#ff0000','#ff1000','#ff2000','#ff3000','#ff4000','#ff5000','#ff6000','#ff7000',
+    '#ff8000','#ff9800','#ffb000','#ffc800','#ffe000','#fff000','#e8ff00','#d0ff00',
+    '#b8ff00','#98ff00','#78ff00','#58ff00','#38ff00','#18ff00','#00ff10','#00ff30',
+    '#00ff50','#00ff70','#00ff90','#00ffb0','#00ffd0','#00fff0','#00d8ff','#00a0ff',
+    '#0060ff','#0020ff','#2000ff','#5000ff','#7800ff'
+  ];
+  var hueCount = 33;
+  for (var i = 0; i < hueCount; i++) {
+    var h = document.createElement('div');
+    h.className = 'cp-hue-tile';
+    var idx = Math.floor(i / hueCount * hueStops.length);
+    h.style.backgroundColor = hueStops[Math.min(idx, hueStops.length - 1)];
+    if (i === hueCount - 1) h.style.flex = '1 1 auto';
+    hueTrack.appendChild(h);
+  }
+
+  // ── Opacity checkerboard: 4px cells, 67 cols × 2 rows = 268px × 8px ──
+  var checker = document.getElementById('checkerGrid');
+  for (var row = 0; row < 2; row++) {
+    for (var col = 0; col < 67; col++) {
+      var cell = document.createElement('div');
+      cell.className = 'cp-checker-cell';
+      var isLight = (row + col) % 2 === 0;
+      cell.style.backgroundColor = isLight ? 'var(--n-bg-base)' : 'var(--n-bg-subtle)';
+      checker.appendChild(cell);
+    }
+  }
+  // ── Opacity fill: tile gradient from transparent to #37352f (33 tiles) ──
+  var opacityFill = document.getElementById('opacityFill');
+  var opCount = 33;
+  for (var oi = 0; oi < opCount; oi++) {
+    var ot = document.createElement('div');
+    ot.className = 'cp-opacity-tile';
+    var alpha = oi / (opCount - 1);
+    ot.style.backgroundColor = 'rgba(55, 53, 47, ' + alpha.toFixed(3) + ')';
+    if (oi === opCount - 1) ot.style.flex = '1 1 auto';
+    opacityFill.appendChild(ot);
+  }
+})();
+</script>
+
+</body>
+</html>

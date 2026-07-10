@@ -1,3 +1,8 @@
+// TODO(tech-debt): 当前 PreviewFrame.tsx 实现的是 HTML_FINETUNE_* 协议,
+// 并未被 App.tsx 引用（仅 src/test/canvasToolbarDom.test.tsx 引用）。
+// App.tsx 直接渲染 iframe 并走 HTML_FINETUNE_OPTIMIZED_* 协议（见 src/utils/editorUtils.buildPreviewSrcDoc）。
+// 解法（待定）:保留 App 路径、删除 PreviewFrame.tsx 约 1800 行死代码。
+// 见 code-review-report.html §架构级 A1-A3。
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Eye, Maximize2, Minimize2, Scan, Shrink, ZoomIn, ZoomOut } from "lucide-react";
 import { useIframeSelection } from "../hooks/useIframeSelection";
@@ -86,6 +91,9 @@ function PreviewFrameComponent({
   const [autoFit, setAutoFit] = useState(true);
 
   // 重置 autoFit 当 HTML 结构变更(reloadNonce)时
+  // TODO(tech-debt): 见文件顶部 — 此文件未被 App 引用。若未来启用 PreviewFrame,
+  // reloadNonce 变化时强制 setZoom(1) + setAutoFit(true) 会把用户手动设的缩放冲掉。
+  // 解决:把"是否重置"作为可选项传给 PreviewFrame,由 App.tsx 决定何时清缩放。
   useEffect(() => {
     setAutoFit(true);
     setZoom(1);
@@ -325,17 +333,18 @@ function buildPreviewDocument(html: string, bridgeToken: string): string {
   const style = `<style id="html-finetune-bridge-style">
     [data-html-finetune-editable="true"] {
       cursor: text !important;
+      transition: outline-color 150ms ease, outline-offset 150ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 150ms ease !important;
     }
     [data-html-finetune-hovered="true"]:not([data-html-finetune-selected="true"]) {
       outline: 1.5px dashed #19a997 !important;
-      outline-offset: 2px !important;
-      box-shadow: 0 0 0 5px rgba(25, 169, 151, 0.11) !important;
+      outline-offset: 1px !important;
+      box-shadow: 0 0 0 4px rgba(25, 169, 151, 0.12) !important;
       border-radius: 6px !important;
     }
     [data-html-finetune-selected="true"] {
       outline: 1.5px solid #19a997 !important;
-      outline-offset: 2px !important;
-      box-shadow: 0 0 0 4px rgba(25, 169, 151, 0.1) !important;
+      outline-offset: 2.5px !important;
+      box-shadow: 0 0 0 5px rgba(25, 169, 151, 0.16), 0 1px 2px rgba(15, 23, 42, 0.05) !important;
       border-radius: 6px !important;
     }
     [data-html-finetune-dragging="true"] {

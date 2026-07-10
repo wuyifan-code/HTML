@@ -24,13 +24,19 @@ describe("ExportPreviewDialog — warnings wiring", () => {
   it("默认无 warnings：下载按钮 enabled，警告列表不渲染", () => {
     renderDialog();
     const downloadBtn = screen.getByRole("button", { name: /下载 edited-page\.html/ });
+    const dialog = screen.getByRole("dialog", { name: "导出前预览" });
     expect(downloadBtn).not.toBeDisabled();
+    expect(dialog).toHaveAttribute("data-state", "ready");
+    expect(dialog).toHaveAccessibleDescription(/即将下载的干净 HTML/);
+    expect(screen.getByRole("textbox", { name: "导出的 HTML 代码预览" })).toHaveValue(baseHtml);
+    expect(screen.getByRole("status")).toHaveTextContent("可安全导出");
     expect(document.querySelector(".export-warning-list")).toBeNull();
     expect(document.querySelector(".export-status-pill.is-warning")).toBeNull();
   });
 
   it("html 含 internal marker (data-hft-id)：展示 .export-status-pill.is-warning，下载按钮 disabled", () => {
     renderDialog({ html: '<div data-hft-id="x">x</div>' });
+    expect(screen.getByRole("dialog", { name: "导出前预览" })).toHaveAttribute("data-state", "blocked");
     expect(document.querySelector(".export-status-pill.is-warning")).not.toBeNull();
     const downloadBtn = screen.getByRole("button", { name: /下载 edited-page\.html/ });
     expect(downloadBtn).toBeDisabled();
@@ -44,6 +50,8 @@ describe("ExportPreviewDialog — warnings wiring", () => {
     const list = document.querySelector(".export-warning-list");
     expect(list).not.toBeNull();
     expect(list?.textContent).toContain("非阻塞提示：页面结构较复杂");
+    expect(screen.getByRole("dialog", { name: "导出前预览" })).toHaveAttribute("data-state", "warning");
+    expect(document.querySelector(".export-status-pill")).toHaveTextContent("可导出，但建议复核提示");
     const downloadBtn = screen.getByRole("button", { name: /下载 edited-page\.html/ });
     expect(downloadBtn).not.toBeDisabled();
   });
@@ -75,5 +83,15 @@ describe("ExportPreviewDialog — warnings wiring", () => {
     expect(onCopy).toHaveBeenCalledTimes(1);
     expect(onClose).toHaveBeenCalledTimes(1);
     expect(onDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it("点击弹层外的遮罩会关闭，但点击弹层内部不会误关闭", () => {
+    const { onClose } = renderDialog();
+    fireEvent.mouseDown(screen.getByRole("dialog", { name: "导出前预览" }));
+    expect(onClose).not.toHaveBeenCalled();
+
+    const backdrop = document.querySelector(".dialog-backdrop") as HTMLElement;
+    fireEvent.mouseDown(backdrop);
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

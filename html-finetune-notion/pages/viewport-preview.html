@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Viewport Preview - HTML FineTune</title>
+    <style id="theme-vars">
+/* ════════════════════════════════════════════════════════════
+   Notion-style brand CSS — html-finetune-notion
+   ════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --color-n-bg-base:        #ffffff;
+  --color-n-bg-elevated:    #ffffff;
+  --color-n-bg-subtle:      #fbfbfa;
+  --color-n-bg-hover:       #f1f1f0;
+  --color-n-bg-sidebar:     #f7f6f3;
+  --color-n-bg-canvas:      #f7f6f3;
+  --color-n-bg-inverse:     #2f3437;
+  --color-n-fg-default:     #37352f;
+  --color-n-fg-secondary:   #787774;
+  --color-n-fg-tertiary:    #9b9a97;
+  --color-n-fg-disabled:    #c4c4c2;
+  --color-n-fg-link:        #2383e2;
+  --color-n-fg-onbrand:     #ffffff;
+  --color-n-brand:          #2383e2;
+  --color-n-brand-hover:    #1a72cf;
+  --color-n-brand-active:   #1761b3;
+  --color-n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --color-n-success:        #0f7b0f;
+  --color-n-warning:        #cb912f;
+  --color-n-danger:         #e03e3e;
+  --color-n-border-default: #e9e9e7;
+  --color-n-border-strong:  #d3d3d0;
+  --color-n-border-focus:   rgba(35, 131, 226, 0.40);
+  --color-n-ring-focus-out: rgba(35, 131, 226, 0.40);
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+  --n-ease: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast: 120ms;
+  --n-duration-base: 180ms;
+  --n-duration-slow: 240ms;
+}
+
+:root {
+  /* surface */
+  --n-bg-base:        #ffffff;
+  --n-bg-elevated:    #ffffff;
+  --n-bg-subtle:      #fbfbfa;
+  --n-bg-hover:       #f1f1f0;
+  --n-bg-sidebar:     #f7f6f3;
+  --n-bg-canvas:      #f7f6f3;
+  --n-bg-inverse:     #2f3437;
+
+  /* text */
+  --n-fg-default:     #37352f;
+  --n-fg-secondary:   #787774;
+  --n-fg-tertiary:    #9b9a97;
+  --n-fg-disabled:    #c4c4c2;
+  --n-fg-link:        #2383e2;
+  --n-fg-onbrand:     #ffffff;
+
+  /* brand & accent */
+  --n-brand:          #2383e2;
+  --n-brand-hover:    #1a72cf;
+  --n-brand-active:   #1761b3;
+  --n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --n-success:        #0f7b0f;
+  --n-warning:        #cb912f;
+  --n-danger:         #e03e3e;
+
+  /* border */
+  --n-border-default: #e9e9e7;
+  --n-border-strong:  #d3d3d0;
+  --n-border-focus:   rgba(35, 131, 226, 0.40);
+
+  /* radius */
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+
+  /* shadow */
+  --n-shadow-card:    0 1px 3px rgba(15,15,15,0.04), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-pop:     0 4px 12px rgba(15,15,15,0.05), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-overlay: 0 12px 32px rgba(15,15,15,0.14), 0 3px 8px rgba(15,15,15,0.08);
+  --n-ring-focus:     0 0 0 2px var(--n-bg-base), 0 0 0 4px var(--n-border-focus);
+
+  /* font */
+  --n-font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --n-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* motion */
+  --n-ease:           cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast:  120ms;
+  --n-duration-base:  180ms;
+  --n-duration-slow:  240ms;
+}
+
+.dark {
+  --n-bg-base:     #191919;
+  --n-bg-elevated: #202020;
+  --n-bg-subtle:   #252525;
+  --n-bg-sidebar:  #202020;
+  --n-bg-canvas:   #2c2c2c;
+  --n-bg-inverse:  #e8e8e8;
+  --n-fg-default:  rgba(255, 255, 255, 0.90);
+  --n-fg-secondary:rgba(255, 255, 255, 0.66);
+  --n-fg-tertiary: rgba(255, 255, 255, 0.45);
+  --n-fg-disabled: rgba(255, 255, 255, 0.25);
+  --n-fg-link:     #4dabf7;
+  --n-fg-onbrand:  #191919;
+  --n-brand:          #4dabf7;
+  --n-brand-hover:    #5bb8ff;
+  --n-brand-active:   #3d9be6;
+  --n-brand-disabled: rgba(77, 171, 247, 0.35);
+  --n-success:        #4caf50;
+  --n-warning:        #f5c542;
+  --n-danger:         #f44336;
+  --n-border-default: rgba(255, 255, 255, 0.10);
+  --n-border-strong:  rgba(255, 255, 255, 0.16);
+  --n-border-focus:   rgba(77, 171, 247, 0.45);
+  --n-shadow-card:    0 1px 3px rgba(0,0,0,0.40);
+  --n-shadow-pop:     0 6px 16px rgba(0,0,0,0.50);
+  --n-shadow-overlay: 0 12px 32px rgba(0,0,0,0.60);
+  --n-ring-focus:     0 0 0 2px #191919, 0 0 0 4px rgba(77,171,247,0.45);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style type="text/tailwindcss">
+  
+  @layer base {
+    body { background: var(--n-bg-base); color: var(--n-fg-default); }
+    td, th { @apply break-words; word-break: break-all; word-break: auto-phrase; }
+    th { @apply whitespace-nowrap; }
+  }
+    </style>
+    <style>
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      [data-icon] {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-mask-size: contain;
+        mask-size: contain;
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-position: center;
+        mask-position: center;
+        background-color: currentColor;
+      }
+      /* Toolbar button hover effect */
+      .tb-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        padding: 0 8px;
+        border-radius: var(--n-radius-md);
+        background: transparent;
+        color: var(--n-fg-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        border: 1px solid transparent;
+        font-family: var(--n-font-sans);
+        transition: background var(--n-duration-fast) var(--n-ease);
+      }
+      .tb-btn:hover {
+        background: var(--n-bg-hover);
+        border-color: var(--n-border-default);
+      }
+      .tb-btn:focus {
+        outline: 2px solid var(--n-border-focus);
+        outline-offset: -1px;
+      }
+      /* Viewport switcher segmented control */
+      .vp-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        height: 28px;
+        padding: 0 10px;
+        background: transparent;
+        color: var(--n-fg-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        font-family: var(--n-font-sans);
+        transition: background var(--n-duration-fast) var(--n-ease), color var(--n-duration-fast) var(--n-ease);
+      }
+      .vp-btn.active {
+        background: var(--n-bg-hover);
+        color: var(--n-fg-default);
+        border-radius: var(--n-radius-md);
+      }
+      .vp-btn:not(.active):hover {
+        color: var(--n-fg-default);
+      }
+      .vp-btn:focus {
+        outline: 2px solid var(--n-border-focus);
+        outline-offset: -1px;
+        border-radius: var(--n-radius-md);
+      }
+      /* Icon rail button */
+      .rail-btn {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 36px;
+        height: 36px;
+        margin: 2px 6px;
+        border-radius: var(--n-radius-md);
+        background: transparent;
+        border: none;
+        cursor: pointer;
+        color: var(--n-fg-secondary);
+        transition: background var(--n-duration-fast) var(--n-ease), color var(--n-duration-fast) var(--n-ease);
+      }
+      .rail-btn:hover {
+        background: var(--n-bg-hover);
+        color: var(--n-fg-default);
+      }
+      .rail-btn.active {
+        background: var(--n-bg-hover);
+        color: var(--n-fg-default);
+      }
+      .rail-btn:focus {
+        outline: 2px solid var(--n-border-focus);
+        outline-offset: -1px;
+      }
+    </style>
+</head>
+<body class="min-h-screen font-sans antialiased">
+    <main class="flex flex-col overflow-hidden" style="height:100vh; background: var(--n-bg-base); font-family: var(--n-font-sans);">
+
+        <!-- ═══════════ TOP BAR (56px) ═══════════ -->
+        <header class="flex items-center shrink-0 border-b" style="height:56px; padding:0 16px; gap:0; border-color: var(--n-border-default); background: var(--n-bg-base);">
+            <!-- Left: App icon + title -->
+            <div class="flex items-center gap-2 shrink-0" style="width:220px;">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="2" y="3" width="16" height="14" rx="3" stroke="var(--n-fg-secondary)" stroke-width="1.5"/>
+                    <line x1="6" y1="7" x2="14" y2="7" stroke="var(--n-fg-secondary)" stroke-width="1.2"/>
+                    <line x1="6" y1="10" x2="11" y2="10" stroke="var(--n-fg-secondary)" stroke-width="1.2"/>
+                    <line x1="6" y1="13" x2="13" y2="13" stroke="var(--n-fg-secondary)" stroke-width="1.2"/>
+                </svg>
+                <span style="font-size:14px; font-weight:600; color: var(--n-fg-default); line-height:1;">HTML FineTune</span>
+            </div>
+
+            <!-- Center: Viewport toolbar -->
+            <div class="flex-1 flex items-center justify-center gap-1">
+                <!-- Viewport switcher: Desktop / Tablet / Mobile -->
+                <div class="flex items-center" style="gap:0; margin-right:4px;">
+                    <button class="vp-btn" title="桌面端">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <rect x="1" y="2" width="12" height="8" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                            <path d="M4 12h6M7 10v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                        </svg>
+                        <span>桌面</span>
+                    </button>
+                    <button class="vp-btn" title="平板">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <rect x="2.5" y="1" width="9" height="12" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                            <circle cx="7" cy="11.5" r="0.6" fill="currentColor"/>
+                        </svg>
+                        <span>平板</span>
+                    </button>
+                    <button class="vp-btn active" title="移动端">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <rect x="3.5" y="1" width="7" height="12" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+                            <circle cx="7" cy="11.8" r="0.6" fill="currentColor"/>
+                        </svg>
+                        <span>移动端</span>
+                    </button>
+                </div>
+                <!-- Separator -->
+                <span style="width:1px; height:16px; background:var(--n-border-default); margin:0 4px;"></span>
+                <!-- Zoom Out -->
+                <button class="tb-btn" title="缩小">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2"/>
+                        <line x1="9.5" y1="9.5" x2="12.5" y2="12.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                        <line x1="4" y1="6" x2="8" y2="6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <!-- Zoom Level -->
+                <span style="font-size:12px; font-weight:500; color:var(--n-fg-secondary); min-width:40px; text-align:center; font-family:var(--n-font-sans);">100%</span>
+                <!-- Zoom In -->
+                <button class="tb-btn" title="放大">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <circle cx="6" cy="6" r="4.5" stroke="currentColor" stroke-width="1.2"/>
+                        <line x1="9.5" y1="9.5" x2="12.5" y2="12.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                        <line x1="4" y1="6" x2="8" y2="6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                        <line x1="6" y1="4" x2="6" y2="8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <!-- Separator -->
+                <span style="width:1px; height:16px; background:var(--n-border-default); margin:0 4px;"></span>
+                <!-- Fit -->
+                <button class="tb-btn" title="适应屏幕">
+                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                        <rect x="1.5" y="1.5" width="11" height="11" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                        <path d="M1.5 1.5l3 3M12.5 1.5l-3 3M1.5 12.5l3-3M12.5 12.5l-3-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                    <span>适应</span>
+                </button>
+            </div>
+
+            <!-- Right: Settings / Help -->
+            <div class="flex items-center gap-1 shrink-0 justify-end" style="width:220px;">
+                <button class="flex items-center justify-center" style="width:28px; height:28px; border-radius:var(--n-radius-md); background:transparent; cursor:pointer; border:none; transition:background var(--n-duration-fast) var(--n-ease);" onmouseenter="this.style.background='var(--n-bg-hover)'" onmouseleave="this.style.background='transparent'" onfocus="this.style.outline='2px solid var(--n-border-focus)';this.style.outlineOffset='-1px'" onblur="this.style.outline='none'">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="3" stroke="var(--n-fg-secondary)" stroke-width="1.2"/>
+                        <path d="M8 1.5v1.2M8 13.3v1.2M1.5 8h1.2M13.3 8h1.2M3.4 3.4l.85.85M11.75 11.75l.85.85M3.4 12.6l.85-.85M11.75 4.25l.85-.85" stroke="var(--n-fg-secondary)" stroke-width="1" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button class="flex items-center justify-center" style="width:28px; height:28px; border-radius:var(--n-radius-md); background:transparent; cursor:pointer; border:none; transition:background var(--n-duration-fast) var(--n-ease);" onmouseenter="this.style.background='var(--n-bg-hover)'" onmouseleave="this.style.background='transparent'" onfocus="this.style.outline='2px solid var(--n-border-focus)';this.style.outlineOffset='-1px'" onblur="this.style.outline='none'">
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                        <circle cx="8" cy="8" r="6" stroke="var(--n-fg-secondary)" stroke-width="1.2"/>
+                        <path d="M8 5.5v-.01M8 8.5v3" stroke="var(--n-fg-secondary)" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- ═══════════ THREE-COLUMN BODY ═══════════ -->
+        <div class="flex flex-1 overflow-hidden">
+
+            <!-- ═══ LEFT PANEL (48px icon rail) ═══ -->
+            <aside class="flex flex-col shrink-0 border-r items-center py-2" style="width:48px; background: var(--n-bg-sidebar); border-color: var(--n-border-default);">
+                <button class="rail-btn" title="文件">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M3 4.5A1.5 1.5 0 0 1 4.5 3h5l3.5 3.5v6.5A1.5 1.5 0 0 1 11.5 14h-7A1.5 1.5 0 0 1 3 12.5v-8z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                        <path d="M9.5 3v3.5H13" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="rail-btn active" title="代码">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M6 6l-3 3 3 3M12 6l3 3-3 3M10.5 4.5l-3 9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="rail-btn" title="搜索">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.2"/>
+                        <line x1="11.5" y1="11.5" x2="15" y2="15" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button class="rail-btn" title="图层">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M9 2L2 6l7 4 7-4-7-4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                        <path d="M2 9l7 4 7-4M2 12l7 4 7-4" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <div style="flex:1;"></div>
+                <button class="rail-btn" title="设置">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <circle cx="9" cy="9" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+                        <path d="M9 1.5v2M9 14.5v2M1.5 9h2M14.5 9h2M3.4 3.4l1.4 1.4M13.2 13.2l1.4 1.4M3.4 14.6l1.4-1.4M13.2 4.8l1.4-1.4" stroke="currentColor" stroke-width="1" stroke-linecap="round"/>
+                    </svg>
+                </button>
+            </aside>
+
+            <!-- ═══ CENTER STAGE ═══ -->
+            <section class="flex-1 flex flex-col items-center justify-center overflow-auto" style="background: var(--n-bg-canvas); padding:24px;">
+
+                <!-- Phone frame -->
+                <div style="position:relative; width:399px; height:691px; border-radius:36px; background:var(--n-bg-inverse); padding:12px; box-shadow: var(--n-shadow-overlay);">
+                    <!-- Screen (white) -->
+                    <div style="width:375px; height:667px; border-radius:24px; background:var(--n-bg-base); overflow:hidden; position:relative;">
+
+                        <!-- Notch (24x24px black rounded pill, centered at top) -->
+                        <div style="position:absolute; top:8px; left:50%; margin-left:-12px; width:24px; height:24px; background:#000; border-radius:12px; z-index:10;"></div>
+
+                        <!-- Status bar (20px) -->
+                        <div style="height:20px; display:flex; align-items:center; justify-content:space-between; padding:0 20px 0 18px; position:relative; z-index:5;">
+                            <span style="font-size:11px; font-weight:600; color:var(--n-fg-default); font-family:var(--n-font-sans); margin-top:4px;">9:41</span>
+                            <div style="display:flex; align-items:center; gap:4px; margin-top:4px;">
+                                <!-- Signal -->
+                                <svg width="14" height="8" viewBox="0 0 14 8" fill="none">
+                                    <rect x="0" y="5" width="2" height="3" rx="0.5" fill="var(--n-fg-default)"/>
+                                    <rect x="3" y="3.5" width="2" height="4.5" rx="0.5" fill="var(--n-fg-default)"/>
+                                    <rect x="6" y="2" width="2" height="6" rx="0.5" fill="var(--n-fg-default)"/>
+                                    <rect x="9" y="0.5" width="2" height="7.5" rx="0.5" fill="var(--n-fg-default)"/>
+                                </svg>
+                                <!-- WiFi -->
+                                <svg width="12" height="9" viewBox="0 0 12 9" fill="none">
+                                    <path d="M1 3.5a7 7 0 0 1 10 0" stroke="var(--n-fg-default)" stroke-width="1.2" stroke-linecap="round"/>
+                                    <path d="M3 5.5a4 4 0 0 1 6 0" stroke="var(--n-fg-default)" stroke-width="1.2" stroke-linecap="round"/>
+                                    <circle cx="6" cy="7.5" r="0.8" fill="var(--n-fg-default)"/>
+                                </svg>
+                                <!-- Battery -->
+                                <svg width="20" height="9" viewBox="0 0 20 9" fill="none">
+                                    <rect x="0.5" y="0.5" width="16" height="8" rx="1.5" stroke="var(--n-fg-default)" stroke-width="0.8"/>
+                                    <rect x="2" y="2" width="13" height="5" rx="0.8" fill="var(--n-fg-default)"/>
+                                    <rect x="17.5" y="3" width="1.5" height="3" rx="0.5" fill="var(--n-fg-default)"/>
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Mobile nav bar -->
+                        <nav class="flex items-center shrink-0" style="height:44px; padding:0 16px; border-bottom:1px solid var(--n-border-default); background:var(--n-bg-base);">
+                            <button style="display:flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:var(--n-radius-sm); background:transparent; border:none; cursor:pointer; color:var(--n-fg-default); margin-right:8px;" onmouseenter="this.style.background='var(--n-bg-hover)'" onmouseleave="this.style.background='transparent'">
+                                <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                                    <line x1="3" y1="5" x2="15" y2="5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                                    <line x1="3" y1="9" x2="15" y2="9" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                                    <line x1="3" y1="13" x2="11" y2="13" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                                </svg>
+                            </button>
+                            <span style="font-size:15px; font-weight:600; color:var(--n-fg-default); font-family:var(--n-font-sans); flex:1; text-align:center; margin-right:32px;">我的网站</span>
+                        </nav>
+
+                        <!-- Mobile content: stacked cards -->
+                        <div style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:12px; background:var(--n-bg-subtle);">
+
+                            <!-- Hero card -->
+                            <div style="background:var(--n-bg-elevated); border:1px solid var(--n-border-default); border-radius:var(--n-radius-lg); padding:20px 16px; text-align:center;">
+                                <div style="width:56px; height:56px; border-radius:var(--n-radius-lg); background:var(--n-bg-subtle); border:1px solid var(--n-border-default); margin:0 auto 12px; display:flex; align-items:center; justify-content:center;">
+                                    <svg width="24" height="24" viewBox="0 0 48 48" fill="none">
+                                        <circle cx="24" cy="24" r="18" stroke="var(--n-fg-tertiary)" stroke-width="1.5" stroke-dasharray="4 4"/>
+                                        <circle cx="24" cy="24" r="8" stroke="var(--n-fg-tertiary)" stroke-width="1.5"/>
+                                    </svg>
+                                </div>
+                                <div style="font-size:16px; font-weight:600; color:var(--n-fg-default); font-family:var(--n-font-sans); margin-bottom:4px;">欢迎访问</div>
+                                <div style="font-size:12px; color:var(--n-fg-secondary); font-family:var(--n-font-sans); margin-bottom:14px; line-height:1.5;">一起构建更好的网络体验</div>
+                                <div style="display:inline-flex; align-items:center; justify-content:center; height:32px; padding:0 20px; border-radius:var(--n-radius-md); background:var(--n-brand);">
+                                    <span style="font-size:12px; font-weight:600; color:var(--n-fg-onbrand); font-family:var(--n-font-sans);">了解更多</span>
+                                </div>
+                            </div>
+
+                            <!-- Feature card 1 -->
+                            <div style="background:var(--n-bg-elevated); border:1px solid var(--n-border-default); border-radius:var(--n-radius-lg); padding:14px; display:flex; gap:12px; align-items:flex-start;">
+                                <div style="width:36px; height:36px; border-radius:var(--n-radius-md); background:var(--n-bg-subtle); border:1px solid var(--n-border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                        <rect x="3" y="4" width="14" height="11" rx="1.5" stroke="var(--n-fg-secondary)" stroke-width="1.2"/>
+                                        <path d="M7 8h6M7 11h4" stroke="var(--n-fg-secondary)" stroke-width="1" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <div style="flex:1; min-width:0;">
+                                    <div style="font-size:13px; font-weight:600; color:var(--n-fg-default); font-family:var(--n-font-sans); margin-bottom:2px;">响应式设计</div>
+                                    <div style="font-size:12px; color:var(--n-fg-secondary); font-family:var(--n-font-sans); line-height:1.4;">全设备完美适配，手机到桌面流畅体验</div>
+                                </div>
+                            </div>
+
+                            <!-- Feature card 2 -->
+                            <div style="background:var(--n-bg-elevated); border:1px solid var(--n-border-default); border-radius:var(--n-radius-lg); padding:14px; display:flex; gap:12px; align-items:flex-start;">
+                                <div style="width:36px; height:36px; border-radius:var(--n-radius-md); background:var(--n-bg-subtle); border:1px solid var(--n-border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                        <circle cx="10" cy="10" r="6" stroke="var(--n-fg-secondary)" stroke-width="1.2"/>
+                                        <path d="M7 10h6M10 7v6" stroke="var(--n-fg-secondary)" stroke-width="1" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <div style="flex:1; min-width:0;">
+                                    <div style="font-size:13px; font-weight:600; color:var(--n-fg-default); font-family:var(--n-font-sans); margin-bottom:2px;">快速开发</div>
+                                    <div style="font-size:12px; color:var(--n-fg-secondary); font-family:var(--n-font-sans); line-height:1.4;">即时预览更新，所见即所得的编辑体验</div>
+                                </div>
+                            </div>
+
+                            <!-- Feature card 3 -->
+                            <div style="background:var(--n-bg-elevated); border:1px solid var(--n-border-default); border-radius:var(--n-radius-lg); padding:14px; display:flex; gap:12px; align-items:flex-start;">
+                                <div style="width:36px; height:36px; border-radius:var(--n-radius-md); background:var(--n-bg-subtle); border:1px solid var(--n-border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                                    <svg width="18" height="18" viewBox="0 0 20 20" fill="none">
+                                        <path d="M3 14V6l7 4 7-4v8a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z" stroke="var(--n-fg-secondary)" stroke-width="1.2" stroke-linejoin="round"/>
+                                    </svg>
+                                </div>
+                                <div style="flex:1; min-width:0;">
+                                    <div style="font-size:13px; font-weight:600; color:var(--n-fg-default); font-family:var(--n-font-sans); margin-bottom:2px;">自动导出</div>
+                                    <div style="font-size:12px; color:var(--n-fg-secondary); font-family:var(--n-font-sans); line-height:1.4;">一键生成部署，快速上线你的作品</div>
+                                </div>
+                            </div>
+
+                            <!-- Social proof card -->
+                            <div style="background:var(--n-bg-elevated); border:1px solid var(--n-border-default); border-radius:var(--n-radius-lg); padding:14px; display:flex; align-items:center; gap:10px;">
+                                <div style="display:flex; align-items:center;">
+                                    <span style="display:inline-block; width:24px; height:24px; border-radius:50%; background:var(--n-bg-hover); border:2px solid var(--n-bg-elevated);"></span>
+                                    <span style="display:inline-block; width:24px; height:24px; border-radius:50%; background:var(--n-border-default); border:2px solid var(--n-bg-elevated); margin-left:-8px;"></span>
+                                    <span style="display:inline-block; width:24px; height:24px; border-radius:50%; background:var(--n-fg-tertiary); border:2px solid var(--n-bg-elevated); margin-left:-8px;"></span>
+                                </div>
+                                <div style="font-size:11px; color:var(--n-fg-secondary); font-family:var(--n-font-sans); line-height:1.4;">
+                                    <span style="color:var(--n-fg-default); font-weight:500;">120+ 用户</span> 正在使用
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <!-- Home indicator (bottom bar) -->
+                        <div style="height:20px; display:flex; align-items:center; justify-content:center; background:var(--n-bg-base);">
+                            <div style="width:100px; height:4px; border-radius:2px; background:var(--n-border-strong);"></div>
+                        </div>
+
+                    </div><!-- /screen -->
+                </div><!-- /phone frame -->
+
+                <!-- Floating toolbar below phone -->
+                <div class="flex items-center shrink-0" style="margin-top:16px; height:32px; padding:0 6px; background:var(--n-bg-elevated); border:1px solid var(--n-border-default); border-radius:var(--n-radius-md); box-shadow: var(--n-shadow-pop); gap:2px;">
+                    <!-- Rotate device -->
+                    <button class="tb-btn" title="旋转设备" style="height:28px;">
+                        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                            <path d="M2 7a5 5 0 0 1 9-3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <path d="M11 2v2h-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 7a5 5 0 0 1-9 3" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+                            <path d="M3 12v-2h2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <rect x="5.5" y="5.5" width="3" height="5" rx="0.5" stroke="currentColor" stroke-width="1" transform="rotate(-90 7 8)"/>
+                        </svg>
+                    </button>
+                    <!-- Separator -->
+                    <span style="width:1px; height:14px; background:var(--n-border-default); margin:0 3px;"></span>
+                    <!-- Dimensions -->
+                    <span style="font-size:11px; font-weight:500; color:var(--n-fg-secondary); font-family:var(--n-font-mono); padding:0 6px; user-select:none;">375 x 667</span>
+                    <!-- Separator -->
+                    <span style="width:1px; height:14px; background:var(--n-border-default); margin:0 3px;"></span>
+                    <!-- Zoom out -->
+                    <button class="tb-btn" title="缩小" style="height:28px;">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                    <!-- Zoom in -->
+                    <button class="tb-btn" title="放大" style="height:28px;">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                            <line x1="2" y1="6" x2="10" y2="6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                            <line x1="6" y1="2" x2="6" y2="10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+            </section>
+
+            <!-- ═══ RIGHT PANEL (48px icon rail) ═══ -->
+            <aside class="flex flex-col shrink-0 border-l items-center py-2" style="width:48px; background: var(--n-bg-sidebar); border-color: var(--n-border-default);">
+                <button class="rail-btn" title="选择">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M4 2l10 6-5 1.5L7.5 14 4 2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+                <button class="rail-btn active" title="排版">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M4 5h10M4 9h7M4 13h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+                    </svg>
+                </button>
+                <button class="rail-btn" title="颜色">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.2"/>
+                        <path d="M9 3v12M3 9h12" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 2"/>
+                        <circle cx="9" cy="5" r="1" fill="var(--n-brand)"/>
+                    </svg>
+                </button>
+                <button class="rail-btn" title="间距">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="3" y="3" width="4" height="4" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+                        <rect x="11" y="3" width="4" height="4" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+                        <rect x="3" y="11" width="4" height="4" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+                        <rect x="11" y="11" width="4" height="4" rx="0.5" stroke="currentColor" stroke-width="1.2"/>
+                        <path d="M7 5h4M5 7v4M13 7v4M7 13h4" stroke="currentColor" stroke-width="0.8" stroke-dasharray="1.5 1.5"/>
+                    </svg>
+                </button>
+                <button class="rail-btn" title="边框">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <rect x="2.5" y="2.5" width="13" height="13" rx="1" stroke="currentColor" stroke-width="1.2"/>
+                        <rect x="5.5" y="5.5" width="7" height="7" rx="0.5" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 1.5"/>
+                    </svg>
+                </button>
+                <div style="flex:1;"></div>
+                <button class="rail-btn" title="图层面板">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M9 2L2 6l7 4 7-4-7-4z" stroke="current

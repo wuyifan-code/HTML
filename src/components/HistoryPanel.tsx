@@ -1,76 +1,141 @@
-import { memo } from "react";
-import { History, RotateCcw, RotateCw, X } from "lucide-react";
+import { memo, useCallback, useEffect, useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
+import { X, Trash2 } from "lucide-react";
 import type { HistoryDisplayItem } from "../utils/historySummary";
-import { Tooltip } from "./Tooltip";
 
 interface HistoryPanelProps {
   items: HistoryDisplayItem[];
-  canUndo: boolean;
-  canRedo: boolean;
-  onUndo: () => void;
-  onRedo: () => void;
   onJumpTo: (index: number) => void;
   onClose: () => void;
+  onClearAll: () => void;
 }
 
 function HistoryPanelImpl({
   items,
-  canUndo,
-  canRedo,
-  onUndo,
-  onRedo,
   onJumpTo,
   onClose,
+  onClearAll,
 }: HistoryPanelProps) {
+  const dialogRef = useRef<HTMLElement | null>(null);
+  const closeButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+  }, []);
+
+  const handleKeyDown = useCallback((event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      event.stopPropagation();
+      onClose();
+      return;
+    }
+
+    if (event.key !== "Tab") return;
+    const focusable = Array.from(
+      dialogRef.current?.querySelectorAll<HTMLElement>("button:not([disabled])") ?? []
+    );
+    if (focusable.length === 0) return;
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }, [onClose]);
+
   return (
-    <aside className="history-popover" aria-label="撤销历史面板">
-      <div className="history-header">
-        <div className="panel-title">
-          <History size={17} strokeWidth={1.75} />
-          <span>历史</span>
+    <section
+      ref={dialogRef}
+      id="history-drawer"
+      className="history-drawer"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="history-drawer-title"
+      aria-describedby="history-drawer-subtitle"
+      onKeyDown={handleKeyDown}
+    >
+      <div className="history-drawer-head">
+        <div>
+          <div className="history-drawer-head__top">
+            <span id="history-drawer-title">History</span>
+            <button
+              ref={closeButtonRef}
+              className="history-drawer-close"
+              type="button"
+              onClick={onClose}
+              aria-label="关闭历史记录"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <span id="history-drawer-subtitle" className="history-drawer-head__sub">最近</span>
         </div>
-        <Tooltip content="关闭" placement="bottom">
-          <button className="icon-button" type="button" onClick={onClose} aria-label="关闭历史面板">
-            <X size={16} strokeWidth={1.75} />
-          </button>
-        </Tooltip>
       </div>
 
-      <div className="history-actions">
-        <button className="ghost-button compact-action" type="button" onClick={onUndo} disabled={!canUndo}>
-          <RotateCcw size={15} strokeWidth={1.75} />
-          撤销
-        </button>
-        <button className="ghost-button compact-action" type="button" onClick={onRedo} disabled={!canRedo}>
-          <RotateCw size={15} strokeWidth={1.75} />
-          重做
-        </button>
-      </div>
-
-      <div className="history-list">
+      <div className="history-drawer-body">
         {items.length === 0 ? (
-          <div className="history-empty">还没有历史记录</div>
+          <div className="history-drawer-empty">还没有历史记录</div>
         ) : (
           items.map((item) => (
-            <button
+            <HistoryRow
               key={`${item.index}-${item.title}`}
-              className={`history-item${item.isCurrent ? " history-item-current" : ""}`}
-              type="button"
-              onClick={() => onJumpTo(item.index)}
-              aria-current={item.isCurrent ? "step" : undefined}
-            >
-              <span className="history-index">{item.index + 1}</span>
-              <span className="history-copy">
-                <strong>{item.title}</strong>
-                <small>{item.detail}</small>
-              </span>
-              {item.isCurrent ? <span className="history-current-mark">当前</span> : null}
-            </button>
+              item={item}
+              onSelect={onJumpTo}
+            />
           ))
         )}
       </div>
-    </aside>
+
+      {items.length > 1 && (
+        <div className="history-drawer-footer">
+          <button
+            className="history-drawer-clear-btn"
+            type="button"
+            onClick={onClearAll}
+          >
+            <Trash2 size={12} />
+            Clear all history
+          </button>
+        </div>
+      )}
+    </section>
   );
 }
+
+interface HistoryRowProps {
+  item: HistoryDisplayItem;
+  onSelect: (index: number) => void;
+}
+
+const HistoryRow = memo(function HistoryRow({ item, onSelect }: HistoryRowProps) {
+  const handleClick = useCallback(() => {
+    onSelect(item.index);
+  }, [onSelect, item.index]);
+
+  return (
+    <button
+      className={`history-drawer-row${item.isCurrent ? " is-current" : ""}`}
+      type="button"
+      onClick={handleClick}
+      aria-current={item.isCurrent ? "step" : undefined}
+      aria-label={`${item.timeLabel} ${item.dateLabel} ${item.title} ${item.category}${item.isCurrent ? " 当前版本" : ""}`}
+      title={item.detail || item.title}
+    >
+      <span className="history-drawer-row__indicator" />
+      <div className="history-drawer-row__time">
+        <span className="history-drawer-row__time-value">{item.timeLabel}</span>
+        <span className="history-drawer-row__date">{item.dateLabel}</span>
+      </div>
+      <span className="history-drawer-row__desc">{item.title}</span>
+      <span className="history-drawer-row__badge">
+        {item.category}
+      </span>
+    </button>
+  );
+});
 
 export const HistoryPanel = memo(HistoryPanelImpl);

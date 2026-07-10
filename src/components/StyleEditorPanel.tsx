@@ -7,6 +7,7 @@ import { ColorField } from "./ColorField";
 import type { EditableAttributes, EditableEffects, EditableStyleKey, SelectedElementSnapshot } from "../types/editor";
 import { FONT_SELECT_OPTIONS, normalizeFontValue } from "../utils/fontLibrary";
 import { PretextMeasureBadge } from "./PretextMeasureBadge";
+import { useLabelDrag } from "../hooks/useLabelDrag";
 
 interface StyleEditorPanelProps {
   selectedElement: SelectedElementSnapshot | null;
@@ -90,27 +91,32 @@ export function StyleEditorPanelImpl({
       </div>
 
       {!selectedElement ? (
-        <div className="empty-state">
-          <div className="empty-state-illustration" aria-hidden="true">
-            <div className="empty-doc">
-              <Type size={20} strokeWidth={1.75} />
-              <span />
-              <span />
-            </div>
-            <div className="empty-arrow" />
-            <div className="empty-controls">
-              <MousePointerClick size={18} strokeWidth={1.75} />
-              <span />
-              <span />
-            </div>
+        <>
+          <div className="nw-inspector-header">
+            <span className="nw-inspector-title">Inspector</span>
           </div>
-          <h2>请选择一个元素</h2>
-          <ol>
-            <li>在预览区点击任意文字元素</li>
-            <li>在右侧面板调整内容和样式</li>
-            <li>实时查看修改效果</li>
-          </ol>
-        </div>
+          <div className="empty-state">
+            <div className="empty-state-illustration" aria-hidden="true">
+              <div className="empty-doc">
+                <Type size={20} strokeWidth={1.75} />
+                <span />
+                <span />
+              </div>
+              <div className="empty-arrow" />
+              <div className="empty-controls">
+                <MousePointerClick size={18} strokeWidth={1.75} />
+                <span />
+                <span />
+              </div>
+            </div>
+            <h2>请选择一个元素</h2>
+            <ol>
+              <li>在预览区点击任意文字元素</li>
+              <li>在右侧面板调整内容和样式</li>
+              <li>实时查看修改效果</li>
+            </ol>
+          </div>
+        </>
       ) : inspectorTab === "computed" ? (
         <ComputedInspector selectedElement={selectedElement} />
       ) : inspectorTab === "events" ? (
@@ -119,337 +125,600 @@ export function StyleEditorPanelImpl({
         <div className="inspector-content">
 
           {selectedElement.canEditText ? (
-            <fieldset className="inspector-group">
-              <legend>内容</legend>
-              <label className="field field-full">
-                <span>文本</span>
-                <textarea
-                  className="text-field compact-textarea"
-                  value={selectedElement.text}
-                  placeholder="输入文本内容"
-                  onChange={(event) => onTextChange(event.target.value)}
-                />
-              </label>
-              {/* Pretext: 零 DOM 回流的文本尺寸预测 */}
-              <PretextMeasureBadge
-                text={selectedElement.text}
-                font={buildPretextFont(selectedElement.styles)}
-                maxWidth={parseIntValue(selectedElement.styles.width) || 320}
-                lineHeight={parseIntValue(selectedElement.styles.lineHeight) || 22}
-              />
-            </fieldset>
+            <div className="nw-card nw-card-brand">
+              <div className="nw-card-title">内容</div>
+              <div className="nw-card-rows">
+                <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                  <label className="field field-full">
+                    <span>文本</span>
+                    <textarea
+                      className="text-field compact-textarea"
+                      value={selectedElement.text}
+                      placeholder="输入文本内容"
+                      onChange={(event) => onTextChange(event.target.value)}
+                    />
+                  </label>
+                  <PretextMeasureBadge
+                    text={selectedElement.text}
+                    font={buildPretextFont(selectedElement.styles)}
+                    maxWidth={parseIntValue(selectedElement.styles.width) || 320}
+                    lineHeight={parseIntValue(selectedElement.styles.lineHeight) || 22}
+                  />
+                </fieldset>
+              </div>
+            </div>
           ) : null}
 
           {!isMediaElement(selectedElement) ? (
-            <fieldset className="inspector-group">
-              <legend>排版</legend>
-              <label className="field field-full">
-                <span>字体</span>
-                <CustomSelect
-                  value={selectedElement.styles.fontFamily}
-                  options={fontSelectOptions}
-                  matchValue={(opt, current) => normalizeFontValue(current) === opt.value}
-                  onChange={(val) => onStyleChange("fontFamily", val)}
-                />
-              </label>
+            <div className="nw-card nw-card-brand" style={{borderLeft:'3px solid var(--n-brand)'}}>
+              <div className="nw-card-title">排版</div>
+              <div style={{fontSize:'var(--n-text-xs)', color:'var(--n-fg-tertiary)', padding:'0 12px 6px', fontFamily:'var(--n-font-sans)'}}>字体 / 字号 / 字重 / 行高 / 字间距 / 对齐</div>
+              <div className="nw-card-rows">
+                <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                  <label className="field field-full">
+                    <span>字体</span>
+                    <CustomSelect
+                      value={selectedElement.styles.fontFamily}
+                      options={fontSelectOptions}
+                      matchValue={(opt, current) => normalizeFontValue(current) === opt.value}
+                      onChange={(val) => onStyleChange("fontFamily", val)}
+                    />
+                  </label>
 
-            <div className="field-grid two-col">
-              <NumericUnitField
-                label="字号"
-                value={selectedElement.styles.fontSize}
-                min={8}
-                max={180}
-                onChange={(value) => onStyleChange("fontSize", toPx(value))}
-              />
-              <label className="field">
-                <span>字重</span>
-                <CustomSelect
-                  value={selectedElement.styles.fontWeight || "400"}
-                  options={weightSelectOptions}
-                  onChange={(val) => onStyleChange("fontWeight", val)}
-                />
-              </label>
-            </div>
+                  <div className="field-grid two-col">
+                    <NumericUnitField
+                      label="字号"
+                      value={selectedElement.styles.fontSize}
+                      min={8}
+                      max={180}
+                      onChange={(value) => onStyleChange("fontSize", toPx(value))}
+                    />
+                    <label className="field">
+                      <span>字重</span>
+                      <CustomSelect
+                        value={selectedElement.styles.fontWeight || "400"}
+                        options={weightSelectOptions}
+                        onChange={(val) => onStyleChange("fontWeight", val)}
+                      />
+                    </label>
+                  </div>
 
-            <div className="field-grid two-col">
-              <label className="field">
-                <span>行高</span>
-                <div className="unit-input">
-                  <input
-                    type="text"
-                    placeholder="normal 或 1.5"
-                    className={!selectedElement.styles.lineHeight ? "line-height-input" : undefined}
-                    value={selectedElement.styles.lineHeight || ""}
-                    onChange={(event) => onStyleChange("lineHeight", event.target.value)}
+                  <div className="field-grid two-col">
+                    <label className="field">
+                      <span>行高</span>
+                      <div className="unit-input">
+                        <input
+                          type="text"
+                          placeholder="normal 或 1.5"
+                          className={!selectedElement.styles.lineHeight ? "line-height-input" : undefined}
+                          value={selectedElement.styles.lineHeight || ""}
+                          onChange={(event) => onStyleChange("lineHeight", event.target.value)}
+                        />
+                        <small>px</small>
+                      </div>
+                    </label>
+                    <NumericUnitField
+                      label="字间距"
+                      value={selectedElement.styles.letterSpacing}
+                      step={0.1}
+                      onChange={(value) => onStyleChange("letterSpacing", toPx(value))}
+                    />
+                  </div>
+
+                  <label className="field field-full">
+                    <span>文本对齐</span>
+                    <CustomSelect
+                      value={selectedElement.styles.textAlign}
+                      options={textAlignSelectOptions}
+                      matchValue={(opt, current) => normalizeTextAlign(current) === opt.value}
+                      onChange={(val) => onStyleChange("textAlign", val)}
+                    />
+                  </label>
+
+                  <ColorField
+                    label="颜色"
+                    value={selectedElement.styles.color}
+                    onChange={(value) => onStyleChange("color", value)}
+                    full
                   />
-                  <small>px</small>
-                </div>
-              </label>
-              <NumericUnitField
-                label="字间距"
-                value={selectedElement.styles.letterSpacing}
-                step={0.1}
-                onChange={(value) => onStyleChange("letterSpacing", toPx(value))}
-              />
+                </fieldset>
+              </div>
             </div>
-
-            <label className="field field-full">
-              <span>文本对齐</span>
-              <CustomSelect
-                value={selectedElement.styles.textAlign}
-                options={textAlignSelectOptions}
-                matchValue={(opt, current) => normalizeTextAlign(current) === opt.value}
-                onChange={(val) => onStyleChange("textAlign", val)}
-              />
-            </label>
-
-            <ColorField
-              label="颜色"
-              value={selectedElement.styles.color}
-              onChange={(value) => onStyleChange("color", value)}
-              full
-            />
-            </fieldset>
           ) : null}
 
           {isImageElement(selectedElement) ? (
-            <fieldset className="inspector-group">
-              <legend>图片</legend>
-              <label className="field field-full">
-                <span>图片链接</span>
-                <input
-                  type="text"
-                  placeholder="https://example.com/image.jpg"
-                  value={selectedElement.attributes.src}
-                  onChange={(event) => onAttributeChange("src", event.target.value)}
-                />
-              </label>
-              <label className="field field-full">
-                <span>替代文本</span>
-                <input
-                  type="text"
-                  placeholder="描述这张图片"
-                  value={selectedElement.attributes.alt}
-                  onChange={(event) => onAttributeChange("alt", event.target.value)}
-                />
-              </label>
-              <div className="field-grid two-col">
-                <NumericUnitField
-                  label="宽度"
-                  value={selectedElement.styles.width}
-                  min={0}
-                  onChange={(value) => onStyleChange("width", toPx(value))}
-                />
-                <NumericUnitField
-                  label="高度"
-                  value={selectedElement.styles.height}
-                  min={0}
-                  onChange={(value) => onStyleChange("height", toPx(value))}
-                />
+            <div className="nw-card">
+              <div className="nw-card-title">图片</div>
+              <div className="nw-card-rows">
+                <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                  <label className="field field-full">
+                    <span>图片链接</span>
+                    <input
+                      type="text"
+                      placeholder="https://example.com/image.jpg"
+                      value={selectedElement.attributes.src}
+                      onChange={(event) => onAttributeChange("src", event.target.value)}
+                    />
+                  </label>
+                  <label className="field field-full">
+                    <span>替代文本</span>
+                    <input
+                      type="text"
+                      placeholder="描述这张图片"
+                      value={selectedElement.attributes.alt}
+                      onChange={(event) => onAttributeChange("alt", event.target.value)}
+                    />
+                  </label>
+                  <div className="field-grid two-col">
+                    <NumericUnitField
+                      label="宽度"
+                      value={selectedElement.styles.width}
+                      min={0}
+                      onChange={(value) => onStyleChange("width", toPx(value))}
+                    />
+                    <NumericUnitField
+                      label="高度"
+                      value={selectedElement.styles.height}
+                      min={0}
+                      onChange={(value) => onStyleChange("height", toPx(value))}
+                    />
+                  </div>
+                  <label className="field field-full">
+                    <span>填充方式</span>
+                    <CustomSelect
+                      value={selectedElement.styles.objectFit}
+                      options={objectFitSelectOptions}
+                      matchValue={(opt, current) => normalizeObjectFit(current) === opt.value}
+                      onChange={(val) => onStyleChange("objectFit", val)}
+                    />
+                  </label>
+                </fieldset>
               </div>
-              <label className="field field-full">
-                <span>填充方式</span>
-                <CustomSelect
-                  value={selectedElement.styles.objectFit}
-                  options={objectFitSelectOptions}
-                  matchValue={(opt, current) => normalizeObjectFit(current) === opt.value}
-                  onChange={(val) => onStyleChange("objectFit", val)}
-                />
-              </label>
-            </fieldset>
+            </div>
           ) : isSvgElement(selectedElement) ? (
-            <fieldset className="inspector-group">
-              <legend>SVG 图表</legend>
-              <label className="field field-full">
-                <span>viewBox</span>
-                <input
-                  type="text"
-                  placeholder="0 0 540 380"
-                  value={selectedElement.attributes.src}
-                  onChange={(event) => onAttributeChange("src", event.target.value)}
-                />
-              </label>
-              <label className="field field-full">
-                <span>描述标签</span>
-                <input
-                  type="text"
-                  placeholder="图表描述（aria-label）"
-                  value={selectedElement.attributes.alt}
-                  onChange={(event) => onAttributeChange("alt", event.target.value)}
-                />
-              </label>
-              <div className="field-grid two-col">
-                <NumericUnitField
-                  label="宽度"
-                  value={selectedElement.styles.width}
-                  min={0}
-                  onChange={(value) => onStyleChange("width", toPx(value))}
-                />
-                <NumericUnitField
-                  label="高度"
-                  value={selectedElement.styles.height}
-                  min={0}
-                  onChange={(value) => onStyleChange("height", toPx(value))}
-                />
+            <div className="nw-card">
+              <div className="nw-card-title">SVG 图表</div>
+              <div className="nw-card-rows">
+                <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                  <label className="field field-full">
+                    <span>viewBox</span>
+                    <input
+                      type="text"
+                      placeholder="0 0 540 380"
+                      value={selectedElement.attributes.src}
+                      onChange={(event) => onAttributeChange("src", event.target.value)}
+                    />
+                  </label>
+                  <label className="field field-full">
+                    <span>描述标签</span>
+                    <input
+                      type="text"
+                      placeholder="图表描述（aria-label）"
+                      value={selectedElement.attributes.alt}
+                      onChange={(event) => onAttributeChange("alt", event.target.value)}
+                    />
+                  </label>
+                  <div className="field-grid two-col">
+                    <NumericUnitField
+                      label="宽度"
+                      value={selectedElement.styles.width}
+                      min={0}
+                      onChange={(value) => onStyleChange("width", toPx(value))}
+                    />
+                    <NumericUnitField
+                      label="高度"
+                      value={selectedElement.styles.height}
+                      min={0}
+                      onChange={(value) => onStyleChange("height", toPx(value))}
+                    />
+                  </div>
+                </fieldset>
               </div>
-            </fieldset>
+            </div>
           ) : null}
 
-          <fieldset className="inspector-group">
-            <legend>盒模型 / 间距</legend>
-            <div className="field-grid two-col">
-              <NumericUnitField
-                label="上外边距"
-                value={selectedElement.styles.marginTop}
-                onChange={(value) => onStyleChange("marginTop", toPx(value))}
-              />
-              <NumericUnitField
-                label="下外边距"
-                value={selectedElement.styles.marginBottom}
-                onChange={(value) => onStyleChange("marginBottom", toPx(value))}
-              />
+          <div className="nw-card">
+            <div className="nw-card-title">间距</div>
+            <div className="nw-card-rows">
+              <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                <legend style={{ display: "none" }}>盒模型 / 间距</legend>
+                <div className="field-grid two-col">
+                  <NumericUnitField
+                    label="上外边距"
+                    value={selectedElement.styles.marginTop}
+                    onChange={(value) => onStyleChange("marginTop", toPx(value))}
+                  />
+                  <NumericUnitField
+                    label="下外边距"
+                    value={selectedElement.styles.marginBottom}
+                    onChange={(value) => onStyleChange("marginBottom", toPx(value))}
+                  />
+                </div>
+                <div className="field-grid two-col">
+                  <NumericUnitField
+                    label="上内边距"
+                    value={selectedElement.styles.paddingTop}
+                    onChange={(value) => onStyleChange("paddingTop", toPx(value))}
+                  />
+                  <NumericUnitField
+                    label="下内边距"
+                    value={selectedElement.styles.paddingBottom}
+                    onChange={(value) => onStyleChange("paddingBottom", toPx(value))}
+                  />
+                </div>
+              </fieldset>
             </div>
-            <div className="field-grid two-col">
-              <NumericUnitField
-                label="上内边距"
-                value={selectedElement.styles.paddingTop}
-                onChange={(value) => onStyleChange("paddingTop", toPx(value))}
-              />
-              <NumericUnitField
-                label="下内边距"
-                value={selectedElement.styles.paddingBottom}
-                onChange={(value) => onStyleChange("paddingBottom", toPx(value))}
-              />
-            </div>
-          </fieldset>
+          </div>
 
           {isButtonLikeElement(selectedElement) ? (
-            <fieldset className="inspector-group">
-              <legend>按钮样式</legend>
-              <div className="field-grid two-col">
-                <ColorField
-                  label="背景色"
-                  value={selectedElement.styles.backgroundColor}
-                  onChange={(value) => onStyleChange("backgroundColor", value)}
-                />
-                <ColorField
-                  label="Hover 色"
-                  value={selectedElement.effects.hoverBackgroundColor || selectedElement.styles.backgroundColor}
-                  onChange={(value) => onEffectChange("hoverBackgroundColor", value)}
-                />
+            <>
+              <div className="nw-card">
+                <div className="nw-card-title">颜色</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>按钮样式 - 颜色</legend>
+                    <div className="field-grid two-col">
+                      <ColorField
+                        label="背景色"
+                        value={selectedElement.styles.backgroundColor}
+                        onChange={(value) => onStyleChange("backgroundColor", value)}
+                      />
+                      <ColorField
+                        label="Hover 色"
+                        value={selectedElement.effects.hoverBackgroundColor || selectedElement.styles.backgroundColor}
+                        onChange={(value) => onEffectChange("hoverBackgroundColor", value)}
+                      />
+                    </div>
+                    <div className="field-grid two-col">
+                      <ColorField
+                        label="边框色"
+                        value={selectedElement.styles.borderColor}
+                        onChange={(value) => onStyleChange("borderColor", value)}
+                      />
+                      <ColorField
+                        label="品牌色"
+                        value={selectedElement.styles.color}
+                        onChange={(value) => onStyleChange("color", value)}
+                      />
+                    </div>
+                  </fieldset>
+                </div>
               </div>
-              <div className="field-grid two-col">
-                <ColorField
-                  label="边框色"
-                  value={selectedElement.styles.borderColor}
-                  onChange={(value) => onStyleChange("borderColor", value)}
-                />
-                <NumericUnitField
-                  label="边框宽度"
-                  value={selectedElement.styles.borderWidth}
-                  min={0}
-                  onChange={(value) => onStyleChange("borderWidth", toPx(value))}
-                />
-              </div>
-              <div className="field-grid two-col">
-                <NumericUnitField
-                  label="圆角"
-                  value={selectedElement.styles.borderRadius}
-                  min={0}
-                  onChange={(value) => onStyleChange("borderRadius", toPx(value))}
-                />
-                <label className="field">
-                  <span>边框样式</span>
-                  <CustomSelect
-                    value={selectedElement.styles.borderStyle}
-                    options={borderStyleSelectOptions}
-                    matchValue={(opt, current) => normalizeBorderStyle(current) === opt.value}
-                    onChange={(val) => onStyleChange("borderStyle", val)}
-                  />
-                </label>
-              </div>
-              <div className="field-grid two-col">
-                <NumericUnitField
-                  label="左内边距"
-                  value={selectedElement.styles.paddingLeft}
-                  min={0}
-                  onChange={(value) => onStyleChange("paddingLeft", toPx(value))}
-                />
-                <NumericUnitField
-                  label="右内边距"
-                  value={selectedElement.styles.paddingRight}
-                  min={0}
-                  onChange={(value) => onStyleChange("paddingRight", toPx(value))}
-                />
-              </div>
-            </fieldset>
-          ) : null}
 
-          {isBlockLikeElement(selectedElement) ? (
-            <fieldset className="inspector-group">
-              <legend>卡片 / 区块</legend>
-              <div className="field-grid two-col">
-                <ColorField
-                  label="背景色"
-                  value={selectedElement.styles.backgroundColor}
-                  onChange={(value) => onStyleChange("backgroundColor", value)}
-                />
-                <ColorField
-                  label="边框色"
-                  value={selectedElement.styles.borderColor}
-                  onChange={(value) => onStyleChange("borderColor", value)}
-                />
+              <div className="nw-card">
+                <div className="nw-card-title">尺寸</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>按钮样式 - 尺寸</legend>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="宽度"
+                        value={selectedElement.styles.width}
+                        min={0}
+                        onChange={(value) => onStyleChange("width", toPx(value))}
+                      />
+                      <NumericUnitField
+                        label="最大宽度"
+                        value={selectedElement.styles.maxWidth}
+                        min={0}
+                        onChange={(value) => onStyleChange("maxWidth", toPx(value))}
+                      />
+                    </div>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="最小高度"
+                        value={selectedElement.styles.height}
+                        min={0}
+                        onChange={(value) => onStyleChange("height", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>填充方式</span>
+                        <CustomSelect
+                          value={selectedElement.styles.objectFit}
+                          options={objectFitSelectOptions}
+                          matchValue={(opt, current) => normalizeObjectFit(current) === opt.value}
+                          onChange={(val) => onStyleChange("objectFit", val)}
+                        />
+                      </label>
+                    </div>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="左内边距"
+                        value={selectedElement.styles.paddingLeft}
+                        min={0}
+                        onChange={(value) => onStyleChange("paddingLeft", toPx(value))}
+                      />
+                      <NumericUnitField
+                        label="右内边距"
+                        value={selectedElement.styles.paddingRight}
+                        min={0}
+                        onChange={(value) => onStyleChange("paddingRight", toPx(value))}
+                      />
+                    </div>
+                  </fieldset>
+                </div>
               </div>
-              <div className="field-grid two-col">
-                <NumericUnitField
-                  label="边框宽度"
-                  value={selectedElement.styles.borderWidth}
-                  min={0}
-                  onChange={(value) => onStyleChange("borderWidth", toPx(value))}
-                />
-                <NumericUnitField
-                  label="圆角"
-                  value={selectedElement.styles.borderRadius}
-                  min={0}
-                  onChange={(value) => onStyleChange("borderRadius", toPx(value))}
-                />
+
+              <div className="nw-card">
+                <div className="nw-card-title">边框</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>按钮样式 - 边框</legend>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="圆角"
+                        value={selectedElement.styles.borderRadius}
+                        min={0}
+                        onChange={(value) => onStyleChange("borderRadius", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>样式</span>
+                        <CustomSelect
+                          value={selectedElement.styles.borderStyle}
+                          options={borderStyleSelectOptions}
+                          matchValue={(opt, current) => normalizeBorderStyle(current) === opt.value}
+                          onChange={(val) => onStyleChange("borderStyle", val)}
+                        />
+                      </label>
+                    </div>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="宽度"
+                        value={selectedElement.styles.borderWidth}
+                        min={0}
+                        onChange={(value) => onStyleChange("borderWidth", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>阴影</span>
+                        <input
+                          type="text"
+                          placeholder="0 18px 50px rgba(67,55,42,.12)"
+                          value={selectedElement.styles.boxShadow || ""}
+                          onChange={(event) => onStyleChange("boxShadow", event.target.value)}
+                        />
+                      </label>
+                    </div>
+                  </fieldset>
+                </div>
               </div>
-              <div className="field-grid two-col">
-                <label className="field">
-                  <span>边框样式</span>
-                  <CustomSelect
-                    value={selectedElement.styles.borderStyle}
-                    options={borderStyleSelectOptions}
-                    matchValue={(opt, current) => normalizeBorderStyle(current) === opt.value}
-                    onChange={(val) => onStyleChange("borderStyle", val)}
-                  />
-                </label>
-                <label className="field">
-                  <span>阴影</span>
-                  <input
-                    type="text"
-                    placeholder="0 18px 50px rgba(67,55,42,.12)"
-                    value={selectedElement.styles.boxShadow || ""}
-                    onChange={(event) => onStyleChange("boxShadow", event.target.value)}
-                  />
-                </label>
+            </>
+          ) : isBlockLikeElement(selectedElement) ? (
+            <>
+              <div className="nw-card">
+                <div className="nw-card-title">颜色</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>卡片 / 区块 - 颜色</legend>
+                    <div className="field-grid two-col">
+                      <ColorField
+                        label="背景色"
+                        value={selectedElement.styles.backgroundColor}
+                        onChange={(value) => onStyleChange("backgroundColor", value)}
+                      />
+                      <ColorField
+                        label="边框色"
+                        value={selectedElement.styles.borderColor}
+                        onChange={(value) => onStyleChange("borderColor", value)}
+                      />
+                    </div>
+                    <div className="field-grid two-col">
+                      <ColorField
+                        label="品牌色"
+                        value={selectedElement.styles.color}
+                        onChange={(value) => onStyleChange("color", value)}
+                      />
+                      <ColorField
+                        label="主文字"
+                        value={selectedElement.styles.color}
+                        onChange={(value) => onStyleChange("color", value)}
+                      />
+                    </div>
+                  </fieldset>
+                </div>
               </div>
-              <div className="field-grid two-col">
-                <NumericUnitField
-                  label="宽度"
-                  value={selectedElement.styles.width}
-                  min={0}
-                  onChange={(value) => onStyleChange("width", toPx(value))}
-                />
-                <NumericUnitField
-                  label="最大宽度"
-                  value={selectedElement.styles.maxWidth}
-                  min={0}
-                  onChange={(value) => onStyleChange("maxWidth", toPx(value))}
-                />
+
+              <div className="nw-card">
+                <div className="nw-card-title">尺寸</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>卡片 / 区块 - 尺寸</legend>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="宽度"
+                        value={selectedElement.styles.width}
+                        min={0}
+                        onChange={(value) => onStyleChange("width", toPx(value))}
+                      />
+                      <NumericUnitField
+                        label="最大宽度"
+                        value={selectedElement.styles.maxWidth}
+                        min={0}
+                        onChange={(value) => onStyleChange("maxWidth", toPx(value))}
+                      />
+                    </div>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="最小高度"
+                        value={selectedElement.styles.height}
+                        min={0}
+                        onChange={(value) => onStyleChange("height", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>填充方式</span>
+                        <CustomSelect
+                          value={selectedElement.styles.objectFit}
+                          options={objectFitSelectOptions}
+                          matchValue={(opt, current) => normalizeObjectFit(current) === opt.value}
+                          onChange={(val) => onStyleChange("objectFit", val)}
+                        />
+                      </label>
+                    </div>
+                  </fieldset>
+                </div>
               </div>
-            </fieldset>
-          ) : null}
+
+              <div className="nw-card">
+                <div className="nw-card-title">边框</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>卡片 / 区块 - 边框</legend>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="圆角"
+                        value={selectedElement.styles.borderRadius}
+                        min={0}
+                        onChange={(value) => onStyleChange("borderRadius", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>样式</span>
+                        <CustomSelect
+                          value={selectedElement.styles.borderStyle}
+                          options={borderStyleSelectOptions}
+                          matchValue={(opt, current) => normalizeBorderStyle(current) === opt.value}
+                          onChange={(val) => onStyleChange("borderStyle", val)}
+                        />
+                      </label>
+                    </div>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="宽度"
+                        value={selectedElement.styles.borderWidth}
+                        min={0}
+                        onChange={(value) => onStyleChange("borderWidth", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>阴影</span>
+                        <input
+                          type="text"
+                          placeholder="0 18px 50px rgba(67,55,42,.12)"
+                          value={selectedElement.styles.boxShadow || ""}
+                          onChange={(event) => onStyleChange("boxShadow", event.target.value)}
+                        />
+                      </label>
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="nw-card">
+                <div className="nw-card-title">颜色</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>默认 - 颜色</legend>
+                    <div className="field-grid two-col">
+                      <ColorField
+                        label="背景色"
+                        value={selectedElement.styles.backgroundColor}
+                        onChange={(value) => onStyleChange("backgroundColor", value)}
+                      />
+                      <ColorField
+                        label="主文字"
+                        value={selectedElement.styles.color}
+                        onChange={(value) => onStyleChange("color", value)}
+                      />
+                    </div>
+                    <div className="field-grid two-col">
+                      <ColorField
+                        label="品牌色"
+                        value={selectedElement.styles.color}
+                        onChange={(value) => onStyleChange("color", value)}
+                      />
+                      <ColorField
+                        label="边框色"
+                        value={selectedElement.styles.borderColor}
+                        onChange={(value) => onStyleChange("borderColor", value)}
+                      />
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+
+              <div className="nw-card">
+                <div className="nw-card-title">尺寸</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>默认 - 尺寸</legend>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="宽度"
+                        value={selectedElement.styles.width}
+                        min={0}
+                        onChange={(value) => onStyleChange("width", toPx(value))}
+                      />
+                      <NumericUnitField
+                        label="最大宽度"
+                        value={selectedElement.styles.maxWidth}
+                        min={0}
+                        onChange={(value) => onStyleChange("maxWidth", toPx(value))}
+                      />
+                    </div>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="最小高度"
+                        value={selectedElement.styles.height}
+                        min={0}
+                        onChange={(value) => onStyleChange("height", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>填充方式</span>
+                        <CustomSelect
+                          value={selectedElement.styles.objectFit}
+                          options={objectFitSelectOptions}
+                          matchValue={(opt, current) => normalizeObjectFit(current) === opt.value}
+                          onChange={(val) => onStyleChange("objectFit", val)}
+                        />
+                      </label>
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+
+              <div className="nw-card">
+                <div className="nw-card-title">边框</div>
+                <div className="nw-card-rows">
+                  <fieldset className="inspector-group" style={{ border: "none", padding: 0, margin: 0 }}>
+                    <legend style={{ display: "none" }}>默认 - 边框</legend>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="圆角"
+                        value={selectedElement.styles.borderRadius}
+                        min={0}
+                        onChange={(value) => onStyleChange("borderRadius", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>样式</span>
+                        <CustomSelect
+                          value={selectedElement.styles.borderStyle}
+                          options={borderStyleSelectOptions}
+                          matchValue={(opt, current) => normalizeBorderStyle(current) === opt.value}
+                          onChange={(val) => onStyleChange("borderStyle", val)}
+                        />
+                      </label>
+                    </div>
+                    <div className="field-grid two-col">
+                      <NumericUnitField
+                        label="宽度"
+                        value={selectedElement.styles.borderWidth}
+                        min={0}
+                        onChange={(value) => onStyleChange("borderWidth", toPx(value))}
+                      />
+                      <label className="field">
+                        <span>阴影</span>
+                        <input
+                          type="text"
+                          placeholder="0 18px 50px rgba(67,55,42,.12)"
+                          value={selectedElement.styles.boxShadow || ""}
+                          onChange={(event) => onStyleChange("boxShadow", event.target.value)}
+                        />
+                      </label>
+                    </div>
+                  </fieldset>
+                </div>
+              </div>
+            </>
+          )}
 
           <fieldset className="inspector-group info-group">
             <legend>元素信息</legend>
@@ -469,6 +738,19 @@ export function StyleEditorPanelImpl({
 export const StyleEditorPanel = memo(StyleEditorPanelImpl);
 
 function ComputedInspector({ selectedElement }: { selectedElement: SelectedElementSnapshot }) {
+  const [expandedGroups, setExpandedGroups] = useState({
+    typography: true,
+    box: true,
+    paint: true,
+  });
+
+  const toggleGroup = (group: "typography" | "box" | "paint") => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [group]: !prev[group]
+    }));
+  };
+
   return (
     <div className="inspector-content inspector-readout">
       <div className="selected-element-bar">
@@ -477,34 +759,52 @@ function ComputedInspector({ selectedElement }: { selectedElement: SelectedEleme
           <span>{selectedElement.location || selectedElement.tagName}</span>
         </div>
       </div>
-      <fieldset className="inspector-group info-group">
-        <legend>Typography</legend>
-        <dl>
-          <InfoRow label="字体" value={selectedElement.styles.fontFamily || "inherit"} />
-          <InfoRow label="字号" value={selectedElement.styles.fontSize || "inherit"} />
-          <InfoRow label="字重" value={selectedElement.styles.fontWeight || "normal"} />
-          <InfoRow label="行高" value={selectedElement.styles.lineHeight || "normal"} />
-          <InfoRow label="对齐" value={selectedElement.styles.textAlign || "start"} />
-        </dl>
+      
+      <fieldset className={`inspector-group info-group collapsible-group${expandedGroups.typography ? "" : " is-collapsed"}`}>
+        <legend onClick={() => toggleGroup("typography")}>
+          <span className="collapsible-group__arrow">›</span>
+          <span>Typography</span>
+        </legend>
+        <div className="collapsible-group__content">
+          <dl>
+            <InfoRow label="字体" value={selectedElement.styles.fontFamily || "inherit"} />
+            <InfoRow label="字号" value={selectedElement.styles.fontSize || "inherit"} />
+            <InfoRow label="字重" value={selectedElement.styles.fontWeight || "normal"} />
+            <InfoRow label="行高" value={selectedElement.styles.lineHeight || "normal"} />
+            <InfoRow label="对齐" value={selectedElement.styles.textAlign || "start"} />
+          </dl>
+        </div>
       </fieldset>
-      <fieldset className="inspector-group info-group">
-        <legend>Box</legend>
-        <dl>
-          <InfoRow label="宽度" value={selectedElement.styles.width || "auto"} />
-          <InfoRow label="高度" value={selectedElement.styles.height || "auto"} />
-          <InfoRow label="上外边距" value={selectedElement.styles.marginTop || "0px"} />
-          <InfoRow label="下外边距" value={selectedElement.styles.marginBottom || "0px"} />
-          <InfoRow label="圆角" value={selectedElement.styles.borderRadius || "0px"} />
-        </dl>
+      
+      <fieldset className={`inspector-group info-group collapsible-group${expandedGroups.box ? "" : " is-collapsed"}`}>
+        <legend onClick={() => toggleGroup("box")}>
+          <span className="collapsible-group__arrow">›</span>
+          <span>Box</span>
+        </legend>
+        <div className="collapsible-group__content">
+          <dl>
+            <InfoRow label="宽度" value={selectedElement.styles.width || "auto"} />
+            <InfoRow label="高度" value={selectedElement.styles.height || "auto"} />
+            <InfoRow label="上外边距" value={selectedElement.styles.marginTop || "0px"} />
+            <InfoRow label="下外边距" value={selectedElement.styles.marginBottom || "0px"} />
+            <InfoRow label="圆角" value={selectedElement.styles.borderRadius || "0px"} />
+          </dl>
+        </div>
       </fieldset>
-      <fieldset className="inspector-group info-group">
-        <legend>Paint</legend>
-        <dl>
-          <InfoRow label="文字色" value={selectedElement.styles.color || "inherit"} />
-          <InfoRow label="背景色" value={selectedElement.styles.backgroundColor || "transparent"} />
-          <InfoRow label="边框色" value={selectedElement.styles.borderColor || "transparent"} />
-          <InfoRow label="阴影" value={selectedElement.styles.boxShadow || "none"} />
-        </dl>
+      
+      <fieldset className={`inspector-group info-group collapsible-group${expandedGroups.paint ? "" : " is-collapsed"}`}>
+        <legend onClick={() => toggleGroup("paint")}>
+          <span className="collapsible-group__arrow">›</span>
+          <span>Paint</span>
+        </legend>
+        <div className="collapsible-group__content">
+          <dl>
+            <InfoRow label="文字色" value={selectedElement.styles.color || "inherit"} />
+            <InfoRow label="背景色" value={selectedElement.styles.backgroundColor || "transparent"} />
+            <InfoRow label="边框色" value={selectedElement.styles.borderColor || "transparent"} />
+            <InfoRow label="阴影" value={selectedElement.styles.boxShadow || "none"} />
+          </dl>
+        </div>
       </fieldset>
     </div>
   );
@@ -556,9 +856,15 @@ function NumericUnitField({ label, value, min, max, step = 1, onChange }: Numeri
   const isAuto = !trimmed;
   const display = isAuto ? "" : parseNumber(value);
 
+  // 把含单位的原始值传给 useLabelDrag,保留 em/%/rem 等单位
+  const dragValue = isAuto ? "0" : (value ?? "").trim();
+  const dragHandlers = useLabelDrag(dragValue, (nextVal) => {
+    onChange(nextVal);
+  }, { step, min, max });
+
   return (
     <label className="field">
-      <span>{label}</span>
+      <span className="draggable-label" {...dragHandlers} title="按住标签左右拖拽可快捷微调数值">{label}</span>
       <div className="unit-input">
         <input
           type="text"
@@ -584,10 +890,27 @@ function NumericUnitField({ label, value, min, max, step = 1, onChange }: Numeri
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = () => {
+    if (!value || value === "无" || value === "未设置" || value === "transparent" || value === "none") return;
+    
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 800);
+    });
+  };
+
   return (
-    <div>
+    <div 
+      className={`info-row-item${copied ? " is-copied-flash" : ""}`} 
+      onClick={handleCopy}
+      title={value && value !== "无" && value !== "未设置" ? `点击复制属性值: ${value}` : undefined}
+      style={{ cursor: value && value !== "无" && value !== "未设置" ? "pointer" : "default", position: "relative" }}
+    >
       <dt>{label}</dt>
       <dd title={value}>{value}</dd>
+      {copied && <span className="info-row-item__copied-tag">已复制!</span>}
     </div>
   );
 }

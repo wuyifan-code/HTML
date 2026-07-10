@@ -1,5 +1,22 @@
 import "@testing-library/jest-dom";
 
+// Polyfill matchMedia for jsdom — App.tsx 在 useEffect 里调 window.matchMedia。
+if (typeof window !== "undefined" && typeof window.matchMedia !== "function") {
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: (query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: () => {}, // 兼容旧 API
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => false,
+    }),
+  });
+}
+
 // Polyfill OffscreenCanvas with node-canvas so Pretext can measure text
 // in the jsdom test environment. Pretext checks for OffscreenCanvas first,
 // then falls back to DOM canvas. Neither is available in Node.js by default.

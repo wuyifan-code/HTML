@@ -9,6 +9,7 @@ interface InjectEditableIdsResult {
 export function injectEditableIds(html: string): InjectEditableIdsResult {
   const documentRef = parseHtmlDocument(html);
   const usedIds = new Set<string>();
+  const userIdCounts = new Map<string, number>();
   const editableIds: string[] = [];
   let nextIndex = 1;
 
@@ -22,6 +23,18 @@ export function injectEditableIds(html: string): InjectEditableIdsResult {
     element.setAttribute(HFT_ID_ATTRIBUTE, hftId);
     usedIds.add(hftId);
     editableIds.push(hftId);
+
+    // 用户提供的 id="..." 可能重复 — 在重复的第二个起附加后缀 "-hft-N",
+    // 避免 #hero 选择器在导出页面命中错位。
+    const userId = element.getAttribute("id");
+    if (userId) {
+      const count = userIdCounts.get(userId) ?? 0;
+      if (count > 0) {
+        const deduped = `${userId}-hft-${count + 1}`;
+        element.setAttribute("id", deduped);
+      }
+      userIdCounts.set(userId, count + 1);
+    }
   });
 
   return {

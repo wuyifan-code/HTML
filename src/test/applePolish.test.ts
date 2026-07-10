@@ -13,12 +13,11 @@ describe("apple-level polish tokens", () => {
     expect(css).toMatch(/--topbar-blur:\s*saturate\(180%\)\s*blur\(20px\)/);
   });
 
-  it(".app-side-panel transition uses motion-spring / ease-soft-end tokens", () => {
+  it(".app-side-panel transition uses Notion duration/ease tokens", () => {
     const m = css.match(/\.app-side-panel\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/width\s+var\(--motion-spring\)/);
-    expect(m![1]).toMatch(/var\(--ease-soft-end\)/);
-    expect(m![1]).not.toMatch(/cubic-bezier\(\s*0\.4\s*,\s*0\s*,\s*0\.2\s*,\s*1\s*\)/);
+    expect(m![1]).toMatch(/var\(--n-duration-slow\)/);
+    expect(m![1]).toMatch(/var\(--n-ease\)/);
   });
 
   it(".app-side-panel--left entry animation uses motion-spring + ease-emphasized", () => {
@@ -40,11 +39,11 @@ describe("apple-level polish tokens", () => {
     expect(css).toMatch(/@keyframes\s+panel-content-exit-right/);
   });
 
-  it(".app-header uses surface-vibrancy + topbar-blur stack", () => {
+  it(".app-header uses Notion-style static topbar (no backdrop-filter, single bottom border)", () => {
     const m = css.match(/\.app-header\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--surface-vibrancy\)|var\(--topbar-blur\)/);
-    expect(m![1]).toMatch(/backdrop-filter:/);
+    expect(m![1]).not.toMatch(/backdrop-filter/);
+    expect(m![1]).toMatch(/var\(--n-border-default\)/);
   });
 
   it(".toolbar-separator is a 1px hairline using border-neutral-l1", () => {
@@ -54,19 +53,18 @@ describe("apple-level polish tokens", () => {
     expect(m![1]).toMatch(/var\(--border-neutral-l1\)/);
   });
 
-  it(".ds-input:focus-within uses --focus-halo and motion-fast easing", () => {
-    // :focus-within is the canonical ds-input focus selector in this codebase.
+  it(".ds-input:focus-within uses ring-focus and Notion fast easing", () => {
     const m = css.match(/\.ds-input:focus-within\s*\{([\s\S]+?)\}/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--focus-halo\)/);
-    expect(m![1]).toMatch(/var\(--motion-fast\)/);
+    expect(m![1]).toMatch(/var\(--n-ring-focus\)/);
+    expect(m![1]).toMatch(/var\(--n-duration-fast\)/);
   });
 
-  it(".color-popover uses motion-spring + ease-emphasized for entry", () => {
+  it(".color-popover uses Notion ease + duration tokens for entry", () => {
     const m = css.match(/\.color-popover\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--motion-spring\)/);
-    expect(m![1]).toMatch(/var\(--ease-emphasized\)/);
+    expect(m![1]).toMatch(/var\(--n-duration-base\)/);
+    expect(m![1]).toMatch(/var\(--n-ease\)/);
   });
 
   it(".color-popover.is-closing uses motion-exit + ease-exit", () => {
@@ -108,35 +106,35 @@ describe("apple typography baseline", () => {
   });
 });
 
-describe("apple dropdown spring entrance + menu press", () => {
-  it(".dropdown-panel uses spring tokens and surface-vibrancy backdrop", () => {
+describe("apple dropdown entrance + menu press (Notion)", () => {
+  it(".dropdown-panel uses Notion tokens and single-layer shadow (no backdrop)", () => {
     const m = css.match(/\.dropdown-panel\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--motion-spring\)/);
-    expect(m![1]).toMatch(/var\(--ease-emphasized\)/);
-    expect(m![1]).toMatch(/backdrop-filter:\s*var\(--surface-vibrancy-strong\)/);
+    expect(m![1]).toMatch(/var\(--n-duration-base\)/);
+    expect(m![1]).toMatch(/var\(--n-ease\)/);
+    expect(m![1]).toMatch(/var\(--n-shadow-pop\)/);
+    expect(m![1]).not.toMatch(/backdrop-filter/);
   });
 
-  it(".menu-action :active uses apple-style scale-down press", () => {
+  it(".menu-action :active uses Notion subtle background press (no scale)", () => {
     const m = css.match(/\.menu-action:active\s*\{([\s\S]+?)\}/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/transform:\s*scale\(0\.985\)/);
+    expect(m![1]).toMatch(/var\(--n-bg-subtle\)/);
   });
 
-  it("@keyframes dropdown-pop-in animates opacity + translateY + scale", () => {
+  it("@keyframes dropdown-pop-in animates opacity + translateY (no scale)", () => {
     const kf = css.match(/@keyframes\s+dropdown-pop-in\s*\{([\s\S]+?)\n\}/);
     expect(kf).toBeTruthy();
     expect(kf![1]).toMatch(/opacity:\s*0/);
-    expect(kf![1]).toMatch(/translateY\(-4px\)/);
-    expect(kf![1]).toMatch(/scale\(0\.98\)/);
+    expect(kf![1]).toMatch(/translateY\(-2px\)/);
   });
 });
 
-describe("export dialog spring center-scale entrance + exit", () => {
-  it(".export-dialog animation uses spring-pop ease and transform-origin: center", () => {
+describe("export dialog center-scale entrance + exit (Notion)", () => {
+  it(".export-dialog animation uses Notion ease and transform-origin: center", () => {
     const m = css.match(/\.export-dialog\s*\{([\s\S]+?)\n\}/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/var\(--ease-spring-pop\)/);
+    expect(m![1]).toMatch(/var\(--n-ease\)/);
     expect(m![1]).toMatch(/transform-origin:\s*center/);
   });
 

@@ -1,6 +1,7 @@
 export type EditableStyleKey =
   | "fontFamily"
   | "fontSize"
+  | "fontStyle"
   | "color"
   | "fontWeight"
   | "lineHeight"
@@ -121,6 +122,46 @@ export interface AiTreeAnnotation {
 
 export type AiAnalysisStatus = "idle" | "running" | "ready" | "error";
 
+export type ZoomMode = "fit" | "88" | "100";
+
+export interface SelectedSnapshot {
+  hftId: string;
+  tagName: string;
+  id: string;
+  label: string;
+  text: string;
+  path: string;
+  className: string;
+  fontFamily: string;
+  fontSize: string;
+  fontStyle: string;
+  fontWeight: string;
+  lineHeight: string;
+  letterSpacing: string;
+  textAlign: string;
+  marginTop: string;
+  marginBottom: string;
+  paddingTop: string;
+  paddingBottom: string;
+  paddingLeft: string;
+  paddingRight: string;
+  color: string;
+  backgroundColor: string;
+  borderColor: string;
+  borderWidth: string;
+  borderStyle: string;
+  borderRadius: string;
+  boxShadow: string;
+  width: string;
+  height: string;
+  maxWidth: string;
+  objectFit: string;
+  hoverBackgroundColor: string;
+  src: string;
+  alt: string;
+  canEditText: boolean;
+}
+
 export interface ModalState {
   found: boolean;
   open: boolean;
@@ -174,4 +215,5 @@ export interface HistorySummary {
 export interface HistoryEntry {
   state: EditorDocumentState;
   summary: HistorySummary | null;
+  timestamp: number;
 }

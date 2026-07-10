@@ -215,80 +215,85 @@ function HtmlInputPanelComponent({
     );
   }
 
+  const annotationCount = Object.keys(aiAnnotations).length;
+
   return (
-    <section className={`panel source-panel${isBottomPlacement ? " source-panel-bottom" : ""}`} aria-label="HTML 源码编辑器">
-      <div className="panel-header">
-        <div className="panel-title">
-          {activeView === "source" ? <Code2 size={18} strokeWidth={1.75} /> : <ListTree size={18} strokeWidth={1.75} />}
-          <span>{activeView === "source" ? "源码" : "结构导航"}</span>
+    <aside className="nw-left-panel" aria-label="源代码与 DOM 树">
+      <div
+        className="nw-panel-tabs-row"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          borderBottom: "1px solid var(--n-border-default)",
+        }}
+      >
+        <div
+          className="nw-tabs"
+          role="tablist"
+          style={{ flex: 1, borderBottom: "none" }}
+        >
+          <button
+            className={`nw-tab ${activeView === "source" ? "nw-tab-active" : ""}`}
+            onClick={() => setActiveView("source")}
+            type="button"
+          >来源</button>
+          <button
+            className={`nw-tab ${activeView === "tree" ? "nw-tab-active" : ""}`}
+            onClick={() => setActiveView("tree")}
+            type="button"
+          >DOM 树</button>
         </div>
-        <div className="source-header-actions">
-          <div className="segmented-control compact-segmented" aria-label="左侧视图">
+        <div
+          className="nw-panel-overflow"
+          style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 8px" }}
+        >
+          <AiTreePopover
+            apiKey={aiApiKey}
+            rememberKey={aiRememberKey}
+            model={aiModel}
+            modelOptions={aiModelOptions}
+            modelFetchStatus={aiModelFetchStatus}
+            modelFetchError={aiModelFetchError}
+            status={aiStatus}
+            error={aiError}
+            provider={aiProvider}
+            providers={aiProviders}
+            annotationCount={annotationCount}
+            onProviderChange={onAiProviderChange}
+            onApiKeyChange={onAiApiKeyChange}
+            onRememberKeyChange={onAiRememberKeyChange}
+            onModelChange={onAiModelChange}
+            onRefreshModels={onRefreshAiModels}
+            onAnalyze={onAnalyzeStructure}
+            onClear={onClearAiAnnotations}
+          />
+          <Tooltip content={isBottomPlacement ? "切换到左侧" : "切换到下方"} placement="bottom">
             <button
-              className={`segmented-button${activeView === "source" ? " segmented-button-active" : ""}`}
+              className="nw-tool-btn nw-tool-btn-icon"
               type="button"
-              aria-pressed={activeView === "source"}
-              onClick={() => setActiveView("source")}
-            >
-              <Code2 size={14} strokeWidth={1.75} />
-              源码
-            </button>
-            <button
-              className={`segmented-button${activeView === "tree" ? " segmented-button-active" : ""}`}
-              type="button"
-              aria-pressed={activeView === "tree"}
-              onClick={() => setActiveView("tree")}
-            >
-              <ListTree size={14} strokeWidth={1.75} />
-              结构
-            </button>
-          </div>
-          {activeView === "tree" ? (
-            <AiTreePopover
-              apiKey={aiApiKey}
-              rememberKey={aiRememberKey}
-              model={aiModel}
-              modelOptions={aiModelOptions}
-              modelFetchStatus={aiModelFetchStatus}
-              modelFetchError={aiModelFetchError}
-              status={aiStatus}
-              error={aiError}
-              provider={aiProvider}
-              providers={aiProviders}
-              annotationCount={Object.keys(aiAnnotations).length}
-              onProviderChange={onAiProviderChange}
-              onApiKeyChange={onAiApiKeyChange}
-              onRememberKeyChange={onAiRememberKeyChange}
-              onModelChange={onAiModelChange}
-              onRefreshModels={onRefreshAiModels}
-              onAnalyze={onAnalyzeStructure}
-              onClear={onClearAiAnnotations}
-            />
-          ) : null}
-          <Tooltip content={isBottomPlacement ? "源码区移回左侧" : "源码区移到底部"} placement="bottom">
-            <button
-              className="icon-button"
-              type="button"
+              aria-label={isBottomPlacement ? "切换面板到左侧" : "切换面板到下方"}
               onClick={onTogglePlacement}
-              aria-label={isBottomPlacement ? "将源码区移回左侧" : "将源码区移到底部"}
             >
-              {isBottomPlacement ? <PanelLeft size={18} strokeWidth={1.75} /> : <PanelBottom size={18} strokeWidth={1.75} />}
+              {isBottomPlacement ? (
+                <PanelLeft size={15} strokeWidth={1.75} />
+              ) : (
+                <PanelBottom size={15} strokeWidth={1.75} />
+              )}
             </button>
           </Tooltip>
-          <Tooltip content="收起 HTML 源码" placement="bottom">
+          <Tooltip content="收起面板" placement="bottom">
             <button
-              className="icon-button"
+              className="nw-tool-btn nw-tool-btn-icon"
               type="button"
+              aria-label="收起面板"
               onClick={onToggleCollapse}
-              aria-label="收起 HTML 源码"
             >
-              <PanelLeftClose size={18} strokeWidth={1.75} />
+              <PanelLeftClose size={15} strokeWidth={1.75} />
             </button>
           </Tooltip>
         </div>
       </div>
-      <div className="source-panel-shell">
-        <div className="source-panel-main">
+      <div className="nw-panel-body" style={{ flex: 1, overflow: "auto", background: "var(--n-bg-sidebar)" }}>
           {activeView === "source" ? (
             <>
               {showImportDropzone ? (
@@ -386,13 +391,21 @@ function HtmlInputPanelComponent({
               />
             </>
           )}
+      </div>
+      <div className="nw-statusbar" role="status">
+        <div className="nw-statusbar-left">
+          <span className="nw-status-dot" aria-hidden="true" />
+          <span style={{ color: "var(--n-fg-secondary)" }}>就绪</span>
+          <span>UTF-8</span>
+        </div>
+        <div className="nw-statusbar-center">
+          <span>HTML</span>
+        </div>
+        <div className="nw-statusbar-right">
+          <span>行 {sourceLineCount}, 列 1</span>
         </div>
       </div>
-      <div className="panel-footer">
-        <span>{activeView === "source" ? "源码直改" : "点击元素定位到预览"}</span>
-        <span>{value.length.toLocaleString()} 字符</span>
-      </div>
-    </section>
+    </aside>
   );
 }
 

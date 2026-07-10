@@ -18,6 +18,19 @@ export interface HsvColor {
 
 export function normalizeHexColor(value: string): string {
   const trimmed = value.trim();
+
+  // Handle rgb() and rgba() inputs — 严格要求以右括号结尾,alpha 必须合法小数或省略;
+  // 通道数字由 clampNumber 截到 0-255。
+  const rgbMatch = trimmed.match(
+    /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)(?:\s*,\s*(?:\d*\.\d+|\d+(?:\.\d+)?))?\s*\)$/i
+  );
+  if (rgbMatch) {
+    const r = clampNumber(Number.parseInt(rgbMatch[1], 10), 0, 255);
+    const g = clampNumber(Number.parseInt(rgbMatch[2], 10), 0, 255);
+    const b = clampNumber(Number.parseInt(rgbMatch[3], 10), 0, 255);
+    return rgbToHex({ r, g, b }).toLowerCase();
+  }
+
   if (/^#[0-9a-f]{6}$/i.test(trimmed)) return trimmed.toLowerCase();
   if (/^#[0-9a-f]{3}$/i.test(trimmed)) {
     return `#${trimmed
@@ -30,7 +43,17 @@ export function normalizeHexColor(value: string): string {
 }
 
 export function isValidHexColor(value: string): boolean {
-  return /^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(value.trim());
+  const trimmed = value.trim();
+  if (/^#[0-9a-f]{3}([0-9a-f]{3})?$/i.test(trimmed)) return true;
+  // alpha 必须是合法小数 (\d*\.\d+ 或 \d+(\.\d+)?) — 不接受 ".." "1..2" 等垃圾
+  if (
+    /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}(?:\s*,\s*(?:\d*\.\d+|\d+(?:\.\d+)?))?\s*\)$/i.test(
+      trimmed
+    )
+  ) {
+    return true;
+  }
+  return false;
 }
 
 export function hexToRgb(hex: string): RgbColor {
@@ -74,6 +97,10 @@ export function hexToHsv(hex: string): HsvColor {
 }
 
 export function hsvToHex(hsv: HsvColor): string {
+  // NaN/Infinity 防御 — 防御 h/s/v 任一通道被上游错误传入非有限值
+  if (!Number.isFinite(hsv.h) || !Number.isFinite(hsv.s) || !Number.isFinite(hsv.v)) {
+    return "#000000";
+  }
   const saturation = clampNumber(hsv.s, 0, 100) / 100;
   const value = clampNumber(hsv.v, 0, 100) / 100;
   const chroma = value * saturation;

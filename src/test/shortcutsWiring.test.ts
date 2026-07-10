@@ -13,9 +13,18 @@ describe("Task 3 wiring: shortcuts + lastSyncedAt", () => {
 
   it("declares a formatRelative* helper that returns '刚刚'", () => {
     // 新版 App.tsx 沿用 OptimizedUiApp 的 formatRelativeTime 实现,
-    // 测试保持兼容:只要存在 formatRelative / formatRelativeTime + 返回"刚刚"即可。
-    expect(app).toMatch(/function\s+formatRelative(Time)?\s*\(/);
-    expect(app).toMatch(/刚刚/);
+    // 重构后实现在 src/utils/editorUtils.ts,App.tsx 走 import。
+    // 测试保持兼容:函数可以在 App.tsx 中定义,也可以从 utils 导入。
+    if (/function\s+formatRelative(Time)?\s*\(/.test(app)) {
+      expect(app).toMatch(/刚刚/);
+    } else {
+      // 走 import 路径
+      expect(app).toMatch(/import\s*\{[^}]*formatRelative(Time)?[^}]*\}\s*from\s*['"]\.\.?\/utils\/editorUtils['"]/);
+      // 同时确认 editorUtils.ts 中确实有该函数
+      const editorUtils = readFileSync(join(process.cwd(), "src/utils/editorUtils.ts"), "utf8");
+      expect(editorUtils).toMatch(/function\s+formatRelative(Time)?\s*\(/);
+      expect(editorUtils).toMatch(/刚刚/);
+    }
   });
 
   it("binds keyboard shortcuts via useEffect keydown handler", () => {

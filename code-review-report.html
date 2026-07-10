@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HTML FineTune v2.4.1 - 代码审查报告</title>
+<style>
+  :root {
+    --bg: #faf9f7;
+    --surface: #ffffff;
+    --ink: #1a1a1a;
+    --ink-secondary: #5a5a5a;
+    --ink-muted: #8a8a8a;
+    --border: #e8e6e1;
+    --border-light: #f0eeea;
+    --critical: #c0392b;
+    --critical-bg: #fdf2f0;
+    --critical-border: #f5c6cb;
+    --high: #d35400;
+    --high-bg: #fef9f3;
+    --high-border: #fde8cd;
+    --medium: #b8860b;
+    --medium-bg: #fefdf5;
+    --medium-border: #f5eccd;
+    --low: #27ae60;
+    --low-bg: #f5fdf8;
+    --low-border: #c8f0d8;
+    --accent: #19a997;
+    --accent-light: #e8f8f5;
+    --code-bg: #f5f4f1;
+    --code-border: #e0ded9;
+    --radius: 8px;
+    --radius-sm: 4px;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+    --shadow: 0 2px 8px rgba(0,0,0,0.06);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: var(--bg); color: var(--ink); line-height: 1.7; font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 40px 24px 80px; }
+  .report-header { text-align: center; margin-bottom: 48px; padding-bottom: 32px; border-bottom: 1px solid var(--border); }
+  .report-header h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 8px; }
+  .report-header .subtitle { font-size: 15px; color: var(--ink-secondary); margin-bottom: 24px; }
+  .report-meta { display: flex; justify-content: center; gap: 32px; font-size: 13px; color: var(--ink-muted); }
+  .report-meta span { display: flex; align-items: center; gap: 6px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 40px; }
+  .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 20px 16px; text-align: center; box-shadow: var(--shadow-sm); }
+  .summary-card .number { font-size: 36px; font-weight: 700; line-height: 1.1; margin-bottom: 4px; }
+  .summary-card .label { font-size: 13px; color: var(--ink-muted); font-weight: 600; }
+  .summary-card.critical .number { color: var(--critical); }
+  .summary-card.high .number { color: var(--high); }
+  .summary-card.medium .number { color: var(--medium); }
+  .summary-card.low .number { color: var(--low); }
+  .section { margin-bottom: 40px; }
+  .issue-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); margin-bottom: 12px; box-shadow: var(--shadow-sm); overflow: hidden; transition: box-shadow 0.15s ease; }
+  .issue-card:hover { box-shadow: var(--shadow); }
+  .issue-header { padding: 14px 18px; display: flex; align-items: flex-start; gap: 12px; cursor: pointer; user-select: none; }
+  .severity-tag { flex-shrink: 0; font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 4px; letter-spacing: 0.3px; margin-top: 1px; min-width: 56px; text-align: center; }
+  .severity-critical { background: var(--critical-bg); color: var(--critical); border: 1px solid var(--critical-border); }
+  .severity-high { background: var(--high-bg); color: var(--high); border: 1px solid var(--high-border); }
+  .severity-medium { background: var(--medium-bg); color: var(--medium); border: 1px solid var(--medium-border); }
+  .severity-low { background: var(--low-bg); color: var(--low); border: 1px solid var(--low-border); }
+  .issue-title { font-size: 14px; font-weight: 600; color: var(--ink); flex: 1; }
+  .issue-file { font-size: 12px; color: var(--ink-muted); font-family: "SF Mono", "Cascadia Code", "Consolas", monospace; flex-shrink: 0; margin-top: 2px; }
+  .issue-body { padding: 0 18px 16px; padding-left: 100px; display: none; }
+  .issue-card.expanded .issue-body { display: block; }
+  .issue-body p { font-size: 14px; color: var(--ink-secondary); margin-bottom: 12px; line-height: 1.7; }
+  .issue-body code { background: var(--code-bg); border: 1px solid var(--code-border); padding: 1px 5px; border-radius: 3px; font-family: "SF Mono", "Cascadia Code", "Consolas", monospace; font-size: 12.5px; color: var(--ink); }
+  .code-block { background: var(--code-bg); border: 1px solid var(--code-border); border-radius: var(--radius-sm); padding: 12px 16px; margin-bottom: 12px; overflow-x: auto; font-family: "SF Mono", "Cascadia Code", "Consolas", monospace; font-size: 12.5px; line-height: 1.6; color: var(--ink); white-space: pre; }
+  .recommendation { background: var(--accent-light); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: 13px; color: var(--ink-secondary); line-height: 1.6; }
+  .recommendation strong { color: var(--accent); }
+  .category-divider { display: flex; align-items: center; gap: 12px; margin: 32px 0 16px; font-size: 17px; font-weight: 700; color: var(--ink); }
+  .category-divider::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+  .category-count { font-size: 12px; font-weight: 600; color: var(--ink-muted); background: var(--border-light); padding: 2px 8px; border-radius: 10px; }
+  .top-actions { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 40px; box-shadow: var(--shadow-sm); }
+  .top-actions h3 { font-size: 17px; font-weight: 700; margin-bottom: 16px; color: var(--ink); }
+  .action-item { display: flex; gap: 14px; align-items: flex-start; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+  .action-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .action-number { flex-shrink: 0; width: 28px; height: 28px; background: var(--accent); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-top: 1px; }
+  .action-content h4 { font-size: 14px; font-weight: 600; margin-bottom: 4px; color: var(--ink); }
+  .action-content p { font-size: 13px; color: var(--ink-secondary); line-height: 1.6; }
+  .positive-card { background: var(--low-bg); border: 1px solid var(--low-border); border-radius: var(--radius); padding: 20px 24px; margin-bottom: 12px; }
+  .positive-card h4 { font-size: 14px; font-weight: 600; color: var(--low); margin-bottom: 6px; }
+  .positive-card p { font-size: 13px; color: var(--ink-secondary); line-height: 1.6; }
+  .expand-icon { flex-shrink: 0; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; color: var(--ink-muted); font-size: 14px; transition: transform 0.2s ease; margin-top: 1px; }
+  .issue-card.expanded .expand-icon { transform: rotate(90deg); }
+  .stats-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 8px; gap: 2px; }
+  .stats-bar .segment { height: 100%; border-radius: 4px; }
+  .seg-critical { background: var(--critical); }
+  .seg-high { background: var(--high); }
+  .seg-medium { background: var(--medium); }
+  .seg-low { background: var(--low); }
+  .stats-legend { display: flex; justify-content: center; gap: 20px; font-size: 12px; color: var(--ink-muted); margin-bottom: 32px; }
+  .stats-legend span { display: flex; align-items: center; gap: 6px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  .report-footer { text-align: center; padding-top: 32px; border-top: 1px solid var(--border); font-size: 13px; color: var(--ink-muted); }
+  @media (max-width: 640px) {
+    .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    .report-meta { flex-direction: column; gap: 8px; }
+    .issue-body { padding-left: 18px; }
+    .issue-file { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="report-header">
+    <h1>代码审查报告</h1>
+    <div class="subtitle">HTML FineTune v2.4.1 &mdash; 可视化 HTML 编辑工作台</div>
+    <div class="report-meta">
+      <span>75 个源文件</span>
+      <span>React 19 + TypeScript 5.8 + Vite 8</span>
+      <span>2026-06-29</span>
+    </div>
+  </div>
+
+  <!-- 统计卡片 -->
+  <div class="summary-grid">
+    <div class="summary-card critical"><div class="number">8</div><div class="label">严重</div></div>
+    <div class="summary-card high"><div class="number">12</div><div class="label">高</div></div>
+    <div class="summary-card medium"><div class="number">30</div><div class="label">中</div></div>
+    <div class="summary-card low"><div class="number">21</div><div class="label">低</div></div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="segment seg-critical" style="width:11.3%"></div>
+    <div class="segment seg-high" style="width:16.9%"></div>
+    <div class="segment seg-medium" style="width:42.3%"></div>
+    <div class="segment seg-low" style="width:29.5%"></div>
+  </div>
+  <div class="stats-legend">
+    <span><span class="legend-dot" style="background:var(--critical)"></span> 严重 8</span>
+    <span><span class="legend-dot" style="background:var(--high)"></span> 高 12</span>
+    <span><span class="legend-dot" style="background:var(--medium)"></span> 中 30</span>
+    <span><span class="legend-dot" style="background:var(--low)"></span> 低 21</span>
+  </div>
+
+  <!-- 优先行动 -->
+  <div class="top-actions">
+    <h3>十大优先修复项</h3>
+
+    <div class="action-item">
+      <div class="action-number">1</div>
+      <div class="action-content">
+        <h4>重构 App.tsx 巨型组件</h4>
+        <p>3445 行代码、55+ 个 useState 调用。应拆分为 5-6 个功能 hook 和多个子组件。项目已构建了 useShortcuts、useIframeSelection、usePanelResize 但从未使用。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">2</div>
+      <div class="action-content">
+        <h4>修复 postMessage 安全漏洞</h4>
+        <p>将 <code>"*"</code> targetOrigin 替换为已知的父级 origin。在接收消息时添加 <code>event.origin</code> 校验。涉及 PreviewFrame 桥接脚本和 iframeMessages.ts。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">3</div>
+      <div class="action-content">
+        <h4>CI 流水线添加测试步骤</h4>
+        <p>GitHub Actions 当前只执行 <code>npm install</code> 和 <code>npm run build</code>，未运行任何测试，意味着有问题的代码可直接部署到生产环境。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">4</div>
+      <div class="action-content">
+        <h4>合并 25+ 个样式草稿 useState 为 useReducer</h4>
+        <p>检查器中每次击键都会触发 25+ 个状态比较。改用单个 <code>useReducer</code> 或对象式 <code>useState</code>，可将 25 次渲染降为 1 次。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">5</div>
+      <div class="action-content">
+        <h4>统一 cssEscape 实现</h4>
+        <p><code>domPath.ts</code> 仅转义双引号（遗漏反斜杠），而 <code>aiStructure.ts</code> 正确转义了两者。这是 CSS 选择器注入防御中的安全隐患。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">6</div>
+      <div class="action-content">
+        <h4>修复 CustomSelect 键盘导航 Bug</h4>
+        <p><code>activeIndexRef</code> 是 ref（非 state），方向键导航不会触发重渲染，键盘用户看到的高亮永远不会更新。改为 <code>useState</code> 并添加 <code>aria-activedescendant</code>。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">7</div>
+      <div class="action-content">
+        <h4>配置代码检查与格式化工具链</h4>
+        <p>项目未配置 ESLint、Prettier 或 Biome，也没有 pre-commit 钩子。代码风格一致性完全靠人工维护。建议添加 Biome 或 ESLint + Prettier 并接入 CI。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">8</div>
+      <div class="action-content">
+        <h4>拆分 HtmlInputPanel（1069 行）</h4>
+        <p>包含 7 个独立组件，其中 AiTreeControls 约 270 行。应拆分为独立文件，并去重拖放处理函数和弹出层关闭逻辑。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">9</div>
+      <div class="action-content">
+        <h4>AI API 密钥改为后端代理</h4>
+        <p>16 个 AI 提供商的 API 密钥直接从浏览器发送到第三方 API。Gemini 密钥出现在 URL 查询参数中（会被 CDN/代理/浏览器历史记录）。生产环境应通过后端代理。</p>
+      </div>
+    </div>
+    <div class="action-item">
+      <div class="action-number">10</div>
+      <div class="action-content">
+        <h4>完善无障碍访问</h4>
+        <p>为对话框添加焦点陷阱、<code>prefers-reduced-motion</code> 媒体查询、完整的 ARIA tab 语义、颜色选择器和自定义下拉框的屏幕阅读器支持。</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 严重问题 ==================== -->
+  <div class="section">
+    <div class="category-divider">严重问题<span class="category-count">8 项</span></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-critical">严重</span>
+        <span class="issue-title">巨型组件：App.tsx 达 3445 行，包含 55+ 个 useState 调用</span>
+        <span class="issue-file">App.tsx</span>
+      </div>
+      <div class="issue-body">
+        <p>App 组件承担了 DOM 树管理、AI 提供商集成、导出逻辑（HTML/PDF/PPTX）、快捷键处理、iframe 消息通信、面板缩放、视口管理、检查器草稿状态、剪贴板操作和文件 I/O。严重违反单一职责原则，使代码极难测试、理解和协作。</p>
+        <div class="recommendation"><strong>建议：</strong>至少拆分为 5-6 个功能 hook（useAiStructure、useExportPipeline、useInspectorDraft、useViewport、useIframeBridge）和多个子组件（StructurePanel、InspectorPanel、StagePanel、TopBar、StatusBar）。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-critical">严重</span>
+        <span class="issue-title">25+ 个独立的 useState 用于草稿样式属性</span>
+        <span class="issue-file">App.tsx:237-263</span>
+      </div>
+      <div class="issue-body">
+        <p>检查器中每次击键都会触发 25+ 个状态比较。选择元素变化时，同步 effect 调用 25+ 个 setter，每个都可能触发重渲染。这是整个代码库中最严重的性能反模式。</p>
+        <div class="code-block">const [draftFontFamily, setDraftFontFamily] = useState("");
+const [draftFontSize, setDraftFontSize] = useState("");
+const [draftFontWeight, setDraftFontWeight] = useState("");
+// ... 还有 22 个完全相同的 useState 调用</div>
+        <div class="recommendation"><strong>建议：</strong>替换为单个 <code>useState&lt;InspectorDraft&gt;</code> 对象或 <code>useReducer</code>，将 25 次渲染降为 1 次。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-critical">严重</span>
+        <span class="issue-title">3 个已提取的 hook 从未被使用（useShortcuts、useIframeSelection、usePanelResize）</span>
+        <span class="issue-file">App.tsx</span>
+      </div>
+      <div class="issue-body">
+        <p>项目曾进行重构提取了专用 hook，但 App 组件从未使用它们。App.tsx 内联了所有逻辑，存在代码重复、闭包过期风险和脆弱的依赖数组。hook 和内联代码的常量已悄悄分化（如 MIN_SOURCE_WIDTH 在 App.tsx 中是 220，在 usePanelResize.ts 中是 280）。</p>
+        <div class="recommendation"><strong>建议：</strong>采用已提取的 hook 并删除内联重复代码。这可以立即减少 App.tsx 约 300 行，并修复多个闭包过期 bug。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-critical">严重</span>
+        <span class="issue-title">postMessage 使用 "*" 作为 targetOrigin（桥接脚本）</span>
+        <span class="issue-file">PreviewFrame.tsx:697</span>
+      </div>
+      <div class="issue-body">
+        <p>桥接脚本中所有 <code>window.parent.postMessage(...)</code> 调用都使用 <code>"*"</code> 作为 targetOrigin。虽然桥接令牌提供了应用层认证，但使用 <code>"*"</code> 意味着任何父框架（包括恶意框架）都可以接收元素数据、API 密钥引用和 DOM 结构。</p>
+        <div class="recommendation"><strong>建议：</strong>使用 <code>window.location.origin</code> 或已知的父级 origin。同时在接收消息的监听器中添加 <code>event.origin</code> 校验。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-critical">严重</span>
+        <span class="issue-title">接收 postMessage 时缺少 origin 校验</span>
+        <span class="issue-file">PreviewFrame.tsx:1621</span>
+      </div>
+      <div class="issue-body">
+        <p>iframe 的 message 事件监听器仅检查 <code>data.token !== bridgeToken</code>，但从未校验 <code>event.origin</code>。如果桥接令牌泄露（如通过 Referer 头、日志或浏览器扩展），任何来源都可以发送命令操纵 iframe DOM。</p>
+        <div class="recommendation"><strong>建议：</strong>在令牌检查的同时添加 origin 校验。记录接受 "null" origin 的威胁模型。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-critical">严重</span>
+        <span class="issue-title">通过未过滤的颜色值进行 CSS 注入（hover 规则）</span>
+        <span class="issue-file">domPath.ts:270</span>
+      </div>
+      <div class="issue-body">
+        <p><code>rule.color</code> 值直接拼接到写入 <code>&lt;style&gt;</code> 元素的 CSS 字符串中。虽然颜色来自编辑器自身的颜色选择器，但如果样式元素被外部修改，正则可能捕获到意外内容。精心构造的颜色值可注入任意 CSS 规则。</p>
+        <div class="code-block">`[${HFT_ID_ATTRIBUTE}="${rule.hftId}"]:hover { background-color: ${rule.color}; }`</div>
+        <div class="recommendation"><strong>建议：</strong>在拼接前验证颜色值是否匹配严格的 hex/rgb/hsl 格式，或使用 <code>CSS.supports('color', value)</code> 做运行时检查。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-critical">严重</span>
+        <span class="issue-title">API 密钥暴露在前端代码和网络层</span>
+        <span class="issue-file">aiStructure.ts:595</span>
+      </div>
+      <div class="issue-body">
+        <p>全部 16 个 AI 提供商的 API 密钥直接从浏览器发送到第三方 API。Gemini 密钥出现在 URL 查询参数中，会被 CDN、代理、浏览器历史记录和服务器访问日志记录。不存在服务端代理。</p>
+        <div class="recommendation"><strong>建议：</strong>生产环境应通过持有 API 密钥的后端代理转发 AI 请求。对于 Gemini，如果 API 支持，应从查询参数认证改为请求头认证。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-critical">严重</span>
+        <span class="issue-title">CI 流水线未运行任何测试</span>
+        <span class="issue-file">deploy.yml</span>
+      </div>
+      <div class="issue-body">
+        <p>GitHub Actions CI 流水线仅执行 <code>npm install</code> 和 <code>npm run build</code>，从未执行 <code>npm test</code> 或 e2e 测试。有问题的代码可以不经任何测试关卡直接部署到 GitHub Pages。</p>
+        <div class="code-block">- name: Install dependencies
+  run: npm install --prefer-offline --no-audit --no-fund
+- name: Build
+  run: npm run build</div>
+        <div class="recommendation"><strong>建议：</strong>在构建步骤前添加 <code>npm test</code>，测试失败时终止流水线。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 高严重度问题 ==================== -->
+  <div class="section">
+    <div class="category-divider">高严重度问题<span class="category-count">12 项</span></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">快捷键处理函数存在闭包过期风险</span>
+        <span class="issue-file">App.tsx:1246</span>
+      </div>
+      <div class="issue-body">
+        <p>delete/backspace 处理函数从闭包中捕获了 <code>state.html</code> 和 <code>selected</code>。如果用户选中新元素后在下一次渲染完成前立即按下 Delete，操作将针对过期的状态。</p>
+        <div class="recommendation"><strong>建议：</strong>使用 <code>useRef</code> 保存最新状态，或使用 setState 的函数式形式访问当前状态。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">cssEscape 回退实现不一致（安全相关）</span>
+        <span class="issue-file">domPath.ts:303 vs aiStructure.ts:1256</span>
+      </div>
+      <div class="issue-body">
+        <p><code>domPath.ts</code> 的回退实现仅转义双引号（遗漏反斜杠），而 <code>aiStructure.ts</code> 正确转义了两者。如果 <code>CSS.escape</code> 不可用，包含反斜杠的 hftId 可以突破属性选择器。</p>
+        <div class="recommendation"><strong>建议：</strong>删除 domPath.ts 中的重复实现，从单一共享工具模块导入。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">CustomSelect 键盘导航功能损坏</span>
+        <span class="issue-file">CustomSelect.tsx:23</span>
+      </div>
+      <div class="issue-body">
+        <p><code>activeIndexRef</code> 是 <code>useRef</code> 而非 state。方向键改变活跃索引时，视觉高亮不会更新，因为修改 ref 不触发重渲染。这对键盘用户是功能性 bug。</p>
+        <div class="recommendation"><strong>建议：</strong>将 <code>activeIndexRef</code> 改为 <code>useState</code>，并添加 <code>aria-activedescendant</code> 以支持屏幕阅读器。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">桥接脚本是不可测试的 ~1200 行内联字符串</span>
+        <span class="issue-file">PreviewFrame.tsx:563-1681</span>
+      </div>
+      <div class="issue-body">
+        <p><code>createBridgeScript()</code> 函数返回一个约 1200 行的 JavaScript 字符串。难以测试（无法用单元测试验证字符串拼接的 JS）、难以调试（无 source map）、维护负担重（任何语法错误都是运行时 iframe 故障）。</p>
+        <div class="recommendation"><strong>建议：</strong>提取为独立的 <code>.js</code> 文件以原始字符串形式打包，或至少用更好的模板结构重组。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">HtmlInputPanel.tsx 达 1069 行，包含 7 个组件</span>
+        <span class="issue-file">HtmlInputPanel.tsx</span>
+      </div>
+      <div class="issue-body">
+        <p>包含 HtmlInputPanelComponent、TreeSearch、AiTreePopover、AiTreeControls（约 270 行）、AiLogoMark、DomTreeList、AiErrorBlock。应拆分为独立文件以提高可维护性。</p>
+        <div class="recommendation"><strong>建议：</strong>将每个组件提取为独立文件。去重拖放处理函数和弹出层关闭逻辑。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">iframeMessages.ts 中使用通配符 origin 发送 postMessage</span>
+        <span class="issue-file">iframeMessages.ts:36-47</span>
+      </div>
+      <div class="issue-body">
+        <p><code>sendMessageToIframeLax</code> 使用 <code>targetOrigin: "*"</code> 发送消息。如果 iframe 已导航到意外的 origin，消息仍会被投递给该外部来源。</p>
+        <div class="recommendation"><strong>建议：</strong>审查所有调用点。对于非 srcdoc 的 iframe，优先使用显式 origin 的 <code>sendMessageToIframe</code>。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">未配置 ESLint、Prettier 或任何代码检查工具</span>
+        <span class="issue-file">package.json</span>
+      </div>
+      <div class="issue-body">
+        <p>项目未配置任何代码检查或格式化工具。不存在 pre-commit 钩子（无 husky、lint-staged 或 lefthook）。代码风格一致性完全靠人工维护。</p>
+        <div class="recommendation"><strong>建议：</strong>添加 Biome 或 ESLint + Prettier，并接入 pre-commit 钩子和 CI 流水线。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">shortcutsWiring.test.ts 使用脆弱的源码正则匹配</span>
+        <span class="issue-file">shortcutsWiring.test.ts</span>
+      </div>
+      <div class="issue-body">
+        <p>测试读取原始源文件并使用正则表达式断言代码模式。任何重构（提取函数、重命名变量、重新格式化）都会导致测试失败，即使行为未变。</p>
+        <div class="recommendation"><strong>建议：</strong>替换为行为测试：挂载组件并模拟 keydown 事件。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">核心编辑工作流缺少集成测试</span>
+        <span class="issue-file">src/test/</span>
+      </div>
+      <div class="issue-body">
+        <p>没有测试覆盖核心编辑流程：加载 HTML、选中元素、编辑文本/样式、验证预览更新。单元测试覆盖了隔离的工具函数，但核心 App 组件及其编辑循环完全未经测试。</p>
+        <div class="recommendation"><strong>建议：</strong>使用 React Testing Library 添加覆盖完整 编辑-选择-检查-应用 周期的集成测试。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">巨大的内联 JSX 树无任何 React.memo 边界</span>
+        <span class="issue-file">App.tsx:1462-2443</span>
+      </div>
+      <div class="issue-body">
+        <p>整个 UI（顶栏、侧栏、画布、检查器、弹窗、提示）是一棵单体 JSX 树。不存在 React.memo 边界，因此 App 中的每次状态变更都会重渲染整个约 1000 行的 JSX 树。</p>
+        <div class="recommendation"><strong>建议：</strong>提取子组件，在 props 稳定的地方使用 React.memo 包裹。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">useEffect 依赖数组不完整</span>
+        <span class="issue-file">App.tsx:459</span>
+      </div>
+      <div class="issue-body">
+        <p>effect 内部访问了 <code>selected</code>（不仅是 <code>selected?.hftId</code>），但依赖数组仅列出了 <code>selected?.hftId</code>。如果 selection 的引用变了但 hftId 不变，scroll-into-view 不会重新触发。</p>
+        <div class="recommendation"><strong>建议：</strong>要么添加完整依赖，要么使用 ref 追踪最新的 selected 状态。</div>
+      </div>
+    </div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')">
+      <div class="issue-header">
+        <span class="expand-icon">&#9654;</span>
+        <span class="severity-tag severity-high">高</span>
+        <span class="issue-title">isTrustedMessage 接受 "null" origin</span>
+        <span class="issue-file">messages.ts:147-165</span>
+      </div>
+      <div class="issue-body">
+        <p><code>"null"</code> origin 被多种沙箱上下文共享：data URI、<code>file://</code> 页面、任何来源的沙箱 iframe。桥接令牌检查可缓解此问题，但仅在消息包含令牌字段时生效。</p>
+        <div class="recommendation"><strong>建议：</strong>添加注释说明威胁模型。如果桥接令牌始终存在，考虑移除 <code>"null"</code> origin 例外。</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== 中等严重度问题 ==================== -->
+  <div class="section">
+    <div class="category-divider">中等严重度问题<span class="category-count">30 项</span></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">历史记录无大小上限（内存无限增长）</span><span class="issue-file">useEditorHistory.ts</span></div><div class="issue-body"><p><code>past</code> 和 <code>future</code> 数组无限增长，每条记录包含完整的 HTML 字符串快照。长时间编辑会话可能消耗大量内存。</p><div class="recommendation"><strong>建议：</strong>将 past 上限设为约 50-100 条，淘汰最旧的记录。</div></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">wrapFragment 函数在两个文件中重复定义</span><span class="issue-file">injectEditableIds.ts:82 / exportSnapshot.ts:518</span></div><div class="issue-body"><p>两个文件定义了完全相同的 <code>wrapFragment</code> 函数，生成相同的 HTML 包装器。</p><div class="recommendation"><strong>建议：</strong>提取到共享模块。</div></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">exportHtml.ts 重复了 downloadBlob 逻辑</span><span class="issue-file">exportHtml.ts</span></div><div class="issue-body"><p>重新实现了 blob 下载逻辑，但存在细微差异（URL 回收无 setTimeout 缓冲期）。应使用共享的 downloadBlob 工具函数。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">每次 DOM 变更都重复执行 DOMParser 解析-序列化</span><span class="issue-file">domPath.ts</span></div><div class="issue-body"><p>每个变更函数都从头重新解析整个 HTML 文档。对于快速连续操作，每次是 O(n)，其中 n 是 HTML 文档大小。考虑批处理变更 API。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">模块级解析缓存永不失效（内存压力）</span><span class="issue-file">injectEditableIds.ts:52-63</span></div><div class="issue-body"><p>缓存无限期持有完整的 Document 对象。对于大型 HTML 文档，这是显著的内存开销。考虑使用 WeakRef 或显式淘汰策略。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">dataUrlToUint8Array 在 3 个失败路径上静默返回空数组</span><span class="issue-file">exportPdf.ts:159-173</span></div><div class="issue-body"><p>三种不同的失败路径静默返回空 Uint8Array。调用方抛出的通用错误无法区分失败模式。应抛出具有特定信息的错误。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">loadBundleScript 存在竞态条件且无超时机制</span><span class="issue-file">exportErrors.ts:34-70</span></div><div class="issue-body"><p>如果两个导出操作同时启动，第二次调用可能永远收不到 load 事件而无限挂起。应使用共享的 Promise map 追踪脚本加载状态。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">normalizeHexColor 静默回退到硬编码颜色</span><span class="issue-file">color.ts:19-30</span></div><div class="issue-body"><p>无效的颜色字符串静默返回 <code>#141413</code>。应记录警告或对明显无效的输入抛出异常。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">useElementSize 每次更新返回新对象（不必要的重渲染）</span><span class="issue-file">useElementSize.ts</span></div><div class="issue-body"><p>每次 ResizeObserver 回调都创建新的 <code>{ width, height }</code> 对象，即使尺寸未变也会触发重渲染。应在设置前进行比较。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">拖放处理函数和弹出层关闭逻辑重复</span><span class="issue-file">HtmlInputPanel.tsx:297-360, 449-580</span></div><div class="issue-body"><p>放置区处理函数在源码视图和树视图之间复制粘贴。"点击外部关闭 + Escape" 效果重复了 3 次。应提取为共享 hook。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">对话框缺少焦点陷阱和 Escape 处理</span><span class="issue-file">ExportPreviewDialog.tsx</span></div><div class="issue-body"><p>对话框使用了 <code>role="dialog"</code> 和 <code>aria-modal="true"</code> 但未实现焦点陷阱或 Escape 关闭功能。违反 WAI-ARIA 对话框规范。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">Tab 语义不完整（缺少 tabpanel 角色）</span><span class="issue-file">StyleEditorPanel.tsx:62-90</span></div><div class="issue-body"><p>标签页使用了 <code>role="tab"</code> 和 <code>role="tablist"</code>，但面板缺少 <code>role="tabpanel"</code> 和 <code>aria-labelledby</code> 关联。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">颜色选择器对 2D 控件使用了错误的 role="slider"</span><span class="issue-file">ColorField.tsx:135-152</span></div><div class="issue-body"><p>2D 饱和度/亮度选择器使用了 <code>role="slider"</code>（1D 控件）。应使用 <code>role="application"</code> 或两个独立的滑块。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">缺少 prefers-reduced-motion 媒体查询</span><span class="issue-file">styles.css</span></div><div class="issue-body"><p>CSS 包含动画和过渡效果但没有 <code>@media (prefers-reduced-motion: reduce)</code> 块。未照顾对动画敏感的用户。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">process.env.NODE_ENV 缺少打包器保护</span><span class="issue-file">exportValidation.ts:75</span></div><div class="issue-body"><p>依赖 Vite 在构建时替换 <code>process.env.NODE_ENV</code>。在非 Vite 环境中可能抛出 ReferenceError。应改用 <code>import.meta.env?.DEV</code>。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">GitHub Pages 基础路径硬编码为 "/HTML/"</span><span class="issue-file">vite.config.ts:5</span></div><div class="issue-body"><p>仓库名称硬编码。如果仓库重命名或部署到不同的子路径，所有资源 URL 都会失效。应使用环境变量。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">Chunk 分割策略不完整</span><span class="issue-file">vite.config.ts:18-25</span></div><div class="issue-body"><p>仅 react、react-dom 和 lucide-react 有独立 chunk。<code>@lobehub/icons</code>（可能很大）落入默认 vendor chunk。考虑将其分离。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">tsconfig 未配置路径别名</span><span class="issue-file">tsconfig.json</span></div><div class="issue-body"><p>没有 <code>baseUrl</code> 或 <code>paths</code> 设置。相对导入随项目增长变得越来越脆弱。应添加 <code>"paths": { "@/*": ["./src/*"] }</code>。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">moduleResolution 应设为 "Bundler"（当前为 "Node"）</span><span class="issue-file">tsconfig.json</span></div><div class="issue-body"><p>旧版 "Node" 解析器无法正确处理新版包的 <code>exports</code> 字段。Vite 项目推荐使用 "Bundler"。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">canvas 原生依赖增加了 CI 复杂度</span><span class="issue-file">package.json</span></div><div class="issue-body"><p>node-canvas 需要 libcairo、libpango 等，在某些平台上可能失败。考虑使用 <code>@napi-rs/canvas</code> 或 <code>vitest-canvas-mock</code>。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">E2E 测试未纳入 CI 和 Vitest</span><span class="issue-file">e2e-*.cjs</span></div><div class="issue-body"><p>独立 CJS 脚本，硬编码 Chrome 路径。未集成到 Vitest 或 CI 中。实际上为端到端场景提供零自动化测试覆盖。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">未配置测试覆盖率报告</span><span class="issue-file">package.json</span></div><div class="issue-body"><p>没有 <code>@vitest/coverage-v8</code> 或 <code>c8</code> 依赖。没有覆盖率数据就无法了解代码库的测试比例。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">Vendor 打包未压缩（~1 MB+ 开销）</span><span class="issue-file">bundle-vendors.mjs:33</span></div><div class="issue-body"><p>设置了 <code>minify: false</code> 以绕过 esbuild 对 JSZip 的作用域混淆问题。生成的包非常大。考虑使用 <code>minify: true</code> 并禁用 <code>mangleProps</code>。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">CSS 中 .topbar 和 .app-header 规则重复</span><span class="issue-file">styles.css:228-250</span></div><div class="issue-body"><p>几乎完全相同的声明。其中一个似乎是死代码或重命名的残留。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">CopiedStyle 和 SelectedSnapshot 共享 25+ 字段但分别定义</span><span class="issue-file">App.tsx:110-209</span></div><div class="issue-body"><p>应使用 <code>Pick&lt;SelectedSnapshot, keyof CopiedStyle&gt;</code> 或共享基础类型来消除重复。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">ErrorBoundary 使用大量内联样式（每个状态约 40 个属性）</span><span class="issue-file">ErrorBoundary.tsx:107-243</span></div><div class="issue-body"><p>"锁定"和"错误"两种状态都使用内联样式，在状态间重复且绕过了其他地方使用的设计令牌系统。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">PretextMeasure 在两个 useMemo 中重复计算</span><span class="issue-file">usePretextMeasure.ts:48-56</span></div><div class="issue-body"><p>两个独立的 useMemo 都依赖 [text, font]。如果它们共享内部计算，这是冗余的。应合并为单个 useMemo。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">clipboard.ts 丢弃了原始错误详情</span><span class="issue-file">clipboard.ts:21-23</span></div><div class="issue-body"><p>原始错误（可能包含 "Permission denied" 等诊断信息）被丢弃。应保留原始错误消息。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">childCountMap 算法最坏情况为 O(n^2)</span><span class="issue-file">HtmlInputPanel.tsx:818-829</span></div><div class="issue-body"><p>嵌套循环计数子节点，对于扁平树是 O(n^2)。对于包含数百个同级超大型 HTML，可能导致卡顿。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-medium">中</span><span class="issue-title">NumericUnitField 使用 type="text" 但设置了 min/max 属性</span><span class="issue-file">StyleEditorPanel.tsx:563-567</span></div><div class="issue-body"><p><code>min</code> 和 <code>max</code> 仅在 <code>type="number"</code> 上有效，对 <code>type="text"</code> 无作用。应在 onChange 处理函数中强制执行限制。</p></div></div>
+  </div>
+
+  <!-- ==================== 低严重度问题 ==================== -->
+  <div class="section">
+    <div class="category-divider">低严重度问题<span class="category-count">21 项</span></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">死代码：setInspectorTab 空操作仍在 3 处被调用</span><span class="issue-file">App.tsx:273-275</span></div><div class="issue-body"><p>已注释的死代码仍被调用。增加认知负担和无意义的 useCallback 分配。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">死代码：formatRelativeTime、TreeItem、IconMenu、IconEye 从未使用</span><span class="issue-file">App.tsx</span></div><div class="issue-body"><p>多个函数和组件已定义但从未在 JSX 中引用。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">clamp() 工具函数在 App.tsx 和 usePanelResize.ts 中重复</span><span class="issue-file">App.tsx:148 / usePanelResize.ts:24</span></div><div class="issue-body"><p>相同函数签名，不同文件。应提取为共享工具函数。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">魔法数字缺少依据（420、140、120000、300、1440、812）</span><span class="issue-file">aiStructure.ts / exportSnapshot.ts</span></div><div class="issue-body"><p>多个常量缺少文档说明理由。DEFAULT_MAX_NODES = 420，MAX_TEXT_LENGTH = 140，AI_REQUEST_TIMEOUT_MS = 120000 等。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">颜色预设数据重复（colorPresets vs COLOR_PALETTE）</span><span class="issue-file">color.ts:106, 115-128</span></div><div class="issue-body"><p>数组内容重叠。其中一个可能是死代码，或服务于不同的 UI 上下文但未记录。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">repairCommonAiJson 是死代码</span><span class="issue-file">aiStructure.ts:1197</span></div><div class="issue-body"><p>注释说"保留供测试使用"，但 repairLooseJson 是其严格超集。应删除并更新测试。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">useShortcuts：冗余条件判断（两个分支都做 toLowerCase）</span><span class="issue-file">useShortcuts.ts:41</span></div><div class="issue-body"><p><code>event.key.length === 1 ? event.key.toLowerCase() : event.key.toLowerCase()</code> -- 两个分支完全相同。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">空 catch 块静默吞没错误</span><span class="issue-file">usePretextMeasure.ts:77, 84</span></div><div class="issue-body"><p>两个 catch 块静默降级。至少应添加 console.debug 以便开发时排查。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">Tooltip 的 cloneElement 模式脆弱</span><span class="issue-file">Tooltip.tsx:245</span></div><div class="issue-body"><p>使用 cloneElement 假设子元素是普通 React 元素。React 团队已暗示未来版本可能弃用此 API。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">iframe 桥接 CSS 中硬编码颜色值（未使用设计令牌）</span><span class="issue-file">PreviewFrame.tsx:329-526</span></div><div class="issue-body"><p>桥接 CSS 使用硬编码颜色而非设计令牌 CSS 变量。主题变更不会传播到 iframe 覆盖层。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">E2E 测试硬编码 Windows Chrome 路径</span><span class="issue-file">e2e-export.cjs:24</span></div><div class="issue-body"><p>不可移植。Playwright 可使用其自带的 Chromium。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">ESM 测试环境中使用了 require()</span><span class="issue-file">test/setup.ts:8, 33</span></div><div class="issue-body"><p>项目设置为 "type": "module" 但使用了 CommonJS require()。应改用动态 import() 或 ESM 顶层导入。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">脚本文件缺少 @types/node 依赖</span><span class="issue-file">package.json</span></div><div class="issue-body"><p>脚本使用 Node.js API 但未列出 @types/node。这些文件的 TypeScript 类型检查不完整。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">缺少 engines 字段指定 Node 版本</span><span class="issue-file">package.json</span></div><div class="issue-body"><p>CI 使用 Node 22，但使用 Node 18 的开发者可能遇到意外问题。应记录最低 Node 版本。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">useEditorHistory ref 同步模式冗余</span><span class="issue-file">useEditorHistory.ts:19-33</span></div><div class="issue-body"><p>三个独立的 useEffect 将 ref 同步到 state。更简洁的做法是在 setter 旁边更新 ref 并删除同步 effect。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">tsconfig.node.json 缺少 strict 等安全标志</span><span class="issue-file">tsconfig.node.json</span></div><div class="issue-body"><p>无 strict、无 skipLibCheck、无 esModuleInterop。vite.config.ts 中的类型错误更不容易被捕获。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">PatchElementMessage.patch 使用了弱类型 Record&lt;string, unknown&gt;</span><span class="issue-file">messages.ts:48</span></div><div class="issue-body"><p>ElementUpdate 是强类型的，但桥接消息使用了更弱的类型，在边界处丧失了类型安全。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">hasElementWithHftId 正则可能匹配到属性值内部</span><span class="issue-file">domPath.ts:83-88</span></div><div class="issue-body"><p>当 hft-id 模式出现在另一个属性值中时存在误报风险。非安全问题但可能导致微妙的 bug。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">downloadBlob 使用 setTimeout(0) 回收 URL</span><span class="issue-file">downloadBlob.ts:55</span></div><div class="issue-body"><p>0ms 超时可能不给 Firefox 足够的时间来启动下载。100-250ms 更安全。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">waitForIframeContent 使用 jsdom user-agent 嗅探</span><span class="issue-file">exportSnapshot.ts:250-252</span></div><div class="issue-body"><p>通过 user-agent 检测测试环境是脆弱的。应使用特性检测标志或显式测试模式选项。</p></div></div>
+
+    <div class="issue-card" onclick="this.classList.toggle('expanded')"><div class="issue-header"><span class="expand-icon">&#9654;</span><span class="severity-tag severity-low">低</span><span class="issue-title">loadStoredAiKeys() 在初始化时被调用两次</span><span class="issue-file">App.tsx:295-298</span></div><div class="issue-body"><p>挂载时解析 localStorage 两次。代码异味，在边缘情况下可能导致不一致。</p></div></div>
+  </div>
+
+  <!-- ==================== 亮点 ==================== -->
+  <div class="section">
+    <div class="category-divider">项目亮点<span class="category-count">优势</span></div>
+
+    <div class="positive-card">
+      <h4>扎实的 TypeScript 类型系统</h4>
+      <p>消息类型使用判别联合、样式键和提供商 ID 使用字符串字面量联合、postMessage 使用运行时类型守卫、依赖注入使用接口便于测试。开启了严格模式。</p>
+    </div>
+
+    <div class="positive-card">
+      <h4>设计良好的 AI 集成层</h4>
+      <p>干净的协议分发支持 16 个提供商。健壮的 JSON 修复管线处理 Markdown 围栏、尾逗号、注释和 NaN/undefined。通过 allowedIds 集合验证响应，防止幻觉的 hftId 值。AbortController 超时控制。</p>
+    </div>
+
+    <div class="positive-card">
+      <h4>优秀的导出管线架构</h4>
+      <p>ExportPdf 和 ExportPptx 测试使用依赖注入接口精心设计的 mock。测试覆盖了成功和错误路径以及特定的 ExportError 码。白色背景矩形不变量测试是测试渲染正确性的优秀范例。</p>
+    </div>
+
+    <div class="positive-card">
+      <h4>CSS 设计令牌系统</h4>
+      <p>:root 块组织良好，半径、间距、颜色、排版和动效都有清晰的命名令牌。向后兼容别名体现了周到的迁移规划。</p>
+    </div>
+
+    <div class="positive-card">
+      <h4>规范的开发服务器脚本</h4>
+      <p>dev-runner.mjs 正确处理 SIGINT/SIGTERM/SIGHUP，同时输出到控制台和日志文件，强制 UTF-8 编码，优雅关闭子进程。良好的跨平台工程实践。</p>
+    </div>
+
+    <div class="positive-card">
+      <h4>完善的 .gitignore</h4>
+      <p>覆盖了 IDE 临时目录、代理工作空间、构建输出、系统文件和 git worktree。维护良好且全面。</p>
+    </div>
+  </div>
+
+  <div class="report-footer">
+    <p>由 QoderWork 代码审查生成 &mdash; 2026-06-29</p>
+    <p style="margin-top:4px">HTML FineTune v2.4.1 项目 &middot; 75 个源文件 &middot; 71 个问题</p>
+  </div>
+
+</div>
+</body>
+</html>

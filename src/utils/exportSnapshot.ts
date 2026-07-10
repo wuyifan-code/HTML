@@ -116,6 +116,18 @@ export async function capturePreviewAsPng(input: SnapshotInput): Promise<Rendere
     const htmlToImage = input.htmlToImage ?? (await loadHtmlToImage());
 
     await waitForAssets(documentRef);
+    // 等字体:document.fonts.ready 触发后,逐个 await 还没 loaded 的 FontFace,
+    // 否则 html-to-image 会用 fallback metrics 渲染 — 关掉 skipFonts 后尤其需要。
+    if (typeof documentRef.fonts?.ready?.then === "function") {
+      await documentRef.fonts.ready;
+    }
+    if (documentRef.fonts && typeof documentRef.fonts.forEach === "function") {
+      const fontPromises: Promise<FontFace>[] = [];
+      documentRef.fonts.forEach((face) => {
+        if (face.status !== "loaded") fontPromises.push(face.loaded);
+      });
+      await Promise.all(fontPromises);
+    }
 
     const slides = input.singlePage ? [] : findSlides(documentRef);
     const targets: HTMLElement[] = slides.length > 0 ? slides : [findFallback(documentRef)];
@@ -155,7 +167,8 @@ const pages: RenderedPage[] = [];
         pixelRatio: input.pixelRatio ?? DEFAULT_PIXEL_RATIO,
         cacheBust: true,
         backgroundColor: "#ffffff",
-        skipFonts: true,
+        // skipFonts:false 让 html-to-image 内嵌实际 webfont,而不是用系统 fallback
+        skipFonts: false,
         imagePlaceholder: TRANSPARENT_PIXEL,
         // 关键: deck 里的 <img src="..."> 用相对路径,
         // 在 srcdoc iframe 里会 404。如果让 html-to-image 走默认 reject 路径,
@@ -437,24 +450,67 @@ async function waitForDocumentAssetsDefault(documentRef: Document): Promise<void
   await withTimeout(fontReady, DEFAULT_RESOURCE_WAIT);
 
   const pendingImages = Array.from(documentRef.images).filter((image) => !image.complete);
-  if (pendingImages.length === 0) return;
+  const pendingSvgs = collectSvgImageElements(documentRef);
+  const pendingBackgrounds = collectBackgroundImageUrls(documentRef);
+  const allPending = pendingImages.length + pendingSvgs.length + pendingBackgrounds.length;
+  if (allPending === 0) return;
 
-  await withTimeout(
-    Promise.all(
-      pendingImages.map(
-        (image) =>
-          new Promise<void>((resolve) => {
-            try {
-              image.addEventListener("load", () => resolve(), { once: true });
-              image.addEventListener("error", () => resolve(), { once: true });
-            } catch {
-              resolve();
-            }
-          })
-      )
-    ),
-    DEFAULT_RESOURCE_WAIT
+  const imagePromises = pendingImages.map(
+    (image) =>
+      new Promise<void>((resolve) => {
+        try {
+          image.addEventListener("load", () => resolve(), { once: true });
+          image.addEventListener("error", () => resolve(), { once: true });
+        } catch {
+          resolve();
+        }
+      })
   );
+  // SVG <image> 与 CSS background-image 都用 fetch + Image.decode 试探;
+  // 任一失败不抛错,留给 rasterizer 用占位像素兜底
+  const resourcePromises = [...pendingSvgs, ...pendingBackgrounds].map(
+    (url) =>
+      new Promise<void>((resolve) => {
+        const probe = new Image();
+        try {
+          probe.onload = () => resolve();
+          probe.onerror = () => resolve();
+          probe.src = url;
+        } catch {
+          resolve();
+        }
+      })
+  );
+
+  await withTimeout(Promise.all([...imagePromises, ...resourcePromises]), DEFAULT_RESOURCE_WAIT);
+}
+
+function collectSvgImageElements(documentRef: Document): string[] {
+  const urls: string[] = [];
+  const elements = documentRef.querySelectorAll("svg image, svg use");
+  elements.forEach((el) => {
+    const href = el.getAttribute("href") ?? el.getAttribute("xlink:href");
+    if (href && !href.startsWith("#") && !href.startsWith("data:")) {
+      urls.push(href);
+    }
+  });
+  return urls;
+}
+
+function collectBackgroundImageUrls(documentRef: Document): string[] {
+  const urls: string[] = [];
+  const all = documentRef.querySelectorAll<HTMLElement>("*");
+  all.forEach((el) => {
+    const style = (el.ownerDocument?.defaultView ?? window).getComputedStyle(el);
+    const bg = style.getPropertyValue("background-image");
+    const matches = bg.match(/url\("?([^")]+)"?\)/g);
+    if (!matches) return;
+    for (const match of matches) {
+      const url = match.replace(/^url\(["']?/, "").replace(/["']?\)$/, "");
+      if (!url.startsWith("data:") && !url.startsWith("#")) urls.push(url);
+    }
+  });
+  return urls;
 }
 
 function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T | void> {

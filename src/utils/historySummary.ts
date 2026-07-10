@@ -8,6 +8,47 @@ export interface HistoryDisplayItem {
   title: string;
   detail: string;
   isCurrent: boolean;
+  timestamp: number;
+  category: string;
+  timeLabel: string;
+  dateLabel: string;
+}
+
+const categoryKeywords: [RegExp, string][] = [
+  [/新增|删除/, "Content"],
+  [/修改.*文本|文本.*修改/, "Text"],
+  [/更新.*属性/, "Attributes"],
+  [/调整.*样式|修改.*style/i, "Style"],
+  [/更新 HTML|内容已改/, "Layout"],
+  [/调整/, "Style"],
+  [/文本/, "Text"],
+];
+
+function deriveCategory(title: string): string {
+  for (const [pattern, cat] of categoryKeywords) {
+    if (pattern.test(title)) return cat;
+  }
+  return "Edit";
+}
+
+function formatTime(ts: number): string {
+  const d = new Date(ts);
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return `${hh}:${mm}`;
+}
+
+function formatDate(ts: number): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+
+  if (d.toDateString() === now.toDateString()) return "Today";
+  if (d.toDateString() === yesterday.toDateString()) return "Yesterday";
+
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[d.getMonth()]} ${d.getDate()}`;
 }
 
 const labels = {
@@ -32,19 +73,26 @@ const labels = {
 
 export function buildHistoryDisplayItems(
   timeline: EditorDocumentState[],
-  currentIndex: number
+  currentIndex: number,
+  timestamps: number[] = []
 ): HistoryDisplayItem[] {
+  const now = Date.now();
   return timeline.map((state, index) => {
     const previous = timeline[index - 1];
     const summary = previous
       ? summarizeStateChange(previous, state)
       : { title: labels.initialTitle, detail: labels.initialDetail };
+    const ts = timestamps[index] ?? now - (timeline.length - index) * 60000;
 
     return {
       index,
       title: summary.title,
       detail: summary.detail,
       isCurrent: index === currentIndex,
+      timestamp: ts,
+      category: deriveCategory(summary.title),
+      timeLabel: formatTime(ts),
+      dateLabel: formatDate(ts),
     };
   });
 }
@@ -55,14 +103,24 @@ export function buildHistoryDisplayItems(
  */
 export function buildDisplayItemsFromSummaries(
   summaries: (HistorySummary | null)[],
-  currentIndex: number
+  currentIndex: number,
+  timestamps: number[] = []
 ): HistoryDisplayItem[] {
-  return summaries.map((summary, index) => ({
-    index,
-    title: summary?.title ?? labels.initialTitle,
-    detail: summary?.detail ?? labels.initialDetail,
-    isCurrent: index === currentIndex,
-  }));
+  const now = Date.now();
+  return summaries.map((summary, index) => {
+    const ts = timestamps[index] ?? now - (summaries.length - index) * 60000;
+    const title = summary?.title ?? labels.initialTitle;
+    return {
+      index,
+      title,
+      detail: summary?.detail ?? labels.initialDetail,
+      isCurrent: index === currentIndex,
+      timestamp: ts,
+      category: deriveCategory(title),
+      timeLabel: formatTime(ts),
+      dateLabel: formatDate(ts),
+    };
+  });
 }
 
 export function summarizeStateChange(

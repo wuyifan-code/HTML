@@ -1,20 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ComponentType, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent } from "react";
-import ClaudeLogo from "@lobehub/icons/es/Claude/components/Color";
-import DeepSeekLogo from "@lobehub/icons/es/DeepSeek/components/Color";
-import DoubaoLogo from "@lobehub/icons/es/Doubao/components/Color";
-import GeminiLogo from "@lobehub/icons/es/Gemini/components/Color";
-import GrokLogo from "@lobehub/icons/es/Grok/components/Mono";
-import GroqLogo from "@lobehub/icons/es/Groq/components/Mono";
-import KimiLogo from "@lobehub/icons/es/Kimi/components/Mono";
-import MinimaxLogo from "@lobehub/icons/es/Minimax/components/Color";
-import MistralLogo from "@lobehub/icons/es/Mistral/components/Color";
-import OpenAILogo from "@lobehub/icons/es/OpenAI/components/Mono";
-import OpenRouterLogo from "@lobehub/icons/es/OpenRouter/components/Mono";
-import QwenLogo from "@lobehub/icons/es/Qwen/components/Color";
-import SiliconCloudLogo from "@lobehub/icons/es/SiliconCloud/components/Color";
-import TogetherLogo from "@lobehub/icons/es/Together/components/Color";
-import WenxinLogo from "@lobehub/icons/es/Wenxin/components/Color";
-import ZhipuLogo from "@lobehub/icons/es/Zhipu/components/Color";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ColorField } from "./components/ColorField";
 import { ExportPreviewDialog } from "./components/ExportPreviewDialog";
 import { PretextMeasureBadge } from "./components/PretextMeasureBadge";
@@ -22,7 +7,6 @@ import { Tooltip, TooltipProvider } from "./components/Tooltip";
 import { useEditorHistory } from "./hooks/useEditorHistory";
 import { useElementSize } from "./hooks/useElementSize";
 import { sampleHtml } from "./sampleHtml";
-import brandLogoUrl from "../converted_icon_exact_embedded.svg";
 import type { AiTreeAnnotation, DomTreeNode } from "./types/editor";
 import { cleanHtmlForExport } from "./utils/cleanHtmlForExport";
 import { copyHtmlToClipboard } from "./utils/clipboard";
@@ -62,50 +46,88 @@ import {
   type AiProviderId,
 } from "./utils/aiStructure";
 
+// 新拆分的子模块及工具函数导入
+import {
+  IconUndo,
+  IconRedo,
+  IconAlignLeft,
+  IconAlignCenter,
+  IconAlignRight,
+  IconBold,
+  IconItalic,
+  IconImport,
+  IconDownload,
+  IconHistory,
+  IconMenu,
+  IconKeyboard,
+  IconEye,
+  IconChevronDown,
+  IconSparkles,
+  IconScan,
+  IconSearch,
+  IconMonitor,
+  IconTablet,
+  IconSmartphone,
+  IconMove,
+  IconZoomIn,
+  IconZoomOut,
+  IconMaximize,
+  IconType,
+  IconSpacing,
+  IconPalette,
+  IconBorder,
+  IconRuler,
+  IconText,
+  IconImage,
+  IconActivity,
+  IconShield,
+} from "./components/Icons";
+import { TreeItem, TreeItemNode } from "./components/TreeItem";
+import { InspectorDiagnostics } from "./components/InspectorDiagnostics";
+import { AiProviderPicker } from "./components/AiProviderPicker";
+import { HistoryPanel } from "./components/HistoryPanel";
+import { buildDisplayItemsFromSummaries } from "./utils/historySummary";
+import { useEditorStore } from "./hooks/useEditorStore";
+
+import {
+  filterDomTree,
+  filterCollapsedTree,
+  countTreeChildren,
+  getPreferredSelectedId,
+  toKindLabel,
+} from "./utils/domTree";
+
+import {
+  buildPretextFontFromDraft,
+  resolveMeasureWidth,
+  resolveMeasureLineHeight,
+  parseCssNumericValue,
+} from "./utils/pretextMeasure";
+
+import {
+  resolveZoomScale,
+  formatRelativeTime,
+  cssString,
+  countSourceLines,
+  buildSelectedSnapshot,
+  buildPreviewSrcDoc,
+  hasBlockingExportWarnings,
+  formatExportWarningSummary,
+} from "./utils/editorUtils";
+
 const initialHtml = injectEditableIds(sampleHtml).html;
 const AI_KEY_STORAGE = "html-finetune.ai-provider-keys";
 const AI_LEGACY_GEMMA_KEY_STORAGE = "html-finetune.gemma-api-key";
 
-type SourceTab = "structure" | "source";
+type SourceTab = "structure" | "source" | "ai";
 type ZoomMode = "fit" | "88" | "100";
 type InspectorTab = "content" | "style" | "interaction";
+type StatusTone = "ready" | "busy" | "warning" | "error";
 type PreviewContentBounds = {
   x: number;
   y: number;
   width: number;
   height: number;
-};
-type AiLogoSurface = "plain" | "light";
-type AiLogoComponent = ComponentType<{
-  className?: string;
-  color?: string;
-  size?: number | string;
-  style?: CSSProperties;
-  title?: string;
-}>;
-type AiLogoDescriptor = {
-  Icon: AiLogoComponent;
-  title: string;
-  surface?: AiLogoSurface;
-  color?: string;
-};
-const AI_PROVIDER_LOGOS: Record<AiProviderId, AiLogoDescriptor> = {
-  google: { Icon: GeminiLogo, title: "Google Gemini", surface: "plain" },
-  openai: { Icon: OpenAILogo, title: "OpenAI", surface: "light", color: "#101828" },
-  anthropic: { Icon: ClaudeLogo, title: "Anthropic Claude", surface: "plain" },
-  deepseek: { Icon: DeepSeekLogo, title: "DeepSeek", surface: "plain" },
-  qwen: { Icon: QwenLogo, title: "Qwen", surface: "plain" },
-  kimi: { Icon: KimiLogo, title: "Kimi / Moonshot", surface: "light", color: "#1783ff" },
-  zhipu: { Icon: ZhipuLogo, title: "GLM / Z.AI", surface: "plain" },
-  volcengine: { Icon: DoubaoLogo, title: "Doubao", surface: "plain" },
-  qianfan: { Icon: WenxinLogo, title: "Baidu Wenxin / Qianfan", surface: "plain" },
-  minimax: { Icon: MinimaxLogo, title: "MiniMax", surface: "plain" },
-  mistral: { Icon: MistralLogo, title: "Mistral AI", surface: "plain" },
-  xai: { Icon: GrokLogo, title: "xAI Grok", surface: "light", color: "#101828" },
-  groq: { Icon: GroqLogo, title: "Groq", surface: "light", color: "#101828" },
-  together: { Icon: TogetherLogo, title: "Together AI", surface: "plain" },
-  openrouter: { Icon: OpenRouterLogo, title: "OpenRouter", surface: "light", color: "#101828" },
-  siliconflow: { Icon: SiliconCloudLogo, title: "SiliconFlow", surface: "plain" },
 };
 type CopiedStyle = {
   fontFamily: string;
@@ -149,27 +171,14 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(Math.max(value, min), max);
 }
 
-function loadStoredAiKeys(): Record<string, string> {
-  if (typeof window === "undefined") return {};
-  const rawKeys = window.localStorage.getItem(AI_KEY_STORAGE);
-  if (rawKeys) {
-    try {
-      const parsed = JSON.parse(rawKeys) as Record<string, unknown>;
-      return Object.fromEntries(
-        Object.entries(parsed).filter((entry): entry is [string, string] => typeof entry[1] === "string")
-      );
-    } catch {
-      window.localStorage.removeItem(AI_KEY_STORAGE);
-    }
-  }
-
-  const legacyGemmaKey = window.localStorage.getItem(AI_LEGACY_GEMMA_KEY_STORAGE);
-  return legacyGemmaKey ? { google: legacyGemmaKey } : {};
+function getStatusTone(message: string): StatusTone {
+  if (/失败|错误|异常/.test(message)) return "error";
+  if (/警告|暂停|风险|过大|不能为空|未找到|请先|发现/.test(message)) return "warning";
+  if (/正在|扫描|导出|刷新|检查中|运行/.test(message)) return "busy";
+  return "ready";
 }
 
-function buildRememberedAiKeyMap(storedKeys: Record<string, string>): Record<string, boolean> {
-  return Object.fromEntries(Object.keys(storedKeys).map((providerId) => [providerId, true]));
-}
+import { loadStoredAiKeys, buildRememberedAiKeyMap } from "./utils/aiKeyStorage";
 
 interface SelectedSnapshot {
   hftId: string;
@@ -181,6 +190,7 @@ interface SelectedSnapshot {
   className: string;
   fontFamily: string;
   fontSize: string;
+  fontStyle: string;
   fontWeight: string;
   lineHeight: string;
   letterSpacing: string;
@@ -210,30 +220,78 @@ interface SelectedSnapshot {
 
 export default function App() {
   const {
+    theme,
+    setTheme,
+    sourceWidth,
+    setSourceWidth,
+    inspectorWidth,
+    setInspectorWidth,
+    isSourceCollapsed,
+    setIsSourceCollapsed,
+    isInspectorCollapsed,
+    setIsInspectorCollapsed,
+    zoomMode,
+    setZoomMode,
+    viewportSize,
+    setViewportSize,
+    isHistoryOpen,
+    setIsHistoryOpen,
+    isFocusMode,
+    setIsFocusMode,
+  } = useEditorStore();
+  const {
     state,
     commit,
     reset,
     undo,
     redo,
     jumpToHistoryIndex,
-    timeline,
+    clearHistory,
     summaries,
+    allEntries,
     currentIndex,
     canUndo,
     canRedo,
     flushDebouncedHistory,
   } = useEditorHistory({ html: initialHtml, selectedId: null });
 
+  const historyDisplayItems = useMemo(
+    () => buildDisplayItemsFromSummaries(summaries, currentIndex, allEntries.map((e) => e.timestamp)),
+    [summaries, currentIndex, allEntries]
+  );
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const sourceTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const sourceLineGutterRef = useRef<HTMLPreElement | null>(null);
+  const exportTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const historyTriggerRef = useRef<HTMLButtonElement | null>(null);
+  const mobileActionsRef = useRef<HTMLDivElement | null>(null);
+  const sourcePanelRef = useRef<HTMLElement | null>(null);
+  const inspectorPanelRef = useRef<HTMLElement | null>(null);
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const workspaceRef = useRef<HTMLElement | null>(null);
   const treeScrollRef = useRef<HTMLDivElement | null>(null);
   const latestHtmlRef = useRef(state.html);
+  const handleCloseHistory = useCallback(() => {
+    setIsHistoryOpen(false);
+    window.setTimeout(() => historyTriggerRef.current?.focus(), 0);
+  }, [setIsHistoryOpen]);
+  // 与 iframe 桥脚本共享的 token — 每次 App mount 生成,仅用于校验同源 frame 的消息
+  const bridgeTokenRef = useRef<string>(
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `tok-${Math.random().toString(36).slice(2)}-${Date.now()}`
+  );
   const [sourceTab, setSourceTab] = useState<SourceTab>("structure");
   const [search, setSearch] = useState("");
   const [collapsedTreeIds, setCollapsedTreeIds] = useState<Set<string>>(() => new Set());
   const [isSelectionCleared, setIsSelectionCleared] = useState(false);
   const [sourceDraft, setSourceDraft] = useState(state.html);
+  const hasHtmlUnclosedRisk = useMemo(() => {
+    const openMatches = sourceDraft.match(/<(div|section|span|p|a|ul|li|ol|button)(?:\s[^>]*?)?>/g) || [];
+    const closeMatches = sourceDraft.match(/<\/(div|section|span|p|a|ul|li|ol|button)>/gi) || [];
+    return openMatches.length !== closeMatches.length;
+  }, [sourceDraft]);
   const [draftText, setDraftText] = useState("");
   const [draftFontFamily, setDraftFontFamily] = useState("");
   const [draftFontSize, setDraftFontSize] = useState("");
@@ -273,19 +331,16 @@ export default function App() {
   const setInspectorTab = useCallback((_value: InspectorTab) => {
     /* no-op: tabs are merged into a single scrollable panel */
   }, []);
-  const [zoomMode, setZoomMode] = useState<ZoomMode>("fit");
   const stageRef = useRef<HTMLDivElement | null>(null);
   const stageSize = useElementSize(stageRef);
-  const [viewportSize, setViewportSize] = useState(() => ({
-    width: VIEWPORT_PRESETS.desktop.width,
-    height: VIEWPORT_PRESETS.desktop.height,
-  }));
   const [isChecking, setIsChecking] = useState(false);
   const [copiedStyle, setCopiedStyle] = useState<CopiedStyle | null>(null);
-  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [isFocusMode, setIsFocusMode] = useState(false);
-  const [sourceWidth, setSourceWidth] = useState(DEFAULT_SOURCE_WIDTH);
-  const [inspectorWidth, setInspectorWidth] = useState(DEFAULT_INSPECTOR_WIDTH);
+  const [isMobileShell, setIsMobileShell] = useState(false);
+  const [isMobileActionsOpen, setIsMobileActionsOpen] = useState(false);
+  const [isSourceExpanded, setIsSourceExpanded] = useState(false);
+  const [isSourceSoftWrap, setIsSourceSoftWrap] = useState(false);
+  const [sourceSearch, setSourceSearch] = useState("");
+  const [sourceSearchPosition, setSourceSearchPosition] = useState<{ matchNumber: number; lineNumber: number } | null>(null);
   const [hasImportedHtml, setHasImportedHtml] = useState(false);
   const [lastSyncedAt, setLastSyncedAt] = useState(() => Date.now());
   const [isAiCardCollapsed, setIsAiCardCollapsed] = useState(false);
@@ -332,12 +387,33 @@ export default function App() {
     () => (search.trim() ? filteredTree : filterCollapsedTree(filteredTree, collapsedTreeIds)),
     [collapsedTreeIds, filteredTree, search]
   );
-  const previewSrcDoc = useMemo(() => buildPreviewSrcDoc(state.html, selectedId), [selectedId, state.html]);
+  const previewSrcDoc = useMemo(() => buildPreviewSrcDoc(state.html, selectedId, bridgeTokenRef.current), [selectedId, state.html]);
   const cleanHtml = useMemo(() => cleanHtmlForExport(state.html), [state.html]);
   const exportWarnings = useMemo(() => getExportWarnings(cleanHtml), [cleanHtml]);
   const sourceLineCount = useMemo(() => countSourceLines(sourceDraft), [sourceDraft]);
+  const sourceLineNumbers = useMemo(
+    () => Array.from({ length: Math.max(1, sourceLineCount) }, (_, index) => String(index + 1)).join("\n"),
+    [sourceLineCount]
+  );
   const sourceCharCount = sourceDraft.length;
   const isSourceDirty = sourceDraft !== state.html;
+  const sourceSearchMatchCount = useMemo(() => {
+    const query = sourceSearch.trim();
+    if (!query) return 0;
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    return sourceDraft.match(new RegExp(escaped, "gi"))?.length ?? 0;
+  }, [sourceDraft, sourceSearch]);
+  const sourceSearchQuery = sourceSearch.trim();
+  const sourceSearchState = sourceSearchQuery ? (sourceSearchMatchCount > 0 ? "found" : "empty") : "idle";
+  const sourceSyncState = hasHtmlUnclosedRisk ? "warning" : isSourceDirty ? "dirty" : "synced";
+  const sourceSyncTitle =
+    sourceSyncState === "warning" ? "结构需复核" : sourceSyncState === "dirty" ? "草稿未应用" : "源码已同步";
+  const sourceSyncDetail =
+    sourceSyncState === "warning"
+      ? "检测到可能未闭合的标签，应用前请复核结构。"
+      : sourceSyncState === "dirty"
+        ? "当前修改只保存在源码草稿中，应用后会刷新画布。"
+        : "源码草稿与当前画布保持一致。";
   const blockingExportWarningCount = useMemo(
     () => exportWarnings.filter((warning) => BLOCKING_EXPORT_WARNING_TYPES.includes(warning.type)).length,
     [exportWarnings]
@@ -391,6 +467,93 @@ export default function App() {
   }, [state.html]);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const media = window.matchMedia("(max-width: 760px)");
+    const syncMobileShell = () => {
+      const isMobile = media.matches;
+      setIsMobileShell(isMobile);
+      if (isMobile) {
+        setIsSourceCollapsed(true);
+        setIsInspectorCollapsed(true);
+        setIsMobileActionsOpen(false);
+      } else {
+        setIsMobileActionsOpen(false);
+      }
+    };
+
+    syncMobileShell();
+    media.addEventListener("change", syncMobileShell);
+    return () => media.removeEventListener("change", syncMobileShell);
+  }, []);
+
+  useEffect(() => {
+    const setPanelInteraction = (panel: HTMLElement | null, isCollapsed: boolean) => {
+      if (!panel) return;
+      if (isCollapsed) {
+        panel.setAttribute("aria-hidden", "true");
+        panel.setAttribute("inert", "");
+      } else {
+        panel.removeAttribute("aria-hidden");
+        panel.removeAttribute("inert");
+      }
+    };
+
+    setPanelInteraction(document.querySelector<HTMLElement>("[data-dom-id='panel-source-tree']"), isSourceCollapsed);
+    setPanelInteraction(document.querySelector<HTMLElement>("[data-dom-id='panel-inspector']"), isInspectorCollapsed);
+
+    return () => {
+      document.querySelector<HTMLElement>("[data-dom-id='panel-source-tree']")?.removeAttribute("inert");
+      document.querySelector<HTMLElement>("[data-dom-id='panel-source-tree']")?.removeAttribute("aria-hidden");
+      document.querySelector<HTMLElement>("[data-dom-id='panel-inspector']")?.removeAttribute("inert");
+      document.querySelector<HTMLElement>("[data-dom-id='panel-inspector']")?.removeAttribute("aria-hidden");
+    };
+  }, [isInspectorCollapsed, isSourceCollapsed]);
+
+  useEffect(() => {
+    if (!isMobileActionsOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (target instanceof Node && !mobileActionsRef.current?.contains(target)) {
+        setIsMobileActionsOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsMobileActionsOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => {
+      window.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("keydown", handleKeyDown, true);
+    };
+  }, [isMobileActionsOpen]);
+
+  useEffect(() => {
+    if (!isMobileShell || (isSourceCollapsed && isInspectorCollapsed)) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (sourcePanelRef.current?.contains(target)) return;
+      if (inspectorPanelRef.current?.contains(target)) return;
+      if (mobileActionsRef.current?.contains(target)) return;
+
+      setIsSourceCollapsed(true);
+      setIsInspectorCollapsed(true);
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [isInspectorCollapsed, isMobileShell, isSourceCollapsed]);
+
+  useEffect(() => {
     setAiModels((models) => ({
       ...models,
       [aiProvider]: models[aiProvider] || AI_PROVIDER_MAP[aiProvider].defaultModel,
@@ -410,12 +573,17 @@ export default function App() {
     } else {
       window.localStorage.removeItem(AI_KEY_STORAGE);
     }
-    window.localStorage.removeItem(AI_LEGACY_GEMMA_KEY_STORAGE);
+    // 注意:旧版 gemma key 的迁移与删除在 loadStoredAiKeys() 阶段一次性完成,
+    // 这里不再无条件 removeItem 旧 key,避免 rememberAiKeys=false 时把刚迁移的 key 也抹掉。
   }, [aiApiKeys, rememberAiKeys]);
 
   useEffect(() => {
     setSourceDraft(state.html);
   }, [state.html]);
+
+  useEffect(() => {
+    setSourceSearchPosition(null);
+  }, [sourceDraft, sourceSearch]);
 
   useEffect(() => {
     setIsPreviewReady(false);
@@ -558,6 +726,10 @@ export default function App() {
     const handleMessage = (event: MessageEvent) => {
       const data = event.data;
       if (!data) return;
+      // 安全守卫 1: 消息必须来自我们自己的 preview iframe
+      if (event.source !== previewFrameRef.current?.contentWindow) return;
+      // 安全守卫 2: 消息必须带匹配的 token,否则视为伪造
+      if (typeof data.token !== "string" || data.token !== bridgeTokenRef.current) return;
       if (data.type === "HTML_FINETUNE_OPTIMIZED_CONTENT_BOUNDS") {
         const bounds = data.bounds;
         const hasValidBounds =
@@ -930,6 +1102,55 @@ export default function App() {
     showToast("源码已重置");
   }, [showToast, state.html]);
 
+  const handleSourceScroll = useCallback(() => {
+    if (!sourceTextareaRef.current || !sourceLineGutterRef.current) return;
+    sourceLineGutterRef.current.scrollTop = sourceTextareaRef.current.scrollTop;
+  }, []);
+
+  const handleFindSourceMatch = useCallback(() => {
+    const query = sourceSearch.trim();
+    const textarea = sourceTextareaRef.current;
+    if (!query || !textarea) return;
+
+    const haystack = sourceDraft.toLowerCase();
+    const needle = query.toLowerCase();
+    const startIndex = Math.max(textarea.selectionEnd, 0);
+    let matchIndex = haystack.indexOf(needle, startIndex);
+    if (matchIndex === -1) matchIndex = haystack.indexOf(needle);
+    if (matchIndex === -1) {
+      setSourceSearchPosition(null);
+      setStatusMessage("源码中未找到匹配项");
+      showToast("未找到源码匹配");
+      return;
+    }
+
+    textarea.focus();
+    textarea.setSelectionRange(matchIndex, matchIndex + query.length);
+    const lineIndex = sourceDraft.slice(0, matchIndex).split("\n").length - 1;
+    let matchNumber = 1;
+    let seenMatches = 0;
+    let searchFrom = 0;
+    while (searchFrom <= haystack.length) {
+      const index = haystack.indexOf(needle, searchFrom);
+      if (index === -1) break;
+      seenMatches += 1;
+      if (index === matchIndex) {
+        matchNumber = seenMatches;
+        break;
+      }
+      searchFrom = index + Math.max(needle.length, 1);
+    }
+    textarea.scrollTop = Math.max(0, lineIndex * 22 - 88);
+    handleSourceScroll();
+    setSourceSearchPosition({ matchNumber, lineNumber: lineIndex + 1 });
+    setStatusMessage(`已定位源码匹配：第 ${lineIndex + 1} 行`);
+  }, [handleSourceScroll, showToast, sourceDraft, sourceSearch]);
+
+  const handleImportClick = useCallback(() => {
+    setIsMobileActionsOpen(false);
+    fileInputRef.current?.click();
+  }, []);
+
   const handleCopy = useCallback(async () => {
     try {
       await copyHtmlToClipboard(cleanHtml);
@@ -946,9 +1167,47 @@ export default function App() {
     assertCleanExport(cleanHtml);
     exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
     setIsExportOpen(false);
+    setIsMobileActionsOpen(false);
     setIsExportPreviewOpen(true);
     setStatusMessage(exportWarnings.length ? `导出预览含 ${exportWarnings.length} 项警告` : "已生成导出前预览");
   }, [cleanHtml, exportWarnings]);
+
+  const handleCloseExportPreview = useCallback(() => {
+    setIsExportPreviewOpen(false);
+    window.requestAnimationFrame(() => {
+      exportTriggerRef.current?.focus();
+    });
+  }, []);
+
+  const handleOpenSourcePanel = useCallback(() => {
+    setIsMobileActionsOpen(false);
+    setIsSourceCollapsed(false);
+    if (isMobileShell) {
+      setIsInspectorCollapsed(true);
+    }
+  }, [isMobileShell]);
+
+  const handleCloseSourcePanel = useCallback(() => {
+    setIsSourceCollapsed(true);
+  }, []);
+
+  const handleOpenInspectorPanel = useCallback(() => {
+    setIsMobileActionsOpen(false);
+    setIsInspectorCollapsed(false);
+    if (isMobileShell) {
+      setIsSourceCollapsed(true);
+    }
+  }, [isMobileShell]);
+
+  const handleCloseInspectorPanel = useCallback(() => {
+    setIsInspectorCollapsed(true);
+  }, []);
+
+  const handleCloseMobilePanels = useCallback(() => {
+    setIsSourceCollapsed(true);
+    setIsInspectorCollapsed(true);
+    setStatusMessage("已收起移动侧栏");
+  }, []);
 
   const handleExportHtml = useCallback(() => {
     try {
@@ -966,7 +1225,6 @@ export default function App() {
   }, [cleanHtml, showToast]);
 
   const handleAnalyzeStructure = useCallback(async () => {
-    setSourceTab("structure");
     setAiStatus("running");
     setAiError("");
     setStatusMessage("AI 正在扫描结构");
@@ -980,6 +1238,7 @@ export default function App() {
       });
       setAiAnnotations(Object.fromEntries(annotations.map((annotation) => [annotation.hftId, annotation])));
       setAiStatus("ready");
+      setSourceTab("structure");
       setStatusMessage(`AI 已标注 ${annotations.length} 个结构节点`);
       showToast("AI 扫描完成");
       return annotations;
@@ -1003,7 +1262,7 @@ export default function App() {
       if (mode === "manual") showToast("请先填写 API Key");
       return;
     }
-    setSourceTab("structure");
+    setSourceTab("ai");
     setAiModelFetchStatus("loading");
     setAiModelFetchError("");
     if (mode === "manual") setStatusMessage("正在刷新 AI 模型列表");
@@ -1224,6 +1483,17 @@ export default function App() {
 
       const key = event.key.toLowerCase();
       if (!isTextInput && key === "escape") {
+        if (isMobileActionsOpen) {
+          event.preventDefault();
+          setIsMobileActionsOpen(false);
+          return;
+        }
+        if (isMobileShell && (!isSourceCollapsed || !isInspectorCollapsed)) {
+          event.preventDefault();
+          setIsSourceCollapsed(true);
+          setIsInspectorCollapsed(true);
+          return;
+        }
         if (isCheatsheetOpen) {
           event.preventDefault();
           setIsCheatsheetOpen(false);
@@ -1274,7 +1544,7 @@ export default function App() {
       }
       if (key === "o") {
         event.preventDefault();
-        fileInputRef.current?.click();
+        handleImportClick();
         return;
       }
       if (key === "e" && !event.shiftKey) {
@@ -1349,7 +1619,157 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [applyShortcutStyle, applyViewportPreset, commit, handleCopy, handleExportHtml, handleOpenExportPreview, isCheatsheetOpen, redo, selected, showToast, state.html, undo]);
+  }, [applyShortcutStyle, applyViewportPreset, commit, handleCopy, handleExportHtml, handleImportClick, handleOpenExportPreview, isCheatsheetOpen, isInspectorCollapsed, isMobileActionsOpen, isMobileShell, isSourceCollapsed, redo, selected, showToast, state.html, undo]);
+
+  // 3. 空格键抓手机械拖拽平移与物理惯性滚动引擎
+  // 注意:依赖 [stageSize.width, stageSize.height] 而不是 [stageRef.current],
+  // 因为 ref.current 的变化不触发 useEffect 重跑。
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    let isSpacePressed = false;
+    let isDragging = false;
+    let startX = 0;
+    let startY = 0;
+    let scrollLeft = 0;
+    let scrollTop = 0;
+
+    let velocityX = 0;
+    let velocityY = 0;
+    let animationFrameId = 0;
+    let lastTime = 0;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeEl = document.activeElement?.tagName.toLowerCase();
+      if (activeEl === "input" || activeEl === "textarea" || activeEl === "select") return;
+
+      if (e.key === " " || e.code === "Space") {
+        if (!isSpacePressed) {
+          e.preventDefault();
+          isSpacePressed = true;
+          stage.style.cursor = "grab";
+        }
+      }
+    };
+
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.key === " " || e.code === "Space") {
+        isSpacePressed = false;
+        isDragging = false;
+        stage.style.cursor = "";
+      }
+    };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const isMiddle = e.button === 1;
+      const isLeft = e.button === 0;
+      if (!isMiddle && !(isLeft && isSpacePressed)) return;
+
+      isDragging = true;
+      stage.style.cursor = "grabbing";
+
+      startX = e.clientX;
+      startY = e.clientY;
+      scrollLeft = stage.scrollLeft;
+      scrollTop = stage.scrollTop;
+
+      velocityX = 0;
+      velocityY = 0;
+      lastTime = performance.now();
+      cancelAnimationFrame(animationFrameId);
+    };
+
+    const handlePointerMove = (e: PointerEvent) => {
+      if (!isDragging) return;
+      e.preventDefault();
+
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
+
+      stage.scrollLeft = scrollLeft - deltaX;
+      stage.scrollTop = scrollTop - deltaY;
+
+      const now = performance.now();
+      const elapsed = now - lastTime;
+      if (elapsed > 0) {
+        velocityX = (deltaX / elapsed) * 16;
+        velocityY = (deltaY / elapsed) * 16;
+      }
+      lastTime = now;
+    };
+
+    const handlePointerUp = () => {
+      if (!isDragging) return;
+      isDragging = false;
+      stage.style.cursor = isSpacePressed ? "grab" : "";
+
+      const friction = 0.94;
+      const step = () => {
+        if (Math.abs(velocityX) < 0.15 && Math.abs(velocityY) < 0.15) {
+          cancelAnimationFrame(animationFrameId);
+          return;
+        }
+        stage.scrollLeft -= velocityX;
+        stage.scrollTop -= velocityY;
+        velocityX *= friction;
+        velocityY *= friction;
+        animationFrameId = requestAnimationFrame(step);
+      };
+      animationFrameId = requestAnimationFrame(step);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    window.addEventListener("keyup", handleKeyUp);
+    stage.addEventListener("pointerdown", handlePointerDown);
+    window.addEventListener("pointermove", handlePointerMove);
+    window.addEventListener("pointerup", handlePointerUp);
+
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+      stage.removeEventListener("pointerdown", handlePointerDown);
+      window.removeEventListener("pointermove", handlePointerMove);
+      window.removeEventListener("pointerup", handlePointerUp);
+      cancelAnimationFrame(animationFrameId);
+    };
+  }, [stageSize.width, stageSize.height]);
+
+  // 8. 全局按钮微型水波纹涟漪事件委托
+  useEffect(() => {
+    const handleGlobalClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const btn = target.closest(".ds-btn, .icon-button, .segmented-button, .history-drawer-row");
+      if (!btn) return;
+
+      const rect = btn.getBoundingClientRect();
+      const ripple = document.createElement("span");
+      ripple.className = "ds-ripple";
+
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+
+      ripple.style.left = `${x}px`;
+      ripple.style.top = `${y}px`;
+
+      const originalPosition = window.getComputedStyle(btn).position;
+      if (originalPosition === "static") {
+        (btn as HTMLElement).style.position = "relative";
+      }
+
+      btn.appendChild(ripple);
+
+      setTimeout(() => {
+        ripple.remove();
+        if (originalPosition === "static") {
+          (btn as HTMLElement).style.position = "";
+        }
+      }, 400);
+    };
+
+    window.addEventListener("click", handleGlobalClick, { capture: true });
+    return () => window.removeEventListener("click", handleGlobalClick, { capture: true });
+  }, []);
 
   const handleMoveElement = useCallback(
     (direction: "up" | "down") => {
@@ -1449,42 +1869,40 @@ export default function App() {
 
   const currentCount = domTree.length;
   const selectedTitle = selected?.label ?? "未选择";
+  const statusTone = useMemo(() => getStatusTone(statusMessage), [statusMessage]);
+  const isMobilePanelOpen = isMobileShell && (!isSourceCollapsed || !isInspectorCollapsed);
   const canEditSelectedText = Boolean(selected?.canEditText);
   const workspaceStyle = useMemo(
     () =>
       ({
-        "--source-col": `${sourceWidth}px`,
-        "--inspector-col": `${inspectorWidth}px`,
+        "--source-col": isSourceCollapsed ? "0px" : `${sourceWidth}px`,
+        "--inspector-col": isInspectorCollapsed ? "0px" : `${inspectorWidth}px`,
       }) as CSSProperties,
-    [inspectorWidth, sourceWidth]
+    [inspectorWidth, sourceWidth, isSourceCollapsed, isInspectorCollapsed]
   );
 
   return (
     <TooltipProvider>
       <div
         className={[
+          "nw-app",
           "app-shell",
+          isMobileShell ? "is-mobile-shell" : "",
           isFocusMode ? "is-focus-mode" : "",
         ].filter(Boolean).join(" ")}
       >
       <header className="app-topbar" role="banner">
-        <div className="app-topbar__left">
-          <div className="brand-block" aria-label="产品标识">
-            <div className="brand-mark" aria-hidden="true">
-              <img src={brandLogoUrl} alt="" />
-            </div>
-            <div className="brand-copy">
-              <h1>
-                HTML FineTune
-                <span className="brand-version">v2.0</span>
-              </h1>
-            </div>
-          </div>
-          <nav className="brand-breadcrumb" aria-label="文件路径">
-          </nav>
+        <div style={{display:'flex', alignItems:'center', gap:8, width:280, flexShrink:0}}>
+          <svg width="20" height="20" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <rect x="2" y="3" width="16" height="14" rx="3" stroke="var(--n-fg-secondary)" strokeWidth="1.5"/>
+            <line x1="6" y1="7" x2="14" y2="7" stroke="var(--n-fg-secondary)" strokeWidth="1.2"/>
+            <line x1="6" y1="10" x2="11" y2="10" stroke="var(--n-fg-secondary)" strokeWidth="1.2"/>
+            <line x1="6" y1="13" x2="13" y2="13" stroke="var(--n-fg-secondary)" strokeWidth="1.2"/>
+          </svg>
+          <span style={{fontSize:14, fontWeight:600, color:'var(--n-fg-default)', lineHeight:1}}>HTML FineTune</span>
         </div>
 
-        <div className="app-topbar__center app-toolbar" aria-label="历史操作">
+        <div style={{flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:4}}>
           <Tooltip content="撤销 · Ctrl/⌘+Z" placement="bottom">
             <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" aria-label="撤销" data-dom-id="btn-undo" onClick={undo} disabled={!canUndo}>
               <IconUndo />
@@ -1495,74 +1913,133 @@ export default function App() {
               <IconRedo />
             </button>
           </Tooltip>
+          <span style={{width:1, height:16, background:'var(--n-border-default)', margin:'0 4px'}} />
+
+          <Tooltip content="切换主题" placement="bottom">
+            <button
+              className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon theme-toggle-btn"
+              type="button"
+              aria-label="切换主题"
+              data-dom-id="btn-theme"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            >
+              {theme === "dark" ? (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="sun-icon"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>
+              ) : (
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="moon-icon"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>
+              )}
+            </button>
+          </Tooltip>
+          <Tooltip content="查看历史" placement="bottom">
+            <button
+              ref={historyTriggerRef}
+              className={`ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon topbar-history${isHistoryOpen ? " is-on" : ""}`}
+              type="button"
+              aria-label="查看历史"
+              aria-haspopup="dialog"
+              aria-expanded={isHistoryOpen}
+              aria-controls="history-drawer"
+              data-dom-id="btn-history"
+              onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+            >
+              <IconHistory />
+            </button>
+          </Tooltip>
+          <Tooltip content="导出 HTML · Ctrl/⌘+S" placement="bottom">
+            <button
+              ref={exportTriggerRef}
+              className="ds-btn ds-btn--brand ds-btn--sm mobile-primary-action"
+              type="button"
+              aria-label="导出 HTML"
+              data-dom-id="btn-export"
+              onClick={handleOpenExportPreview}
+            >
+              <IconDownload />
+              <span>导出</span>
+            </button>
+          </Tooltip>
         </div>
 
-        <div className="app-topbar__right" aria-label="主要操作">
+        <div style={{display:'flex', alignItems:'center', gap:4, width:320, flexShrink:0, justifyContent:'flex-end'}}>
           <Tooltip content="导入 .html 文件" placement="bottom">
-            <label className="ds-btn ds-btn--ghost ds-btn--sm" data-dom-id="btn-import">
+            <button
+              className="ds-btn ds-btn--ghost ds-btn--sm mobile-primary-action"
+              type="button"
+              aria-label="导入"
+              data-dom-id="btn-import"
+              onClick={handleImportClick}
+            >
               <IconImport />
               <span>导入</span>
-              <input
-                type="file"
-                accept=".html,.htm,text/html"
-                onChange={(event) => {
-                  handleFile(event.currentTarget.files?.[0]);
-                  event.currentTarget.value = "";
-                }}
-                style={{
-                  position: "absolute",
-                  width: 1,
-                  height: 1,
-                  padding: 0,
-                  margin: -1,
-                  overflow: "hidden",
-                  clip: "rect(0, 0, 0, 0)",
-                  whiteSpace: "nowrap",
-                  border: 0,
-                }}
-              />
-            </label>
+            </button>
           </Tooltip>
           <Tooltip content="复制干净 HTML · Shift+Ctrl/⌘+C" placement="bottom">
-            <button className="ds-btn ds-btn--ghost ds-btn--sm" type="button" aria-label="复制 HTML" data-dom-id="btn-copy" onClick={handleCopy}>
+            <button className="ds-btn ds-btn--ghost ds-btn--sm topbar-copy" type="button" aria-label="复制 HTML" data-dom-id="btn-copy" onClick={handleCopy}>
               <IconDownload />
               <span>复制</span>
             </button>
           </Tooltip>
-          <span className="app-toolbar-sep" aria-hidden="true"></span>
           <Tooltip content="导出 PDF" placement="bottom">
-            <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" aria-label="导出 PDF" data-dom-id="btn-pdf" onClick={handleExportPdf} disabled={exportingFormat !== null}>
+            <button className="ds-btn ds-btn--secondary ds-btn--sm topbar-export-secondary" type="button" aria-label="导出 PDF" data-dom-id="btn-pdf" onClick={handleExportPdf} disabled={exportingFormat !== null}>
               <IconDownload />
               <span>PDF</span>
             </button>
           </Tooltip>
           <Tooltip content="导出 PPTX" placement="bottom">
-            <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" aria-label="导出 PPTX" data-dom-id="btn-pptx" onClick={handleExportPptx} disabled={exportingFormat !== null}>
+            <button className="ds-btn ds-btn--secondary ds-btn--sm topbar-export-secondary" type="button" aria-label="导出 PPTX" data-dom-id="btn-pptx" onClick={handleExportPptx} disabled={exportingFormat !== null}>
               <IconDownload />
               <span>PPTX</span>
             </button>
           </Tooltip>
-          <Tooltip content="导出 HTML · Ctrl/⌘+S" placement="bottom">
-            <button className="ds-btn ds-btn--brand ds-btn--sm" type="button" aria-label="导出 HTML" data-dom-id="btn-export" onClick={handleOpenExportPreview}>
-              <IconDownload />
-              <span>导出</span>
-            </button>
-          </Tooltip>
-          <span className="app-toolbar-sep" aria-hidden="true"></span>
-          <Tooltip content="查看历史" placement="bottom">
-            <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" aria-label="查看历史" data-dom-id="btn-history" onClick={() => setIsHistoryOpen((value) => !value)}>
-              <IconHistory />
-            </button>
-          </Tooltip>
           <Tooltip content="快捷键 (?)" placement="bottom">
-            <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button" aria-label="快捷键" data-dom-id="btn-cheatsheet" onClick={() => setIsCheatsheetOpen((value) => !value)}>
+            <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon topbar-cheatsheet" type="button" aria-label="快捷键" data-dom-id="btn-cheatsheet" onClick={() => setIsCheatsheetOpen((value) => !value)}>
               <IconKeyboard />
             </button>
           </Tooltip>
+          <div className="mobile-actions-wrap" ref={mobileActionsRef}>
+            {isMobileShell || isMobileActionsOpen ? (
+              <button
+                className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon mobile-actions-trigger"
+                type="button"
+                aria-label="更多操作"
+                aria-haspopup="menu"
+                aria-expanded={isMobileActionsOpen}
+                aria-controls="mobile-actions-menu"
+                onClick={() => setIsMobileActionsOpen((value) => !value)}
+              >
+                <IconMenu />
+              </button>
+            ) : (
+              <Tooltip content="更多操作" placement="bottom">
+                <button
+                  className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon mobile-actions-trigger"
+                  type="button"
+                  aria-label="更多操作"
+                  aria-haspopup="menu"
+                  aria-expanded={isMobileActionsOpen}
+                  aria-controls="mobile-actions-menu"
+                  onClick={() => setIsMobileActionsOpen((value) => !value)}
+                >
+                  <IconMenu />
+                </button>
+              </Tooltip>
+            )}
+            {isMobileActionsOpen ? (
+              <div className="mobile-actions-popover" id="mobile-actions-menu" role="menu" aria-label="更多操作">
+                <button type="button" role="menuitem" onClick={() => { setIsMobileActionsOpen(false); void handleCopy(); }}>复制 HTML</button>
+                <button type="button" role="menuitem" onClick={() => { setIsMobileActionsOpen(false); void handleExportPdf(); }} disabled={exportingFormat !== null}>导出 PDF</button>
+                <button type="button" role="menuitem" onClick={() => { setIsMobileActionsOpen(false); void handleExportPptx(); }} disabled={exportingFormat !== null}>导出 PPTX</button>
+                <button type="button" role="menuitem" onClick={() => { setIsMobileActionsOpen(false); setIsHistoryOpen(!isHistoryOpen); }}>历史记录</button>
+                <button type="button" role="menuitem" onClick={() => { setIsMobileActionsOpen(false); setIsCheatsheetOpen((value) => !value); }}>快捷键</button>
+                <button type="button" role="menuitem" onClick={() => { setIsMobileActionsOpen(false); setTheme(theme === "dark" ? "light" : "dark"); }}>切换主题</button>
+              </div>
+            ) : null}
+          </div>
           <input
             ref={fileInputRef}
             hidden
             type="file"
+            tabIndex={-1}
             accept=".html,.htm,text/html"
             onChange={(event) => {
               handleFile(event.currentTarget.files?.[0]);
@@ -1573,69 +2050,186 @@ export default function App() {
       </header>
 
       {isHistoryOpen ? (
-        <section className="history-drawer" aria-label="历史记录">
-          <div className="history-drawer-head">
-            <div>
-              <strong>历史记录</strong>
-              <p>{timeline.length} 个历史点 · 当前 #{currentIndex + 1}</p>
-            </div>
-            <button className="icon-btn" type="button" aria-label="关闭历史记录" onClick={() => setIsHistoryOpen(false)}>×</button>
-          </div>
-          <div className="history-drawer-list">
-            {timeline.map((entry, index) => (
-              <button
-                key={index}
-                className={`history-drawer-item${index === currentIndex ? " is-current" : ""}`}
-                type="button"
-                onClick={() => {
-                  jumpToHistoryIndex(index);
-                  setStatusMessage("已跳转历史记录");
-                }}
-              >
-                <span className="history-drawer-item__node" aria-hidden="true">
-                  <span className="history-drawer-item__dot" />
-                </span>
-                <span className="history-drawer-item__index">
-                  {index === currentIndex ? "当前" : `#${index + 1}`}
-                </span>
-                <span className="history-drawer-item__body">
-                  <strong>{summaries[index]?.title ?? (index === 0 ? "初始状态" : "编辑记录")}</strong>
-                  <small>{summaries[index]?.detail ?? `${entry.html.length.toLocaleString()} 字符`}</small>
-                </span>
-              </button>
-            ))}
-          </div>
-        </section>
+        <>
+        <button
+          className="history-drawer-backdrop"
+          type="button"
+          aria-label="关闭历史记录"
+          title="关闭历史记录"
+          onClick={handleCloseHistory}
+        />
+        <HistoryPanel
+          items={historyDisplayItems}
+          onJumpTo={(index) => {
+            jumpToHistoryIndex(index);
+            setStatusMessage("已跳转历史记录");
+          }}
+          onClose={handleCloseHistory}
+          onClearAll={() => {
+            clearHistory();
+            setStatusMessage("已清空历史记录");
+          }}
+        />
+        </>
       ) : null}
 
-      <main className="workspace" ref={workspaceRef} style={workspaceStyle}>
-        <aside className="panel" aria-label="结构树" data-dom-id="panel-source-tree">
+      <main
+        className={[
+          "nw-body",
+          "workspace",
+          isMobileShell ? "workspace-mobile-shell" : "",
+          isMobilePanelOpen ? "workspace-mobile-panel-open" : "",
+          isSourceExpanded && sourceTab === "source" ? "workspace-source-expanded" : "",
+        ].filter(Boolean).join(" ")}
+        ref={workspaceRef}
+        style={workspaceStyle}
+      >
+        {isMobilePanelOpen ? (
           <button
-            className="panel-resizer panel-resizer-source"
+            className="mobile-panel-backdrop"
             type="button"
-            aria-label="拖拽调整结构面板宽度"
-            onPointerDown={handleStartPanelResize("source")}
+            aria-label="关闭移动侧栏"
+            title="关闭侧栏"
+            onClick={handleCloseMobilePanels}
           />
-          <div className="panel-head">
-            <div className="panel-header__tabs" aria-label="结构视图">
+        ) : null}
+        {isSourceCollapsed && (
+          <button
+            className="panel-expand-btn panel-expand-btn--left"
+            type="button"
+            aria-label="展开结构树"
+            aria-controls="source-panel"
+            aria-expanded="false"
+            title="展开左侧侧边栏"
+            onClick={handleOpenSourcePanel}
+          >
+            <ChevronRight size={14} />
+          </button>
+        )}
+        <aside
+          id="source-panel"
+          ref={sourcePanelRef}
+          className={[
+            "nw-left-panel",
+            "panel",
+            isSourceCollapsed ? "is-collapsed" : "",
+          ].filter(Boolean).join(" ")}
+          aria-label="结构树"
+          data-dom-id="panel-source-tree"
+        >
+          {!isSourceCollapsed && (
+            <button
+              className="panel-resizer panel-resizer-source"
+              type="button"
+              aria-label="拖拽调整结构面板宽度"
+              onPointerDown={handleStartPanelResize("source")}
+            />
+          )}
+          <div
+            className="nw-panel-tabs-row"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              borderBottom: "1px solid var(--n-border-default)",
+              flexShrink: 0,
+            }}
+          >
+            <div
+              className="nw-tabs"
+              role="tablist"
+              style={{ flex: 1, borderBottom: "none" }}
+            >
               <button
-                className={`ds-tab${sourceTab === "structure" ? " is-active" : ""}`}
+                className={`nw-tab ${sourceTab === "source" ? "nw-tab-active" : ""}`}
                 type="button"
-                data-dom-id="tab-structure"
-                onClick={() => setSourceTab("structure")}
-              >结构树</button>
-              <button
-                className={`ds-tab${sourceTab === "source" ? " is-active" : ""}`}
-                type="button"
-                data-dom-id="tab-source"
                 onClick={() => setSourceTab("source")}
-              >源码</button>
+                role="tab"
+                aria-selected={sourceTab === "source"}
+                data-dom-id="tab-source"
+              >来源</button>
+              <button
+                className={`nw-tab ${sourceTab === "structure" ? "nw-tab-active" : ""}`}
+                type="button"
+                onClick={() => setSourceTab("structure")}
+                role="tab"
+                aria-selected={sourceTab === "structure"}
+              >DOM 树</button>
+            </div>
+            <div
+              style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 8px" }}
+            >
+              <button
+                className={`nw-tool-btn nw-tool-btn-icon${sourceTab === "ai" ? " is-on" : ""}`}
+                type="button"
+                aria-label="AI 结构扫描"
+                aria-pressed={sourceTab === "ai"}
+                onClick={() => setSourceTab("ai")}
+                title="AI 结构扫描"
+              >
+                <IconSparkles />
+              </button>
+              {!isSourceCollapsed && (
+                <button
+                  className="panel-collapse-btn nw-tool-btn nw-tool-btn-icon"
+                  type="button"
+                  aria-label="收起结构树"
+                  aria-controls="source-panel"
+                  aria-expanded="true"
+                  title="收起侧边栏"
+                  onClick={handleCloseSourcePanel}
+                >
+                  <ChevronLeft size={14} />
+                </button>
+              )}
             </div>
           </div>
 
           {sourceTab === "structure" ? (
             <>
-              {/* AI scan card (collapsible) */}
+              {/* Search bar */}
+              <div className="search-bar">
+                <div className="ds-input">
+                  <IconSearch />
+                  <input
+                    type="text"
+                    data-tree-search-input
+                    placeholder="搜索元素..."
+                    aria-label="搜索元素"
+                    value={search}
+                    onChange={(event) => setSearch(event.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Structure tree */}
+              <div className="structure-tree" ref={treeScrollRef}>
+                {visibleTree.map((node) => (
+                  <TreeItemNode
+                    key={node.hftId}
+                    node={node}
+                    isSelected={node.hftId === selectedId}
+                    annotation={aiAnnotations[node.hftId]}
+                    childCount={treeChildCounts[node.hftId] ?? 0}
+                    isCollapsed={collapsedTreeIds.has(node.hftId)}
+                    onSelect={selectElement}
+                    onToggleCollapse={handleToggleTreeNode}
+                  />
+                ))}
+                {visibleTree.length === 0 ? (
+                  <div className="empty-state-card">
+                    <div className="empty-state-card__icon">
+                      <IconSearch />
+                    </div>
+                    <h3>搜索无匹配项</h3>
+                    <p>没有找到与 “{search}” 相关的元素。换一个关键词,或直接在画布中选择对象。</p>
+                  </div>
+                ) : null}
+              </div>
+            </>
+          ) : null}
+
+          {sourceTab === "ai" ? (
+            <div className="ai-tab-panel">
               <div className="ai-scan-card">
                 <button
                   className={"ai-scan-card__head" + (isAiCardCollapsed ? " is-collapsed" : "")}
@@ -1648,7 +2242,7 @@ export default function App() {
                   <span className="ai-scan-card__title">AI 结构扫描</span>
                   <span className="ai-scan-card__count">
                     <span className="dot" aria-hidden="true"></span>
-                    {visibleTree.length} 节点
+                    {domTree.length} 节点
                   </span>
                 </button>
                 <div className={"ai-scan-card__body" + (isAiCardCollapsed ? " is-hidden" : "")}>
@@ -1737,41 +2331,7 @@ export default function App() {
                   ) : null}
                 </div>
               </div>
-
-              {/* Search bar */}
-              <div className="search-bar">
-                <div className="ds-input">
-                  <IconSearch />
-                  <input
-                    type="text"
-                    data-tree-search-input
-                    placeholder="搜索元素..."
-                    aria-label="搜索元素"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Structure tree */}
-              <div className="structure-tree" ref={treeScrollRef}>
-                {visibleTree.map((node) => (
-                  <TreeItemNode
-                    key={node.hftId}
-                    node={node}
-                    isSelected={node.hftId === selectedId}
-                    annotation={aiAnnotations[node.hftId]}
-                    childCount={treeChildCounts[node.hftId] ?? 0}
-                    isCollapsed={collapsedTreeIds.has(node.hftId)}
-                    onSelect={selectElement}
-                    onToggleCollapse={handleToggleTreeNode}
-                  />
-                ))}
-                {visibleTree.length === 0 ? (
-                  <div className="empty-state">没有匹配元素。换一个关键词,或直接在画布中选择对象。</div>
-                ) : null}
-              </div>
-            </>
+            </div>
           ) : null}
 
           {sourceTab === "source" ? (
@@ -1781,36 +2341,103 @@ export default function App() {
                   <strong>拖入 HTML 文件</strong>
                   <span>{sourceLineCount.toLocaleString()} 行 · {sourceCharCount.toLocaleString()} 字符 · {isSourceDirty ? "未应用" : "已同步"}</span>
                 </div>
-                <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" onClick={() => fileInputRef.current?.click()}>
+                <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" onClick={handleImportClick}>
                   导入
                 </button>
-                <span>{sourceLineCount.toLocaleString()} 行</span>
-                <span>{sourceCharCount.toLocaleString()} 字符</span>
-                {isSourceDirty ? <span className="source-dirty">未应用</span> : <span>已同步</span>}
+              </div>
+              <div
+                id="source-editor-status"
+                className="source-editor-status"
+                data-state={sourceSyncState}
+                role="status"
+                aria-live="polite"
+              >
+                <span className="source-editor-status__dot" aria-hidden="true" />
+                <strong>{sourceSyncTitle}</strong>
+                <span>{sourceSyncDetail}</span>
+              </div>
+              <div className="source-editor-tools" aria-label="源码工具">
+                <label className="source-search-field" data-state={sourceSearchState}>
+                  <IconSearch />
+                  <input
+                    type="search"
+                    value={sourceSearch}
+                    placeholder="搜索源码"
+                    aria-label="搜索源码"
+                    onChange={(event) => setSourceSearch(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        handleFindSourceMatch();
+                      }
+                    }}
+                  />
+                </label>
+                <span className="source-search-count" data-state={sourceSearchState} aria-live="polite">
+                  {sourceSearchQuery
+                    ? sourceSearchMatchCount > 0
+                      ? sourceSearchPosition
+                        ? `${sourceSearchPosition.matchNumber}/${sourceSearchMatchCount} · 第 ${sourceSearchPosition.lineNumber} 行`
+                        : `${sourceSearchMatchCount} 项`
+                      : "0 项"
+                    : "未搜索"}
+                </span>
+                <button
+                  className="ds-btn ds-btn--ghost ds-btn--sm"
+                  type="button"
+                  onClick={handleFindSourceMatch}
+                  disabled={!sourceSearchQuery}
+                  aria-label="定位下一个源码匹配"
+                  title="定位下一个源码匹配"
+                >
+                  定位
+                </button>
+                <button className={"ds-btn ds-btn--ghost ds-btn--sm" + (isSourceSoftWrap ? " is-on" : "")} type="button" aria-pressed={isSourceSoftWrap} onClick={() => setIsSourceSoftWrap((value) => !value)}>
+                  {isSourceSoftWrap ? "软换行" : "横向滚动"}
+                </button>
+                <button className={"ds-btn ds-btn--secondary ds-btn--sm" + (isSourceExpanded ? " is-on" : "")} type="button" aria-pressed={isSourceExpanded} onClick={() => setIsSourceExpanded((value) => !value)}>
+                  {isSourceExpanded ? "回到侧栏" : "展开源码"}
+                </button>
               </div>
               <div className="field">
                 <label htmlFor="sourceCode">HTML 源码</label>
-                <textarea
-                  id="sourceCode"
-                  className="textarea code-editor"
-                  value={sourceDraft}
-                  onChange={(event) => setSourceDraft(event.target.value)}
-                />
+                <div className="source-code-shell">
+                  <pre ref={sourceLineGutterRef} className="source-line-gutter" aria-hidden="true">{sourceLineNumbers}</pre>
+                  <textarea
+                    ref={sourceTextareaRef}
+                    id="sourceCode"
+                    className={"textarea code-editor source-textarea" + (isSourceSoftWrap ? " source-textarea--wrap" : " source-textarea--nowrap")}
+                    aria-label="HTML 源码"
+                    aria-describedby="source-editor-status"
+                    value={sourceDraft}
+                    wrap={isSourceSoftWrap ? "soft" : "off"}
+                    spellCheck={false}
+                    onScroll={handleSourceScroll}
+                    onChange={(event) => setSourceDraft(event.target.value)}
+                  />
+                </div>
               </div>
               <div className="source-editor-actions">
-                <button className="ds-btn ds-btn--brand ds-btn--sm" type="button" onClick={handleApplySource} disabled={!isSourceDirty}>应用源码</button>
+                <button className="ds-btn ds-btn--brand ds-btn--sm" type="button" onClick={handleApplySource} disabled={!isSourceDirty}>
+                  {isSourceDirty ? <span className="dirty-breath-dot" /> : null}
+                  <span>应用源码</span>
+                </button>
                 <button className="ds-btn ds-btn--ghost ds-btn--sm" type="button" onClick={handleResetSourceDraft} disabled={!isSourceDirty}>重置草稿</button>
+                {hasHtmlUnclosedRisk ? (
+                  <span className="source-validator-warning" title="检测到可能存在未闭合的标签，应用后可能引起预览乱序，请仔细核查">⚠️ 标签未闭合</span>
+                ) : null}
               </div>
             </div>
           ) : null}
         </aside>
 
-        <section className="panel stage-panel" aria-label="画布" data-od-id="canvas" tabIndex={-1}>
+        <section className="nw-canvas panel stage-panel" aria-label="画布" data-od-id="canvas" tabIndex={-1}>
           <div className="viewport-bar" aria-label="画布工具栏">
-            <div className="viewport-bar__group">
+            <div className="segmented-viewport-control" aria-label="视口预设切换">
+              <span className="segmented-active-slide-bg" />
               <button
                 type="button"
-                className={"ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" + ((matchingViewportPreset === "desktop" || matchingViewportPreset === "wide") ? " is-on" : "")}
+                className={"segmented-button" + ((matchingViewportPreset === "desktop" || matchingViewportPreset === "wide") ? " is-on" : "")}
                 data-dom-id="vp-desktop"
                 title="桌面端"
                 aria-label="桌面端"
@@ -1821,7 +2448,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                className={"ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" + (matchingViewportPreset === "tablet" ? " is-on" : "")}
+                className={"segmented-button" + (matchingViewportPreset === "tablet" ? " is-on" : "")}
                 data-dom-id="vp-tablet"
                 title="平板端"
                 aria-label="平板端"
@@ -1832,7 +2459,7 @@ export default function App() {
               </button>
               <button
                 type="button"
-                className={"ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" + (matchingViewportPreset === "mobile" ? " is-on" : "")}
+                className={"segmented-button" + (matchingViewportPreset === "mobile" ? " is-on" : "")}
                 data-dom-id="vp-mobile"
                 title="移动端"
                 aria-label="移动端"
@@ -1841,12 +2468,12 @@ export default function App() {
               >
                 <IconSmartphone />
               </button>
-              <span className="app-toolbar-sep" aria-hidden="true"></span>
-              <span className="viewport-bar__dim">
-                <IconMove />
-                <span>{viewportSize.width} × {viewportSize.height}</span>
-              </span>
             </div>
+            <span className="app-toolbar-sep" aria-hidden="true"></span>
+            <span className="viewport-bar__dim">
+              <IconMove />
+              <span>{viewportSize.width} × {viewportSize.height}</span>
+            </span>
             <div className="viewport-bar__group">
               <button
                 type="button"
@@ -1885,7 +2512,7 @@ export default function App() {
                 type="button"
                 aria-pressed={isFocusMode}
                 onClick={() => {
-                  setIsFocusMode((value) => !value);
+                  setIsFocusMode(!isFocusMode);
                   setStatusMessage(isFocusMode ? "已退出专注模式" : "已进入专注模式");
                 }}
               >
@@ -1894,42 +2521,96 @@ export default function App() {
             </div>
           </div>
           <div className="stage" ref={stageRef}>
-            <div className="page-preview-shell" style={previewShellStyle}>
-              <article
-                className={"page-preview" + (isContentFitPreview ? " page-preview--content-fit" : "")}
-                aria-label="页面预览"
-                style={{
-                  width: previewFrameBounds.width,
-                  height: previewFrameBounds.height,
-                  transform: `scale(${previewScale})`,
-                }}
-              >
-                <iframe
-                  ref={previewFrameRef}
-                  className="live-preview-frame"
-                  title="实时 HTML 预览"
-                  srcDoc={previewSrcDoc}
-                  sandbox="allow-scripts allow-forms allow-popups"
-                  style={previewIframeStyle}
-                  onLoad={() => {
-                    setIsPreviewReady(true);
-                    window.setTimeout(measurePreviewContent, 40);
-                  }}
-                />
-              </article>
-            </div>
+            {aiStatus === "running" ? (
+              <div className="canvas-scan-overlay">
+                <div className="canvas-scan-line" />
+              </div>
+            ) : null}
+            <section className="nw-canvas" aria-label="预览画布">
+              <div className="nw-preview-card">
+                <div className="nw-preview-urlbar">
+                  <span className="nw-preview-urlbar-dot" />
+                  <span className="nw-preview-urlbar-dot" />
+                  <span className="nw-preview-urlbar-dot" />
+                  <div className="nw-preview-urlbar-input">localhost:5173</div>
+                </div>
+                <div className="page-preview-shell" style={previewShellStyle}>
+                  <article
+                    className={"page-preview" + (isContentFitPreview ? " page-preview--content-fit" : "")}
+                    aria-label="页面预览"
+                    style={{
+                      width: previewFrameBounds.width,
+                      height: previewFrameBounds.height,
+                      transform: `scale(${previewScale})`,
+                    }}
+                  >
+                    <iframe
+                      ref={previewFrameRef}
+                      className="live-preview-frame"
+                      title="实时 HTML 预览"
+                      srcDoc={previewSrcDoc}
+                      sandbox="allow-scripts allow-forms allow-popups"
+                      style={previewIframeStyle}
+                      onLoad={() => {
+                        setIsPreviewReady(true);
+                        window.setTimeout(measurePreviewContent, 40);
+                      }}
+                    />
+                  </article>
+                </div>
+              </div>
+            </section>
           </div>
         </section>
 
-        <aside className="panel inspector" aria-label="属性面板">
+        {isInspectorCollapsed && (
           <button
-            className="panel-resizer panel-resizer-inspector"
+            className="panel-expand-btn panel-expand-btn--right"
             type="button"
-            aria-label="拖拽调整属性面板宽度"
-            onPointerDown={handleStartPanelResize("inspector")}
-          />
+            aria-label="展开样式检查器"
+            aria-controls="inspector-panel"
+            aria-expanded="false"
+            title="展开右侧侧边栏"
+            onClick={handleOpenInspectorPanel}
+          >
+            <ChevronLeft size={14} />
+          </button>
+        )}
+        <aside
+          id="inspector-panel"
+          ref={inspectorPanelRef}
+          className={[
+            "nw-right-panel",
+            "panel",
+            "inspector",
+            isInspectorCollapsed ? "is-collapsed" : "",
+          ].filter(Boolean).join(" ")}
+          aria-label="属性面板"
+          data-dom-id="panel-inspector"
+        >
+          {!isInspectorCollapsed && (
+            <button
+              className="panel-resizer panel-resizer-inspector"
+              type="button"
+              aria-label="拖拽调整属性面板宽度"
+              onPointerDown={handleStartPanelResize("inspector")}
+            />
+          )}
           <div className="inspector-tabs-wrap">
-            <span className="inspector-title">样式检查器</span>
+            <span className="nw-inspector-title" style={{fontSize:'var(--n-text-xs)', fontWeight:600, color:'var(--n-fg-secondary)', textTransform:'uppercase', letterSpacing:'0.04em', fontFamily:'var(--n-font-sans)'}}>Inspector</span>
+            {!isInspectorCollapsed && (
+              <button
+                className="panel-collapse-btn"
+                type="button"
+                aria-label="收起样式检查器"
+                aria-controls="inspector-panel"
+                aria-expanded="true"
+                title="收起侧边栏"
+                onClick={handleCloseInspectorPanel}
+              >
+                <ChevronRight size={14} />
+              </button>
+            )}
           </div>
           {selected ? (
             <div className="inspector-selection" data-dom-id="inspector-selection">
@@ -2013,15 +2694,15 @@ export default function App() {
                   </button>
                   <button
                     type="button"
-                    className={"ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" + ((selected as unknown as { fontStyle?: string }).fontStyle === "italic" ? " is-on" : "")}
+                    className={"ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" + (selected.fontStyle === "italic" ? " is-on" : "")}
                     title="斜体 · J"
                     aria-label="斜体"
-                    aria-pressed={(selected as unknown as { fontStyle?: string }).fontStyle === "italic"}
+                    aria-pressed={selected.fontStyle === "italic"}
                     onClick={() => {
                       if (!selected) return;
-                      const currentStyle = (selected as unknown as { fontStyle?: string }).fontStyle;
+                      const currentStyle = selected.fontStyle;
                       const nextHtml = updateHtmlElementByHftId(state.html, selected.hftId, {
-                        styles: { fontStyle: currentStyle === "italic" ? "normal" : "italic" } as never,
+                        styles: { fontStyle: currentStyle === "italic" ? "normal" : "italic" },
                       });
                       commitHtml(nextHtml, selected.hftId);
                       setStatusMessage(currentStyle === "italic" ? "已取消斜体" : "已应用斜体");
@@ -2045,6 +2726,7 @@ export default function App() {
                     <textarea
                       className="textarea"
                       id="contentInput"
+                      aria-label="正文"
                       aria-describedby="contentHint"
                       aria-invalid={!draftText.trim()}
                       disabled={!canEditSelectedText}
@@ -2198,9 +2880,18 @@ export default function App() {
                   <span className="inspector-card__title">颜色</span>
                 </div>
                 <div className="inspector-card__body">
-                  <ColorField label="文字" value={draftColor} onChange={setDraftColor} full />
-                  <ColorField label="背景" value={draftBackgroundColor} onChange={setDraftBackgroundColor} full />
-                  <ColorField label="Hover 背景" value={draftHoverBackground} onChange={setDraftHoverBackground} full />
+                  <ColorField label="文字" value={draftColor} onChange={(val) => {
+                    setDraftColor(val);
+                    if (selected) commitHtml(updateHtmlElementByHftId(state.html, selected.hftId, { styles: { color: val } }), selected.hftId);
+                  }} full />
+                  <ColorField label="背景" value={draftBackgroundColor} onChange={(val) => {
+                    setDraftBackgroundColor(val);
+                    if (selected) commitHtml(updateHtmlElementByHftId(state.html, selected.hftId, { styles: { backgroundColor: val } }), selected.hftId);
+                  }} full />
+                  <ColorField label="Hover 背景" value={draftHoverBackground} onChange={(val) => {
+                    setDraftHoverBackground(val);
+                    if (selected) commitHtml(updateHtmlElementByHftId(state.html, selected.hftId, { effects: { hoverBackgroundColor: val } }), selected.hftId);
+                  }} full />
                 </div>
               </section>
 
@@ -2212,7 +2903,10 @@ export default function App() {
                 </div>
                 <div className="inspector-card__body">
                   <div className="field-grid">
-                    <ColorField label="边框色" value={draftBorderColor} onChange={setDraftBorderColor} />
+                    <ColorField label="边框色" value={draftBorderColor} onChange={(val) => {
+                      setDraftBorderColor(val);
+                      if (selected) commitHtml(updateHtmlElementByHftId(state.html, selected.hftId, { styles: { borderColor: val } }), selected.hftId);
+                    }} />
                     <div className="field">
                       <label htmlFor="borderWidthInput">宽度</label>
                       <input className="input" id="borderWidthInput" value={draftBorderWidth} placeholder="1px" onChange={(event) => setDraftBorderWidth(event.target.value)} />
@@ -2345,9 +3039,14 @@ export default function App() {
           <span className="statusbar-metric">{state.html.length.toLocaleString()} 个字符</span>
         </div>
         <div className="statusbar-zone statusbar-zone--center">
-          <span className="statusbar-pill">
+          <span
+            className={`statusbar-pill statusbar-pill--live statusbar-pill--${statusTone}`}
+            role="status"
+            aria-live="polite"
+            title={statusMessage}
+          >
             <span className="dot" aria-hidden="true"></span>
-            <span>已自动保存</span>
+            <span key={statusMessage} className="statusbar-live-text">{statusMessage}</span>
           </span>
         </div>
         <div className="statusbar-zone statusbar-zone--right">
@@ -2363,7 +3062,7 @@ export default function App() {
         <ExportPreviewDialog
           html={cleanHtml}
           warnings={exportWarnings}
-          onClose={() => setIsExportPreviewOpen(false)}
+          onClose={handleCloseExportPreview}
           onCopy={handleCopy}
           onDownload={handleExportHtml}
         />
@@ -2441,1005 +3140,4 @@ export default function App() {
       </div>
     </TooltipProvider>
   );
-}
-
-function InspectorDiagnostics({ selected }: { selected: SelectedSnapshot | null }) {
-  if (!selected) {
-    return (
-      <div className="inspector-diagnostics">
-        <div className="diagnostic-card">
-          <h4>Computed / Events</h4>
-          <p className="meta">未选择元素。请在画布或结构树中选择一个对象查看只读诊断信息。</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="inspector-diagnostics" aria-label="元素诊断信息">
-      <div className="diagnostic-card">
-        <div className="diagnostic-head">
-          <span>Computed</span>
-          <strong>{selected.tagName}</strong>
-        </div>
-        <h4>Typography</h4>
-        <dl className="diagnostic-list">
-          <InfoRow label="字体" value={selected.fontFamily || "inherit"} />
-          <InfoRow label="字号" value={selected.fontSize || "inherit"} />
-          <InfoRow label="字重" value={selected.fontWeight || "normal"} />
-          <InfoRow label="行高" value={selected.lineHeight || "normal"} />
-          <InfoRow label="对齐" value={selected.textAlign || "start"} />
-        </dl>
-      </div>
-      <div className="diagnostic-card">
-        <h4>Box</h4>
-        <dl className="diagnostic-list">
-          <InfoRow label="宽度" value={selected.width || "auto"} />
-          <InfoRow label="高度" value={selected.height || "auto"} />
-          <InfoRow label="最大宽度" value={selected.maxWidth || "none"} />
-          <InfoRow label="上外边距" value={selected.marginTop || "0px"} />
-          <InfoRow label="下外边距" value={selected.marginBottom || "0px"} />
-          <InfoRow label="圆角" value={selected.borderRadius || "0px"} />
-        </dl>
-      </div>
-      <div className="diagnostic-card">
-        <h4>Paint</h4>
-        <dl className="diagnostic-list">
-          <InfoRow label="文字色" value={selected.color || "inherit"} />
-          <InfoRow label="背景色" value={selected.backgroundColor || "transparent"} />
-          <InfoRow label="边框色" value={selected.borderColor || "transparent"} />
-          <InfoRow label="阴影" value={selected.boxShadow || "none"} />
-        </dl>
-      </div>
-      <div className="diagnostic-card">
-        <div className="diagnostic-head">
-          <span>Events</span>
-          <strong>{selected.tagName}</strong>
-        </div>
-        <h4>Element State</h4>
-        <dl className="diagnostic-list">
-          <InfoRow label="点击语义" value={interactionLabel(selected)} />
-          <InfoRow label="文本编辑" value={selected.canEditText ? "可编辑" : "继承子元素"} />
-          <InfoRow label="Hover 背景" value={selected.hoverBackgroundColor || "未设置"} />
-          <InfoRow label="行内样式" value={hasInlineStyleSnapshot(selected) ? "已设置" : "未设置"} />
-        </dl>
-      </div>
-      <div className="diagnostic-card">
-        <h4>Attributes</h4>
-        <dl className="diagnostic-list">
-          <InfoRow label="标签" value={selected.tagName} />
-          <InfoRow label="ID" value={selected.id || "无"} />
-          <InfoRow label="类名" value={selected.className || "无"} />
-          <InfoRow label="HFT ID" value={selected.hftId} />
-        </dl>
-      </div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <>
-      <dt>{label}</dt>
-      <dd title={value}>{value}</dd>
-    </>
-  );
-}
-
-function interactionLabel(selected: SelectedSnapshot): string {
-  if (selected.tagName === "button") return "按钮";
-  if (selected.tagName === "a") return selected.src ? "链接" : "锚点";
-  if (["input", "textarea", "select"].includes(selected.tagName)) return "表单控件";
-  if (selected.src) return "媒体资源";
-  return selected.canEditText ? "可编辑文本" : "结构容器";
-}
-
-function hasInlineStyleSnapshot(selected: SelectedSnapshot): boolean {
-  return [
-    selected.fontFamily,
-    selected.fontSize,
-    selected.fontWeight,
-    selected.lineHeight,
-    selected.letterSpacing,
-    selected.textAlign,
-    selected.marginTop,
-    selected.marginBottom,
-    selected.paddingTop,
-    selected.paddingBottom,
-    selected.paddingLeft,
-    selected.paddingRight,
-    selected.color,
-    selected.backgroundColor,
-    selected.borderColor,
-    selected.borderWidth,
-    selected.borderStyle,
-    selected.borderRadius,
-    selected.boxShadow,
-    selected.width,
-    selected.height,
-    selected.maxWidth,
-    selected.objectFit,
-  ].some((value) => value.trim().length > 0);
-}
-
-function getProviderLogo(providerId: AiProviderId): AiLogoDescriptor {
-  return AI_PROVIDER_LOGOS[providerId];
-}
-
-function AiLogoMark({ logo, className = "" }: { logo: AiLogoDescriptor; className?: string }) {
-  const Icon = logo.Icon;
-  return (
-    <span
-      className={`ai-logo-mark ai-logo-mark-${logo.surface ?? "plain"}${className ? ` ${className}` : ""}`}
-      title={logo.title}
-      aria-hidden="true"
-      style={logo.color ? ({ color: logo.color } as CSSProperties) : undefined}
-    >
-      <Icon size={18} />
-    </span>
-  );
-}
-
-function AiProviderPicker({
-  provider,
-  providers,
-  onProviderChange,
-}: {
-  provider: AiProviderId;
-  providers: AiProviderDefinition[];
-  onProviderChange: (value: AiProviderId) => void;
-}) {
-  const [isOpen, setIsOpen] = useState(false);
-  const pickerRef = useRef<HTMLDivElement | null>(null);
-  const selectedProvider = providers.find((item) => item.id === provider) ?? providers[0];
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      if (!pickerRef.current?.contains(event.target as Node)) setIsOpen(false);
-    };
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setIsOpen(false);
-    };
-    window.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("keydown", handleKeyDown);
-    return () => {
-      window.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [isOpen]);
-
-  return (
-    <div className="ai-provider-picker" ref={pickerRef}>
-      <button
-        className="ai-provider-trigger"
-        type="button"
-        aria-label="AI provider"
-        aria-haspopup="listbox"
-        aria-expanded={isOpen}
-        onClick={() => setIsOpen((value) => !value)}
-      >
-        <AiLogoMark logo={getProviderLogo(selectedProvider.id)} />
-        <span>{selectedProvider.label}</span>
-        <IconChevronDown />
-      </button>
-      {isOpen ? (
-        <div className="ai-provider-menu" role="listbox" aria-label="AI provider list">
-          {providers.map((item) => {
-            const isSelected = item.id === provider;
-            return (
-              <button
-                key={item.id}
-                className={`ai-provider-option${isSelected ? " ai-provider-option-active" : ""}`}
-                type="button"
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  setIsOpen(false);
-                  onProviderChange(item.id);
-                }}
-              >
-                <AiLogoMark logo={getProviderLogo(item.id)} />
-                <span className="ai-provider-option-text">
-                  <span className="ai-provider-option-name">{item.shortLabel}</span>
-                  <span className="ai-provider-option-detail">{item.label}</span>
-                </span>
-                {isSelected ? (
-                  <span className="ai-provider-check" aria-hidden="true">
-                    ✓
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-    </div>
-  );
-}
-
-function TreeItemNode({
-  node,
-  isSelected,
-  annotation,
-  childCount,
-  isCollapsed,
-  onSelect,
-  onToggleCollapse,
-}: {
-  node: DomTreeNode;
-  isSelected: boolean;
-  annotation?: AiTreeAnnotation;
-  childCount: number;
-  isCollapsed: boolean;
-  onSelect: (hftId: string) => void;
-  onToggleCollapse: (hftId: string) => void;
-}) {
-  const hasChildren = childCount > 0;
-  const tagClass = `tree-tag tree-tag--${toTreeTagModifier(node.tagName)}`;
-  return (
-    <button
-      className={`tree-node${isSelected ? " is-selected" : ""}`}
-      type="button"
-      aria-pressed={isSelected}
-      onClick={() => onSelect(node.hftId)}
-      style={{ paddingLeft: `calc(var(--spacer-8) + ${node.depth * 12}px)` }}
-      data-dom-id={`node-${node.hftId}`}
-    >
-      {hasChildren ? (
-        <span
-          className="tree-node__chev"
-          role="button"
-          aria-label={isCollapsed ? "展开子节点" : "折叠子节点"}
-          aria-expanded={!isCollapsed}
-          onClick={(event) => {
-            event.stopPropagation();
-            onToggleCollapse(node.hftId);
-          }}
-        >
-          {isCollapsed ? "›" : "⌄"}
-        </span>
-      ) : (
-        <span className="tree-node__chev" aria-hidden="true"></span>
-      )}
-      <span className={tagClass}>{toTreeTagLabel(node.tagName)}</span>
-      <span className="tree-node__label">
-        {node.label || node.text || node.tagName}
-        {node.className ? (
-          <span className="tree-node__class">.{(node.className.split(/\s+/).filter(Boolean)[0] ?? "")}</span>
-        ) : null}
-      </span>
-      {hasChildren ? <span className="tree-node__meta">x{childCount}</span> : null}
-    </button>
-  );
-}
-
-function toTreeTagLabel(tagName: string): string {
-  const tag = tagName.toLowerCase();
-  if (tag === "button") return "BTN";
-  if (tag === "section") return "SEC";
-  if (tag === "img") return "IMG";
-  if (tag === "nav") return "NAV";
-  if (tag === "footer") return "FTR";
-  if (tag === "header") return "HDR";
-  if (tag === "div") return "DIV";
-  if (tag === "span") return "SPN";
-  if (tag === "p") return "P";
-  return tag.toUpperCase().slice(0, 3);
-}
-
-function toTreeTagModifier(tagName: string): string {
-  const tag = tagName.toLowerCase();
-  if (tag === "h1" || tag === "h2" || tag === "h3") return "h1";
-  if (tag === "section") return "section";
-  if (tag === "img") return "img";
-  if (tag === "div") return "div";
-  if (tag === "nav") return "nav";
-  if (tag === "button") return "btn";
-  if (tag === "footer" || tag === "header") return "footer";
-  return tag;
-}
-
-function TreeItem({
-  node,
-  isSelected,
-  annotation,
-  onSelect,
-}: {
-  node: DomTreeNode;
-  isSelected: boolean;
-  annotation?: AiTreeAnnotation;
-  onSelect: (hftId: string) => void;
-}) {
-  return (
-    <button
-      className={`tree-item${isSelected ? " is-selected" : ""}`}
-      type="button"
-      aria-pressed={isSelected}
-      onClick={() => onSelect(node.hftId)}
-    >
-      <span className="node-icon">{toNodeIcon(node.tagName)}</span>
-      <span className="node-copy">
-        <strong>{annotation?.label ?? toKindLabel(node.tagName)}</strong>
-        <span>{node.tagName} · {node.text || node.label}</span>
-        {annotation ? (
-          <span className="ai-node-hint">
-            {annotation.role}
-            {annotation.issues.length ? " · " + annotation.issues.join(" / ") : ""}
-          </span>
-        ) : null}
-      </span>
-      <span className="meta">{node.depth === 0 ? "主" : "子"}</span>
-    </button>
-  );
-}
-
-function buildSelectedSnapshot(html: string, hftId: string): SelectedSnapshot | null {
-  try {
-    const documentRef = parseHtmlDocument(html);
-    const element = queryElementByHftId(documentRef, hftId);
-    if (!element) return null;
-    const tagName = getNormalizedTagName(element);
-    const text = element.textContent?.trim() ?? "";
-    const label = toKindLabel(tagName);
-    const style = element instanceof HTMLElement || element instanceof SVGElement ? element.style : null;
-
-    return {
-      hftId,
-      tagName,
-      id: element.id,
-      label,
-      text,
-      path: getDomPath(element),
-      className: getElementClassName(element),
-      fontFamily: style?.getPropertyValue("font-family") || "",
-      fontSize: style?.getPropertyValue("font-size") || "",
-      fontWeight: style?.getPropertyValue("font-weight") || "",
-      lineHeight: style?.getPropertyValue("line-height") || "",
-      letterSpacing: style?.getPropertyValue("letter-spacing") || "",
-      textAlign: style?.getPropertyValue("text-align") || "",
-      marginTop: style?.getPropertyValue("margin-top") || "",
-      marginBottom: style?.getPropertyValue("margin-bottom") || "",
-      paddingTop: style?.getPropertyValue("padding-top") || "",
-      paddingBottom: style?.getPropertyValue("padding-bottom") || "",
-      paddingLeft: style?.getPropertyValue("padding-left") || "",
-      paddingRight: style?.getPropertyValue("padding-right") || "",
-      color: style?.getPropertyValue("color") || "",
-      backgroundColor: style?.getPropertyValue("background-color") || "",
-      borderColor: style?.getPropertyValue("border-color") || "",
-      borderWidth: style?.getPropertyValue("border-width") || "",
-      borderStyle: style?.getPropertyValue("border-style") || "",
-      borderRadius: style?.getPropertyValue("border-radius") || "",
-      boxShadow: style?.getPropertyValue("box-shadow") || "",
-      width: style?.getPropertyValue("width") || "",
-      height: style?.getPropertyValue("height") || "",
-      maxWidth: style?.getPropertyValue("max-width") || "",
-      objectFit: style?.getPropertyValue("object-fit") || "",
-      hoverBackgroundColor: getHoverBackgroundColor(html, hftId),
-      src: getElementSourceValue(element),
-      alt: getElementAltValue(element),
-      canEditText: element.children.length === 0 && tagName !== "img" && tagName !== "svg" && tagName !== "image",
-    };
-  } catch {
-    return null;
-  }
-}
-
-function getElementSourceValue(element: HTMLElement | SVGElement): string {
-  const tagName = getNormalizedTagName(element);
-  if (tagName === "svg") return element.getAttribute("viewBox") ?? "";
-  if (tagName === "image") return element.getAttribute("href") ?? element.getAttribute("xlink:href") ?? "";
-  return element.getAttribute("src") ?? element.getAttribute("href") ?? "";
-}
-
-function getElementAltValue(element: HTMLElement | SVGElement): string {
-  const tagName = getNormalizedTagName(element);
-  if (tagName === "svg" || tagName === "image") return element.getAttribute("aria-label") ?? "";
-  return element.getAttribute("alt") ?? element.getAttribute("aria-label") ?? "";
-}
-
-function buildPretextFontFromDraft(
-  selected: SelectedSnapshot,
-  fontFamily: string,
-  fontSize: string,
-  fontWeight: string
-): string {
-  const size = parseCssNumericValue(fontSize) || parseCssNumericValue(selected.fontSize) || 16;
-  const family = fontFamily.trim() || selected.fontFamily || "system-ui, sans-serif";
-  const weight = fontWeight.trim() || selected.fontWeight;
-  return `${weight && weight !== "400" ? `${weight} ` : ""}${size}px ${family}`;
-}
-
-function resolveMeasureWidth(...values: string[]): number {
-  for (const value of values) {
-    const parsed = parseCssNumericValue(value);
-    if (parsed > 0) return parsed;
-  }
-  return 320;
-}
-
-function resolveMeasureLineHeight(lineHeight: string, selectedLineHeight: string, fontSize: string, selectedFontSize: string): number {
-  const size = parseCssNumericValue(fontSize) || parseCssNumericValue(selectedFontSize) || 16;
-  const raw = lineHeight.trim() || selectedLineHeight.trim();
-  if (!raw || raw === "normal") return Math.round(size * 1.35);
-
-  const parsed = parseCssNumericValue(raw);
-  if (!parsed) return Math.round(size * 1.35);
-  if (/^-?\d*\.?\d+$/.test(raw)) return Math.round(size * parsed);
-  return parsed;
-}
-
-function parseCssNumericValue(value: string | undefined): number {
-  if (!value) return 0;
-  const parsed = Number.parseFloat(value);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function hasBlockingExportWarnings(warnings: ExportWarning[]): boolean {
-  return warnings.some((warning) => BLOCKING_EXPORT_WARNING_TYPES.includes(warning.type));
-}
-
-function formatExportWarningSummary(totalCount: number, blockingCount: number): string {
-  if (blockingCount > 0) return `${blockingCount} 项阻断风险`;
-  if (totalCount > 0) return `${totalCount} 项提示`;
-  return "干净";
-}
-
-function countSourceLines(value: string): number {
-  return (value.match(/\r\n|\r|\n/g)?.length ?? 0) + 1;
-}
-
-function buildPreviewSrcDoc(html: string, selectedId: string | null): string {
-  const documentRef = parseHtmlDocument(html);
-  const styleElement = documentRef.createElement("style");
-  styleElement.textContent = `
-    [${HFT_ID_ATTRIBUTE}] {
-      cursor: pointer;
-    }
-    [${HFT_ID_ATTRIBUTE}]:hover {
-      outline: 2px dashed rgba(16, 184, 168, 0.6) !important;
-      outline-offset: 3px !important;
-    }
-    ${selectedId ? `[${HFT_ID_ATTRIBUTE}="${cssString(selectedId)}"] {
-      outline: 4px solid #10b8a8 !important;
-      outline-offset: 4px !important;
-      box-shadow: 0 0 0 8px rgba(16, 184, 168, 0.16) !important;
-    }` : ""}
-    #html-finetune-quickbar {
-      position: fixed !important;
-      z-index: 2147483647 !important;
-      display: none;
-      align-items: center;
-      gap: 4px;
-      max-width: min(92vw, 520px);
-      padding: 6px;
-      border: 1px solid rgba(15, 23, 42, 0.12);
-      border-radius: 12px;
-      background: rgba(255, 255, 255, 0.96);
-      box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18);
-      backdrop-filter: blur(12px);
-      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-    }
-    #html-finetune-quickbar[data-open="true"] {
-      display: flex;
-    }
-    #html-finetune-quickbar button {
-      min-height: 28px;
-      border: 0;
-      border-radius: 8px;
-      background: transparent;
-      color: #334155;
-      padding: 0 8px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-    }
-    #html-finetune-quickbar button:hover {
-      background: rgba(16, 184, 168, 0.12);
-      color: #0f766e;
-    }
-    #html-finetune-quickbar button[data-action="delete"] {
-      color: #be123c;
-    }
-  `;
-  documentRef.head.appendChild(styleElement);
-
-  const scriptElement = documentRef.createElement("script");
-  scriptElement.textContent = `
-    (() => {
-      const attr = "${HFT_ID_ATTRIBUTE}";
-      const modalSelectors = [
-        "dialog",
-        "[role='dialog']",
-        "[aria-modal='true']",
-        ".modal",
-        ".dialog",
-        ".popup",
-        "[data-modal]"
-      ];
-
-      function findModal() {
-        return document.querySelector(modalSelectors.join(","));
-      }
-
-      function sendStatus(message) {
-        window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_STATUS", message: String(message || "") }, "*");
-      }
-
-      function hasDirectText(element) {
-        return Array.from(element.childNodes).some((node) => node.nodeType === Node.TEXT_NODE && Boolean((node.textContent || "").trim()));
-      }
-
-      function measureContentBounds() {
-        const documentElement = document.documentElement;
-        const viewportWidth = documentElement.clientWidth || window.innerWidth;
-        const viewportHeight = documentElement.clientHeight || window.innerHeight;
-        const maxDocumentWidth = Math.max(viewportWidth, documentElement.scrollWidth, document.body.scrollWidth);
-        const maxDocumentHeight = Math.max(viewportHeight, documentElement.scrollHeight, document.body.scrollHeight);
-        const bounds = { left: Infinity, top: Infinity, right: 0, bottom: 0 };
-
-        document.body.querySelectorAll("*").forEach((element) => {
-          const tagName = element.tagName.toLowerCase();
-          if (["script", "style", "link", "meta", "noscript"].includes(tagName)) return;
-          if (element.id === "html-finetune-quickbar" || element.closest("#html-finetune-quickbar")) return;
-
-          const style = window.getComputedStyle(element);
-          if (!style || style.display === "none" || style.visibility === "hidden" || style.opacity === "0") return;
-
-          const semanticMedia = ["img", "svg", "canvas", "video", "picture", "iframe"].includes(tagName);
-          const semanticControl = ["a", "button", "input", "textarea", "select"].includes(tagName);
-          if (!hasDirectText(element) && !semanticMedia && !semanticControl) return;
-
-          const rect = element.getBoundingClientRect();
-          if (rect.width < 1 || rect.height < 1) return;
-          if (rect.width > viewportWidth * 0.92 && rect.height > viewportHeight * 0.7) return;
-
-          bounds.left = Math.min(bounds.left, rect.left);
-          bounds.top = Math.min(bounds.top, rect.top);
-          bounds.right = Math.max(bounds.right, rect.right);
-          bounds.bottom = Math.max(bounds.bottom, rect.bottom);
-        });
-
-        if (!Number.isFinite(bounds.left) || bounds.right <= bounds.left || bounds.bottom <= bounds.top) return null;
-
-        const padding = 28;
-        const minWidth = Math.min(viewportWidth, 360);
-        const minHeight = Math.min(viewportHeight, 260);
-        const x = Math.max(0, Math.min(maxDocumentWidth, Math.floor(bounds.left - padding)));
-        const y = Math.max(0, Math.min(maxDocumentHeight, Math.floor(bounds.top - padding)));
-        const right = Math.max(x + 1, Math.min(maxDocumentWidth, Math.ceil(bounds.right + padding)));
-        const bottom = Math.max(y + 1, Math.min(maxDocumentHeight, Math.ceil(bounds.bottom + padding)));
-        const width = Math.min(maxDocumentWidth - x, Math.max(minWidth, right - x));
-        const height = Math.min(maxDocumentHeight - y, Math.max(minHeight, bottom - y));
-
-        if (width > viewportWidth * 0.9 && height > viewportHeight * 0.9) return null;
-        return { x, y, width: Math.round(width), height: Math.round(height) };
-      }
-
-      function sendContentBounds() {
-        window.parent.postMessage({
-          type: "HTML_FINETUNE_OPTIMIZED_CONTENT_BOUNDS",
-          bounds: measureContentBounds()
-        }, "*");
-      }
-
-      let quickbarTarget = null;
-
-      function sendAction(action) {
-        if (!quickbarTarget) return;
-        const hftId = quickbarTarget.getAttribute(attr);
-        if (!hftId) return;
-        window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_ACTION", hftId, action }, "*");
-      }
-
-      function ensureQuickbar() {
-        let quickbar = document.getElementById("html-finetune-quickbar");
-        if (quickbar) return quickbar;
-        quickbar = document.createElement("div");
-        quickbar.id = "html-finetune-quickbar";
-        quickbar.setAttribute("aria-label", "HTML FineTune element actions");
-        quickbar.innerHTML = [
-          '<button type="button" data-action="edit-text">编辑</button>',
-          '<button type="button" data-action="move-up">上移</button>',
-          '<button type="button" data-action="move-down">下移</button>',
-          '<button type="button" data-action="duplicate">复制</button>',
-          '<button type="button" data-action="copy-style">复制样式</button>',
-          '<button type="button" data-action="paste-style">粘贴样式</button>',
-          '<button type="button" data-action="delete">删除</button>'
-        ].join("");
-        quickbar.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          const button = event.target instanceof Element ? event.target.closest("button[data-action]") : null;
-          if (!button) return;
-          sendAction(button.getAttribute("data-action"));
-        });
-        document.body.appendChild(quickbar);
-        return quickbar;
-      }
-
-      function showQuickbarFor(element) {
-        quickbarTarget = element;
-        const quickbar = ensureQuickbar();
-        const rect = element.getBoundingClientRect();
-        quickbar.dataset.open = "true";
-        const width = quickbar.offsetWidth || 360;
-        const height = quickbar.offsetHeight || 40;
-        const top = Math.max(8, rect.top - height - 12);
-        const left = Math.max(8, Math.min(window.innerWidth - width - 8, rect.left));
-        quickbar.style.top = Math.round(top) + "px";
-        quickbar.style.left = Math.round(left) + "px";
-      }
-
-      function openModal() {
-        const modal = findModal();
-        if (!modal) {
-          window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_MODAL_STATE", found: false, open: false }, "*");
-          return;
-        }
-        if (typeof HTMLDialogElement !== "undefined" && modal instanceof HTMLDialogElement) {
-          try {
-            if (!modal.open) modal.showModal();
-          } catch {
-            modal.setAttribute("open", "");
-          }
-        } else {
-          modal.removeAttribute("hidden");
-          modal.setAttribute("aria-hidden", "false");
-          modal.classList.add("is-open", "open", "show");
-          if (modal.style.display === "none") modal.style.display = "block";
-          modal.style.visibility = "visible";
-          modal.style.pointerEvents = "auto";
-        }
-        window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_MODAL_STATE", found: true, open: true }, "*");
-      }
-
-      function closeModal() {
-        const modal = findModal();
-        if (!modal) {
-          window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_MODAL_STATE", found: false, open: false }, "*");
-          return;
-        }
-        if (typeof HTMLDialogElement !== "undefined" && modal instanceof HTMLDialogElement) {
-          if (modal.open) modal.close();
-          modal.removeAttribute("open");
-        } else {
-          modal.setAttribute("hidden", "");
-          modal.setAttribute("aria-hidden", "true");
-          modal.classList.remove("is-open", "open", "show");
-          modal.style.display = "none";
-        }
-        window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_MODAL_STATE", found: true, open: false }, "*");
-      }
-
-      let dragState = null;
-
-      function toPx(value) {
-        const parsed = Number.parseFloat(value || "0");
-        return Number.isFinite(parsed) ? parsed : 0;
-      }
-
-      document.addEventListener("pointerdown", (event) => {
-        if (event.target instanceof Element && event.target.closest("#html-finetune-quickbar")) return;
-        const target = event.target instanceof Element ? event.target.closest("[" + attr + "]") : null;
-        if (!target || !(target instanceof HTMLElement)) return;
-        const computed = window.getComputedStyle(target);
-        dragState = {
-          element: target,
-          hftId: target.getAttribute(attr),
-          startX: event.clientX,
-          startY: event.clientY,
-          baseLeft: toPx(target.style.left || computed.left),
-          baseTop: toPx(target.style.top || computed.top),
-          originalPosition: computed.position,
-          dragging: false
-        };
-      }, true);
-
-      document.addEventListener("pointermove", (event) => {
-        if (!dragState || !dragState.element) return;
-        const dx = event.clientX - dragState.startX;
-        const dy = event.clientY - dragState.startY;
-        if (!dragState.dragging && Math.hypot(dx, dy) < 5) return;
-        dragState.dragging = true;
-        event.preventDefault();
-        event.stopPropagation();
-        const element = dragState.element;
-        if (dragState.originalPosition === "static") element.style.position = "relative";
-        element.style.left = Math.round(dragState.baseLeft + dx) + "px";
-        element.style.top = Math.round(dragState.baseTop + dy) + "px";
-        element.style.zIndex = element.style.zIndex || "2";
-      }, true);
-
-      document.addEventListener("pointerup", (event) => {
-        if (!dragState) return;
-        const completed = dragState;
-        dragState = null;
-        if (!completed.dragging || !completed.hftId || !completed.element) return;
-        event.preventDefault();
-        event.stopPropagation();
-        window.parent.postMessage({
-          type: "HTML_FINETUNE_OPTIMIZED_DRAG",
-          hftId: completed.hftId,
-          styles: {
-            position: completed.element.style.position || "relative",
-            left: completed.element.style.left || "0px",
-            top: completed.element.style.top || "0px"
-          }
-        }, "*");
-      }, true);
-
-      document.addEventListener("click", (event) => {
-        if (event.target instanceof Element && event.target.closest("#html-finetune-quickbar")) return;
-        const target = event.target instanceof Element ? event.target.closest("[" + attr + "]") : null;
-        if (!target) return;
-        event.preventDefault();
-        event.stopPropagation();
-        showQuickbarFor(target);
-        window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_SELECT", hftId: target.getAttribute(attr) }, "*");
-      }, true);
-
-      window.addEventListener("message", (event) => {
-        const data = event.data || {};
-        if (data.type === "HTML_FINETUNE_OPTIMIZED_MEASURE_CONTENT") {
-          sendContentBounds();
-          return;
-        }
-        if (data.type !== "HTML_FINETUNE_OPTIMIZED_MODAL") return;
-        if (data.action === "open") openModal();
-        if (data.action === "close") closeModal();
-      });
-
-      window.addEventListener("load", sendContentBounds);
-      window.addEventListener("resize", sendContentBounds);
-      document.querySelectorAll("img").forEach((image) => {
-        if (image.complete) return;
-        image.addEventListener("load", sendContentBounds, { once: true });
-        image.addEventListener("error", sendContentBounds, { once: true });
-      });
-      requestAnimationFrame(() => {
-        sendContentBounds();
-        setTimeout(sendContentBounds, 120);
-      });
-      sendStatus("预览桥接已就绪");
-    })();
-  `;
-  documentRef.body.appendChild(scriptElement);
-
-  return serializeDocument(documentRef);
-}
-
-function filterDomTree(nodes: DomTreeNode[], query: string): DomTreeNode[] {
-  const normalized = query.trim().toLowerCase();
-  if (!normalized) return nodes;
-  return nodes.filter((node) =>
-    [node.tagName, node.label, node.text, node.className, node.id]
-      .join(" ")
-      .toLowerCase()
-      .includes(normalized)
-  );
-}
-
-function filterCollapsedTree(nodes: DomTreeNode[], collapsedIds: Set<string>): DomTreeNode[] {
-  if (collapsedIds.size === 0) return nodes;
-  const visibleNodes: DomTreeNode[] = [];
-  let collapsedDepth: number | null = null;
-  for (const node of nodes) {
-    if (collapsedDepth !== null) {
-      if (node.depth > collapsedDepth) continue;
-      collapsedDepth = null;
-    }
-    visibleNodes.push(node);
-    if (collapsedIds.has(node.hftId)) {
-      collapsedDepth = node.depth;
-    }
-  }
-  return visibleNodes;
-}
-
-function countTreeChildren(nodes: DomTreeNode[]): Record<string, number> {
-  const counts: Record<string, number> = {};
-  nodes.forEach((node, index) => {
-    let childCount = 0;
-    for (let cursor = index + 1; cursor < nodes.length; cursor += 1) {
-      const candidate = nodes[cursor];
-      if (candidate.depth <= node.depth) break;
-      if (candidate.depth === node.depth + 1) childCount += 1;
-    }
-    counts[node.hftId] = childCount;
-  });
-  return counts;
-}
-
-function getPreferredSelectedId(nodes: DomTreeNode[]): string | null {
-  return (
-    nodes.find((node) => /^h[1-6]$/.test(node.tagName)) ??
-    nodes.find((node) => node.text.trim().length > 0 && !["div", "section", "article"].includes(node.tagName)) ??
-    nodes[0] ??
-    null
-  )?.hftId ?? null;
-}
-
-function toKindLabel(tagName: string): string {
-  if (/^h[1-6]$/.test(tagName)) return "标题";
-  if (tagName === "p") return "正文";
-  if (tagName === "button") return "按钮";
-  if (tagName === "a") return "链接";
-  if (tagName === "img" || tagName === "svg" || tagName === "image") return "图片";
-  if (tagName === "section" || tagName === "article" || tagName === "div") return "区块";
-  return tagName;
-}
-
-function toNodeIcon(tagName: string): string {
-  if (/^h[1-6]$/.test(tagName)) return tagName.toUpperCase();
-  if (tagName === "button") return "BTN";
-  if (tagName === "a") return "A";
-  if (tagName === "img" || tagName === "svg" || tagName === "image") return "IMG";
-  return tagName.slice(0, 3).toUpperCase();
-}
-
-function resolveZoomScale(
-  mode: ZoomMode,
-  viewportSize: { width: number; height: number },
-  stageSize: { width: number; height: number }
-): number {
-  if (mode === "100") return 1;
-  if (mode === "fit") {
-    if (stageSize.width === 0 || stageSize.height === 0) return 0.72;
-    // 预留 32px 边距,避免 page-preview 贴边
-    const scale = Math.min(
-      (stageSize.width - 32) / viewportSize.width,
-      (stageSize.height - 32) / viewportSize.height,
-      1
-    );
-    return Math.max(0.05, Number(scale.toFixed(3)));
-  }
-  return 0.88;
-}
-
-function formatRelativeTime(timestamp: number): string {
-  const seconds = Math.max(0, Math.round((Date.now() - timestamp) / 1000));
-  if (seconds < 5) return "刚刚";
-  if (seconds < 60) return `${seconds} 秒前`;
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} 分钟前`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
-  return new Date(timestamp).toLocaleString();
-}
-
-function cssString(value: string): string {
-  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
-}
-
-function IconUndo() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-2"/></svg>;
-}
-
-function IconRedo() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h2"/></svg>;
-}
-
-function IconAlignLeft() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16"/><path d="M4 12h10"/><path d="M4 18h14"/></svg>;
-}
-
-function IconAlignCenter() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16"/><path d="M7 12h10"/><path d="M5 18h14"/></svg>;
-}
-
-function IconAlignRight() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16"/><path d="M10 12h10"/><path d="M6 18h14"/></svg>;
-}
-
-function IconBold() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M7 5h6.5a3.5 3.5 0 0 1 0 7H7"/><path d="M7 12h7a3.5 3.5 0 0 1 0 7H7"/><path d="M7 5v14"/></svg>;
-}
-
-function IconItalic() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M19 5h-6"/><path d="M11 19h6"/><path d="M13 5l-2 14"/></svg>;
-}
-
-function IconImport() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 15v4h14v-4"/></svg>;
-}
-
-function IconDownload() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v12"/><path d="m7 10 5 5 5-5"/><path d="M5 20h14"/></svg>;
-}
-
-function IconHistory() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v6h6"/><path d="M12 7v6l4 2"/></svg>;
-}
-
-function IconMenu() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 6h16M4 12h10M4 18h16"/></svg>;
-}
-
-function IconKeyboard() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>;
-}
-
-function IconEye() {
-  return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>;
-}
-
-function IconChevronDown() {
-  return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>;
-}
-
-function IconSparkles() {
-  return <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8M5.6 18.4l2.8-2.8M15.6 8.4l2.8-2.8"/></svg>;
-}
-
-function IconScan() {
-  return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>;
-}
-
-function IconSearch() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>;
-}
-
-function IconMonitor() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg>;
-}
-
-function IconTablet() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M11 18h2"/></svg>;
-}
-
-function IconSmartphone() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><rect x="6" y="2" width="12" height="20" rx="2"/><path d="M11 18h2"/></svg>;
-}
-
-function IconMove() {
-  return <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="m5 9 7-7 7 7M12 2v20M5 15l7 7 7-7"/></svg>;
-}
-
-function IconZoomIn() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7"/><path d="M11 8v6M8 11h6m3 7-4.3-4.3"/></svg>;
-}
-
-function IconZoomOut() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="7"/><path d="M8 11h6m3 7-4.3-4.3"/></svg>;
-}
-
-function IconMaximize() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 8V5a2 2 0 0 1 2-2h3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M21 16v3a2 2 0 0 1-2 2h-3"/></svg>;
-}
-
-function IconType() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="4 7 4 5 20 5 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="5" x2="12" y2="20"/></svg>;
-}
-
-function IconSpacing() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18M21 3v18"/><path d="M7 8h10M7 12h10M7 16h10"/></svg>;
-}
-
-function IconPalette() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="7.5" cy="10.5" r="0.5" fill="currentColor"/><circle cx="11.5" cy="7.5" r="0.5" fill="currentColor"/><circle cx="16.5" cy="10.5" r="0.5" fill="currentColor"/><path d="M12 21a3 3 0 0 0 0-6 1.5 1.5 0 0 1 0-3h2a3 3 0 0 0 3-3"/></svg>;
-}
-
-function IconBorder() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>;
-}
-
-function IconRuler() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="9" width="18" height="6" rx="1"/><line x1="7" y1="9" x2="7" y2="12"/><line x1="11" y1="9" x2="11" y2="12"/><line x1="15" y1="9" x2="15" y2="12"/><line x1="19" y1="9" x2="19" y2="12"/></svg>;
-}
-
-function IconText() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="13" y2="18"/></svg>;
-}
-
-function IconImage() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8.5" cy="9.5" r="1.5"/><path d="m21 15-5-5L5 21"/></svg>;
-}
-
-function IconActivity() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
-}
-
-function IconShield() {
-  return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>;
 }

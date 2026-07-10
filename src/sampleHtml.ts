@@ -6,9 +6,20 @@ export const sampleHtml = `<!doctype html>
     <title>FineTune Studio</title>
     <style>
       :root {
-        color: #17202a;
-        background: #f7faf9;
-        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        --color-primary: #141413;
+        --color-body: #3d3d3a;
+        --color-subtext: #504e49;
+        --color-metadata: #6b6a64;
+        --color-vermilion: #A33A2A;
+        --color-vermilion-soft: #DDBBB2;
+        --color-bg-paper: #f5f4ed;
+        --color-bg-card: #faf9f5;
+        --color-border: #e8e6dc;
+        --color-grid: #e5e3d8;
+
+        color: var(--color-body);
+        background: var(--color-bg-paper);
+        font-family: TsangerJinKai02, "Source Han Serif SC", "Source Han Serif CN", "Noto Serif CJK SC", "Songti SC", STSong, "AR PL New Sung", "SimSun", Charter, Georgia, serif;
       }
 
       * {
@@ -17,12 +28,13 @@ export const sampleHtml = `<!doctype html>
 
       body {
         margin: 0;
-        background: #f7faf9;
+        background: var(--color-bg-paper);
+        color: var(--color-body);
       }
 
       .page {
         min-height: 100vh;
-        color: #17202a;
+        color: var(--color-primary);
       }
 
       .nav {
@@ -31,8 +43,8 @@ export const sampleHtml = `<!doctype html>
         align-items: center;
         justify-content: space-between;
         padding: 0 44px;
-        border-bottom: 1px solid #e4ebe8;
-        background: rgba(255, 255, 255, 0.86);
+        border-bottom: 1px solid var(--color-border);
+        background: rgba(245, 244, 237, 0.9);
         backdrop-filter: blur(12px);
       }
 
@@ -41,7 +53,8 @@ export const sampleHtml = `<!doctype html>
         align-items: center;
         gap: 10px;
         font-size: 19px;
-        font-weight: 750;
+        font-weight: 600;
+        color: var(--color-primary);
       }
 
       .brand-mark {
@@ -49,10 +62,11 @@ export const sampleHtml = `<!doctype html>
         height: 34px;
         display: grid;
         place-items: center;
-        border-radius: 8px;
-        background: #12b8a6;
-        color: #ffffff;
+        border-radius: 6px;
+        background: var(--color-vermilion);
+        color: var(--color-bg-card);
         font-size: 14px;
+        font-weight: 500;
       }
 
       .links {
@@ -61,13 +75,13 @@ export const sampleHtml = `<!doctype html>
       }
 
       .links a {
-        color: #64706d;
+        color: var(--color-metadata);
         text-decoration: none;
         font-size: 14px;
       }
 
       .links a:hover {
-        color: #0f766e;
+        color: var(--color-vermilion);
       }
 
       .hero {
@@ -83,27 +97,29 @@ export const sampleHtml = `<!doctype html>
 
       .kicker {
         margin: 0 0 14px;
-        color: #0f766e;
+        color: var(--color-vermilion);
         font-size: 13px;
-        font-weight: 700;
-        letter-spacing: 0;
+        font-weight: 600;
+        letter-spacing: 1px;
         text-transform: uppercase;
+        font-family: Charter, Georgia, serif;
       }
 
       h1 {
         margin: 0 0 20px;
-        font-size: clamp(42px, 6vw, 72px);
-        font-weight: 760;
-        line-height: 0.98;
-        letter-spacing: 0;
+        font-size: clamp(36px, 5.5vw, 64px);
+        font-weight: 600;
+        line-height: 1.12;
+        letter-spacing: -0.5px;
+        color: var(--color-primary);
       }
 
       .subtitle {
         max-width: 560px;
         margin: 0 0 26px;
-        color: #53615e;
-        font-size: 19px;
-        line-height: 1.65;
+        color: var(--color-subtext);
+        font-size: 18px;
+        line-height: 1.55;
       }
 
       .hero-actions {
@@ -116,23 +132,35 @@ export const sampleHtml = `<!doctype html>
       .button-link {
         width: fit-content;
         border: 0;
-        border-radius: 8px;
-        background: #12b8a6;
-        color: #ffffff;
-        padding: 13px 18px;
+        border-radius: 6px;
+        background: var(--color-vermilion);
+        color: var(--color-bg-card);
+        padding: 13px 20px;
         font: inherit;
-        font-weight: 700;
+        font-weight: 500;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: background-color 0.2s ease;
       }
 
-      .button-link {
-        display: inline-flex;
-        text-decoration: none;
+      button:hover,
+      .button-link:hover {
+        background: #8b3124;
       }
 
       .quiet-button {
-        border: 1px solid #d9e4e1;
-        background: #ffffff;
-        color: #34413e;
+        border: 1px solid var(--color-border);
+        background: var(--color-bg-card);
+        color: var(--color-body);
+      }
+
+      .quiet-button:hover {
+        background: var(--color-bg-paper);
+        border-color: var(--color-vermilion-soft);
+        color: var(--color-vermilion);
       }
 
       .preview-card {
@@ -142,35 +170,37 @@ export const sampleHtml = `<!doctype html>
         grid-template-rows: auto 1fr auto;
         gap: 20px;
         padding: 22px;
-        border: 1px solid #dfe8e5;
+        border: 1px solid var(--color-border);
         border-radius: 8px;
-        background: #ffffff;
-        box-shadow: 0 22px 52px rgba(18, 32, 43, 0.09);
+        background: var(--color-bg-card);
+        box-shadow: 0 8px 24px rgba(20, 20, 19, 0.04);
       }
 
       .preview-card-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
-        color: #66736f;
+        color: var(--color-metadata);
         font-size: 13px;
+        font-family: Charter, Georgia, serif;
       }
 
       .status-pill {
-        border-radius: 999px;
-        background: #e8f8f5;
-        color: #0f766e;
-        padding: 6px 10px;
+        border-radius: 4px;
+        background: var(--color-bg-paper);
+        border: 1px solid var(--color-vermilion-soft);
+        color: var(--color-vermilion);
+        padding: 4px 10px;
         font-size: 12px;
-        font-weight: 700;
+        font-weight: 500;
       }
 
       .preview-image {
         width: 100%;
         min-height: 150px;
         object-fit: cover;
-        border-radius: 8px;
-        border: 1px solid #e1e8e6;
+        border-radius: 6px;
+        border: 1px solid var(--color-border);
         display: block;
       }
 
@@ -181,21 +211,22 @@ export const sampleHtml = `<!doctype html>
       }
 
       .metric {
-        border: 1px solid #e5ece9;
-        border-radius: 8px;
+        border: 1px solid var(--color-border);
+        border-radius: 6px;
         padding: 14px;
-        background: #fbfdfc;
+        background: var(--color-bg-paper);
       }
 
       .metric strong {
         display: block;
         margin-bottom: 6px;
-        color: #16242a;
-        font-size: 21px;
+        color: var(--color-vermilion);
+        font-size: 20px;
+        font-weight: 600;
       }
 
       .metric span {
-        color: #66736f;
+        color: var(--color-metadata);
         font-size: 12px;
       }
 
@@ -208,55 +239,61 @@ export const sampleHtml = `<!doctype html>
 
       .feature {
         padding: 22px;
-        border: 1px solid #e2ebe8;
+        border: 1px solid var(--color-border);
         border-radius: 8px;
-        background: #ffffff;
+        background: var(--color-bg-card);
       }
 
       .feature h2 {
-        margin: 0 0 9px;
-        font-size: 18px;
-        font-weight: 740;
+        margin: 0 0 10px;
+        font-size: 16px;
+        font-weight: 600;
+        color: var(--color-primary);
+        border-left: 2px solid var(--color-vermilion);
+        padding-left: 8px;
       }
 
       .feature p {
         margin: 0;
-        color: #65716e;
-        font-size: 14px;
-        line-height: 1.58;
+        color: var(--color-body);
+        font-size: 13.5px;
+        line-height: 1.5;
       }
 
       .note {
         margin: 0 44px 48px;
         padding: 24px 28px;
-        border-left: 4px solid #ff6f4f;
-        border-radius: 8px;
-        background: #fffefe;
-        color: #34413e;
-        font-size: 22px;
-        line-height: 1.46;
-        box-shadow: 0 18px 40px rgba(18, 32, 43, 0.06);
+        border-left: 4px solid var(--color-vermilion);
+        border-radius: 6px;
+        background: var(--color-bg-card);
+        color: var(--color-body);
+        font-size: 20px;
+        line-height: 1.48;
+        border-top: 1px solid var(--color-border);
+        border-right: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--color-border);
       }
 
       .note small {
         display: block;
         margin-top: 12px;
-        color: #697672;
+        color: var(--color-metadata);
         font-size: 13px;
+        font-family: Charter, Georgia, serif;
       }
 
       dialog.modal-card {
         width: min(520px, calc(100% - 40px));
-        border: 1px solid #dbe6e3;
+        border: 1px solid var(--color-border);
         border-radius: 8px;
         padding: 0;
-        background: #ffffff;
-        color: #17202a;
-        box-shadow: 0 24px 80px rgba(17, 24, 39, 0.2);
+        background: var(--color-bg-card);
+        color: var(--color-primary);
+        box-shadow: 0 16px 48px rgba(20, 20, 19, 0.08);
       }
 
       dialog.modal-card::backdrop {
-        background: rgba(17, 24, 39, 0.24);
+        background: rgba(20, 20, 19, 0.3);
       }
 
       .modal-inner {
@@ -265,23 +302,25 @@ export const sampleHtml = `<!doctype html>
 
       .modal-kicker {
         margin: 0 0 12px;
-        color: #0f766e;
+        color: var(--color-vermilion);
         font-size: 12px;
-        font-weight: 700;
-        letter-spacing: 0;
+        font-weight: 600;
+        letter-spacing: 1px;
         text-transform: uppercase;
+        font-family: Charter, Georgia, serif;
       }
 
       .modal-card h2 {
         margin: 0 0 14px;
-        font-size: 30px;
-        font-weight: 760;
-        line-height: 1.15;
+        font-size: 26px;
+        font-weight: 600;
+        line-height: 1.18;
       }
 
       .modal-card p {
-        color: #5e6a67;
-        line-height: 1.62;
+        color: var(--color-body);
+        line-height: 1.55;
+        font-size: 14px;
       }
 
       .modal-actions {
@@ -355,7 +394,7 @@ export const sampleHtml = `<!doctype html>
           </div>
           <img
             class="preview-image"
-            src="https://images.unsplash.com/photo-1518005020951-eccb494ad742?auto=format&fit=crop&w=960&q=80"
+            src="/danshu_preview.jpg"
             alt="带有设计稿和代码界面的工作台"
           />
           <div class="metric-row">

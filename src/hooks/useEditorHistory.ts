@@ -10,7 +10,7 @@ interface CommitOptions {
 const TEXT_DEBOUNCE_MS = 450;
 
 export function useEditorHistory(initialState: EditorDocumentState) {
-  const [present, setPresent] = useState<HistoryEntry>({ state: initialState, summary: null });
+  const [present, setPresent] = useState<HistoryEntry>({ state: initialState, summary: null, timestamp: Date.now() });
   const [past, setPast] = useState<HistoryEntry[]>([]);
   const [future, setFuture] = useState<HistoryEntry[]>([]);
   const [hasPendingHistory, setHasPendingHistory] = useState(false);
@@ -61,12 +61,14 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     const current = presentRef.current;
     if (pendingBase.state.html !== current.state.html) {
       const summary = summarizeStateChange(pendingBase.state, current.state);
-      const entry: HistoryEntry = { state: pendingBase.state, summary };
-      const nextPast = [...pastRef.current, entry];
+      const nextPast = [...pastRef.current, pendingBase];
+      const currentWithSummary: HistoryEntry = { ...current, summary };
       pastRef.current = nextPast;
       futureRef.current = [];
+      presentRef.current = currentWithSummary;
       setPast(nextPast);
       setFuture([]);
+      setPresent(currentWithSummary);
     }
     pendingBaseRef.current = null;
     setHasPendingHistory(false);
@@ -79,10 +81,10 @@ export function useEditorHistory(initialState: EditorDocumentState) {
 
       if (nextState.html === current.state.html && nextState.selectedId === current.state.selectedId) return;
 
-      const nextEntry: HistoryEntry = { state: nextState, summary: null };
-
       if (!record) {
         flushDebouncedHistory();
+        const currentAfterFlush = presentRef.current;
+        const nextEntry: HistoryEntry = { ...currentAfterFlush, state: nextState };
         setPresent(nextEntry);
         presentRef.current = nextEntry;
         return;
@@ -94,6 +96,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
           setHasPendingHistory(true);
         }
 
+        const nextEntry: HistoryEntry = { state: nextState, summary: null, timestamp: Date.now() };
         setPresent(nextEntry);
         presentRef.current = nextEntry;
         clearDebounce();
@@ -104,9 +107,10 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       }
 
       flushDebouncedHistory();
-      const summary = summarizeStateChange(current.state, nextState);
-      const baseEntry: HistoryEntry = { state: current.state, summary };
-      const nextPast = [...pastRef.current, baseEntry];
+      const currentAfterFlush = presentRef.current;
+      const summary = summarizeStateChange(currentAfterFlush.state, nextState);
+      const nextEntry: HistoryEntry = { state: nextState, summary, timestamp: Date.now() };
+      const nextPast = [...pastRef.current, currentAfterFlush];
       pastRef.current = nextPast;
       futureRef.current = [];
       setPast(nextPast);
@@ -122,7 +126,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       clearDebounce();
       pendingBaseRef.current = null;
       setHasPendingHistory(false);
-      const nextEntry: HistoryEntry = { state: nextState, summary: null };
+      const nextEntry: HistoryEntry = { state: nextState, summary: null, timestamp: Date.now() };
       setPresent(nextEntry);
       presentRef.current = nextEntry;
       pastRef.current = [];
@@ -132,6 +136,11 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     },
     [clearDebounce]
   );
+
+  const clearHistory = useCallback(() => {
+    flushDebouncedHistory();
+    reset(presentRef.current.state);
+  }, [flushDebouncedHistory, reset]);
 
   const undo = useCallback(() => {
     flushDebouncedHistory();
@@ -196,6 +205,10 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     () => [...past, present, ...future].map((entry) => entry.summary),
     [future, past, present]
   );
+  const allEntries = useMemo(
+    () => [...past, present, ...future],
+    [future, past, present]
+  );
   const currentIndex = past.length;
   const canUndo = past.length > 0 || hasPendingHistory;
   const canRedo = future.length > 0;
@@ -208,8 +221,10 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       undo,
       redo,
       jumpToHistoryIndex,
+      clearHistory,
       timeline,
       summaries,
+      allEntries,
       currentIndex,
       canUndo,
       canRedo,
@@ -218,6 +233,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     [
       canRedo,
       canUndo,
+      clearHistory,
       commit,
       currentIndex,
       flushDebouncedHistory,
@@ -227,6 +243,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       reset,
       summaries,
       timeline,
+      allEntries,
       undo,
     ]
   );

@@ -15,14 +15,21 @@
  *   3. 为虚拟化/懒惰渲染提供精确的行高数据
  */
 import { prepare, layout, prepareWithSegments, layoutWithLines, measureLineStats, type LayoutLine } from "@chenglou/pretext";
+import type { SelectedSnapshot } from "../types/editor";
 
 /** 预计算文本句柄缓存 */
 const prepareCache = new Map<string, ReturnType<typeof prepare>>();
 const prepareSegmentsCache = new Map<string, ReturnType<typeof prepareWithSegments>>();
 const MAX_CACHE_ENTRIES = 200;
 
-function cacheKey(text: string, font: string, options?: string): string {
-  return `${font}|${options ?? ""}|${text}`;
+export function cacheKey(
+  text: string,
+  font: string,
+  options?: { whiteSpace?: "normal" | "pre-wrap"; wordBreak?: "normal" | "keep-all"; letterSpacing?: number }
+): string {
+  // 统一:options 总是 JSON.stringify,undefined 也走同一路径(JSON.stringify(undefined) === undefined),
+  // 任何 cachedPrepare 调用方都不会因 options 缺省而 miss 另一个 cachedPrepare 的 cache。
+  return `${font}|${JSON.stringify(options) ?? ""}|${text}`;
 }
 
 function getCached<K, V>(cache: Map<K, V>, key: K): V | undefined {
@@ -52,7 +59,7 @@ export function cachedPrepare(
   font: string,
   options?: { whiteSpace?: "normal" | "pre-wrap"; wordBreak?: "normal" | "keep-all"; letterSpacing?: number }
 ): ReturnType<typeof prepare> {
-  const key = cacheKey(text, font, JSON.stringify(options));
+  const key = cacheKey(text, font, options);
   const existing = getCached(prepareCache, key);
   if (existing) return existing;
 
@@ -69,7 +76,7 @@ export function cachedPrepareWithSegments(
   font: string,
   options?: { whiteSpace?: "normal" | "pre-wrap"; wordBreak?: "normal" | "keep-all"; letterSpacing?: number }
 ): ReturnType<typeof prepareWithSegments> {
-  const key = cacheKey(text, font, JSON.stringify(options));
+  const key = cacheKey(text, font, options);
   const existing = getCached(prepareSegmentsCache, key);
   if (existing) return existing;
 
@@ -123,4 +130,46 @@ export function getPretextCacheStats(): { prepareEntries: number; prepareWithSeg
     prepareEntries: prepareCache.size,
     prepareWithSegmentsEntries: prepareSegmentsCache.size,
   };
+}
+
+export function parseCssNumericValue(value: string | undefined): number {
+  if (!value) return 0;
+  const parsed = Number.parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+export function buildPretextFontFromDraft(
+  selected: SelectedSnapshot,
+  fontFamily: string,
+  fontSize: string,
+  fontWeight: string
+): string {
+  const size = parseCssNumericValue(fontSize) || parseCssNumericValue(selected.fontSize) || 16;
+  const family = fontFamily.trim() || selected.fontFamily || "system-ui, sans-serif";
+  const weight = fontWeight.trim() || selected.fontWeight;
+  return `${weight && weight !== "400" ? `${weight} ` : ""}${size}px ${family}`;
+}
+
+export function resolveMeasureWidth(...values: string[]): number {
+  for (const value of values) {
+    const parsed = parseCssNumericValue(value);
+    if (parsed > 0) return parsed;
+  }
+  return 320;
+}
+
+export function resolveMeasureLineHeight(
+  lineHeight: string,
+  selectedLineHeight: string,
+  fontSize: string,
+  selectedFontSize: string
+): number {
+  const size = parseCssNumericValue(fontSize) || parseCssNumericValue(selectedFontSize) || 16;
+  const raw = lineHeight.trim() || selectedLineHeight.trim();
+  if (!raw || raw === "normal") return Math.round(size * 1.35);
+
+  const parsed = parseCssNumericValue(raw);
+  if (!parsed) return Math.round(size * 1.35);
+  if (/^-?\d*\.?\d+$/.test(raw)) return Math.round(size * parsed);
+  return parsed;
 }

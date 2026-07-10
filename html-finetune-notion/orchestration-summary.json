@@ -1,0 +1,41 @@
+{
+  "project": {
+    "name": "html-finetune-notion",
+    "deviceType": "desktop",
+    "pageCount": 14,
+    "theme": "light",
+    "businessContext": "HTML 可视化微调工作台的 Notion 风格完整 UI 设计稿",
+    "styleDefinitionBrief": "Notion 纸面风格：暖灰底色 (#fbfbfa / #f7f6f3)、蓝主色 (#2383e2 / #4dabf7)、4-6px 圆角、1px 静态边框、极淡 contact shadow、Inter 字体、ease-out 动效",
+    "styleContinuityAnchors": {
+      "colorSystem": "surface: #ffffff / #fbfbfa / #f7f6f3 (light) · #191919 / #202020 / #252525 (dark); text: #37352f / #787774 / #9b9a97 (light) · rgba(255,255,255,0.90/0.66/0.45) (dark); brand: #2383e2 (light) / #4dabf7 (dark); border: #e9e9e7 / #d3d3d0 (light) · rgba(255,255,255,0.10/0.16) (dark)",
+      "shapeSystem": "radius 4-6px; border 1px solid; no glass/blur; single-layer contact shadow",
+      "typographySystem": "Inter 400-600, 10-16px; mono (SF Mono / JetBrains Mono) for code, 11-12px",
+      "spacingSystem": "8/12/16/24/32px scale; tight panel gutters",
+      "componentLanguage": "Minimal, paper-like: subtle bg-on-hover, 1px border, single shadow layer, no scale/spring transforms",
+      "surfaceAndDepth": "Static borders + light shadow (alpha <= 0.05 for cards, <= 0.14 for overlays); no backdrop-filter; no gradients",
+      "imageryAndIconography": "SVG 14-16px in --n-fg-secondary; no colored icons except brand actions",
+      "interactionTone": "120-240ms ease-out; no spring overshoot; no active scale"
+    },
+    "dashboardMode": false,
+    "generationTree": { "root": "workspace-light", "children": {} }
+  },
+  "designSource": { "operatingMode": "free-explore" },
+  "pages": [
+    { "nodeId": "page-workspace-light", "pageIndex": 1, "htmlSrc": "pages/workspace-light.html", "scenario": "主工作区亮色 — 三栏布局 + 顶栏工具栏 + Stage 预览" },
+    { "nodeId": "page-workspace-dark", "pageIndex": 2, "htmlSrc": "pages/workspace-dark.html", "scenario": "主工作区暗色 — 三栏布局暗色版本" },
+    { "nodeId": "page-empty-state", "pageIndex": 3, "htmlSrc": "pages/empty-state.html", "scenario": "空状态欢迎页 — 未导入 HTML 时的引导界面" },
+    { "nodeId": "page-dom-tree", "pageIndex": 4, "htmlSrc": "pages/dom-tree.html", "scenario": "DOM 树面板激活 — 左侧切换到 DOM Tree 层级视图" },
+    { "nodeId": "page-viewport-preview", "pageIndex": 5, "htmlSrc": "pages/viewport-preview.html", "scenario": "视口切换 — Stage 以手机/平板外框预览" },
+    { "nodeId": "page-color-picker", "pageIndex": 6, "htmlSrc": "pages/color-picker.html", "scenario": "颜色选择器弹层 — ColorField 完整面板" },
+    { "nodeId": "page-dropdown-menu", "pageIndex": 7, "htmlSrc": "pages/dropdown-menu.html", "scenario": "下拉菜单 — CustomSelect/全局菜单/右键菜单" },
+    { "nodeId": "page-toast-tooltip", "pageIndex": 8, "htmlSrc": "pages/toast-tooltip.html", "scenario": "Toast + Tooltip + 控件集合展示" },
+    { "nodeId": "page-diagnostics", "pageIndex": 9, "htmlSrc": "pages/diagnostics.html", "scenario": "诊断/错误面板 — Inspector 中的警告与错误" },
+    { "nodeId": "page-export-light", "pageIndex": 10, "htmlSrc": "pages/export-light.html", "scenario": "导出预览亮色弹窗" },
+    { "nodeId": "page-export-dark", "pageIndex": 11, "htmlSrc": "pages/export-dark.html", "scenario": "导出预览暗色弹窗" },
+    { "nodeId": "page-history-light", "pageIndex": 12, "htmlSrc": "pages/history-light.html", "scenario": "历史记录抽屉亮色" },
+    { "nodeId": "page-history-dark", "pageIndex": 13, "htmlSrc": "pages/history-dark.html", "scenario": "历史记录抽屉暗色" },
+    { "nodeId": "page-mobile", "pageIndex": 14, "htmlSrc": "pages/mobile.html", "scenario": "移动端抽屉布局 — 760px 以下的响应式视图" }
+  ],
+  "componentPlan": [],
+  "imagePlan": []
+}
