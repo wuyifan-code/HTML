@@ -79,7 +79,7 @@ import {
 import { TreeItem, TreeItemNode } from "./components/TreeItem";
 import { InspectorDiagnostics } from "./components/InspectorDiagnostics";
 import { AiProviderPicker } from "./components/AiProviderPicker";
-import { HistoryPanel } from "./components/HistoryPanel";
+import { HistoryDrawer } from "./components/HistoryDrawer";
 import { buildDisplayItemsFromSummaries } from "./utils/historySummary";
 import { useEditorStore } from "./hooks/useEditorStore";
 
@@ -1958,18 +1958,18 @@ export default function App() {
           title="关闭历史记录"
           onClick={handleCloseHistory}
         />
-        <HistoryPanel
-          items={historyDisplayItems}
-          onJumpTo={(index) => {
-            jumpToHistoryIndex(index);
-            setStatusMessage("已跳转历史记录");
-          }}
-          onClose={handleCloseHistory}
-          onClearAll={() => {
-            clearHistory();
-            setStatusMessage("已清空历史记录");
-          }}
-        />
+        <HistoryDrawer
+      items={historyDisplayItems}
+      onJumpTo={(index) => {
+        jumpToHistoryIndex(index);
+        setStatusMessage("已跳转历史记录");
+      }}
+      onClose={handleCloseHistory}
+      onClearAll={() => {
+        clearHistory();
+        setStatusMessage("已清空历史记录");
+      }}
+    />
         </>
       ) : null}
 

@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { HistoryPanel } from "../components/HistoryPanel";
+import { HistoryDrawer } from "../components/HistoryDrawer";
 import type { HistoryDisplayItem } from "../utils/historySummary";
 
 const items: HistoryDisplayItem[] = [
@@ -26,11 +26,11 @@ const items: HistoryDisplayItem[] = [
   },
 ];
 
-describe("HistoryPanel", () => {
+describe("HistoryDrawer", () => {
   it("renders the supplied design structure and jumps to a selected version", () => {
     const onJumpTo = vi.fn();
     render(
-      <HistoryPanel
+      <HistoryDrawer
         items={items}
         onJumpTo={onJumpTo}
         onClose={() => {}}
@@ -50,7 +50,7 @@ describe("HistoryPanel", () => {
     const windowEscapeHandler = vi.fn();
     window.addEventListener("keydown", windowEscapeHandler);
     const { rerender } = render(
-      <HistoryPanel
+      <HistoryDrawer
         items={items}
         onJumpTo={() => {}}
         onClose={onClose}
@@ -67,7 +67,7 @@ describe("HistoryPanel", () => {
     window.removeEventListener("keydown", windowEscapeHandler);
 
     rerender(
-      <HistoryPanel
+      <HistoryDrawer
         items={[items[1]]}
         onJumpTo={() => {}}
         onClose={onClose}

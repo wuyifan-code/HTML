@@ -3,15 +3,15 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const appSource = readFileSync(join(process.cwd(), "src/App.tsx"), "utf8");
-const panelSource = readFileSync(join(process.cwd(), "src/components/HistoryPanel.tsx"), "utf8");
+const drawerSource = readFileSync(join(process.cwd(), "src/components/HistoryDrawer.tsx"), "utf8");
 const styles = readFileSync(join(process.cwd(), "src/styles.css"), "utf8");
 
 describe("history drawer polish", () => {
   it("renders history as a dialog with an outside-close backdrop", () => {
     expect(appSource).toContain("history-drawer-backdrop");
-    expect(panelSource).toContain('role="dialog"');
-    expect(panelSource).toContain('aria-modal="true"');
-    expect(panelSource).toContain('aria-labelledby="history-drawer-title"');
+    expect(drawerSource).toContain('role="dialog"');
+    expect(drawerSource).toContain('aria-modal="true"');
+    expect(drawerSource).toContain('aria-labelledby="history-drawer-title"');
   });
 
   it("styles history with material backdrop, drawer animation, and mobile sheet fallback", () => {
