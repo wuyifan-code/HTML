@@ -122,6 +122,7 @@ function NodeRow({
       isSelected={isSelected}
       childCount={node.hasChildren ? 1 : 0}
       isCollapsed={!node.isOpen}
+      diagnosticsCount={node.diagnostics}
       onSelect={(hftId) => onSelect(hftId)}
       onToggleCollapse={(hftId) => onToggle(hftId)}
     />

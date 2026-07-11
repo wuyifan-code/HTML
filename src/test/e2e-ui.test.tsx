@@ -130,18 +130,21 @@ describe("E2E UI Smoke Tests", () => {
       render(
         <SourcePanel
           html="<p>test</p>"
+          sourceDraft="<p>test</p>"
+          onSourceDraftChange={noop}
           isSynced={true}
           domTree={[]}
+          collapsedTreeIds={new Set()}
           selectedId={null}
           onSelectNode={noop}
           onToggleNode={noop}
           diagnosticsCount={0}
+          nodeDiagnostics={{}}
           onAiScan={noop}
           onCopy={noop}
           searchQuery=""
           onSearchChange={noop}
           lineCount={1}
-          onHtmlChange={noop}
         />
       );
       expect(screen.getByText("来源")).toBeInTheDocument();

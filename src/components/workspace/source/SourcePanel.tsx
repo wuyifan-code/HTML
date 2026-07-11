@@ -8,13 +8,16 @@ import type { DomTreeNode, AiTreeAnnotation } from "../../../types/editor";
 interface SourcePanelProps {
   defaultTab?: "source" | "structure";
   html: string;
-  onHtmlChange: (html: string) => void;
+  sourceDraft: string;
+  onSourceDraftChange: (draft: string) => void;
   isSynced: boolean;
   domTree: DomTreeNode[];
+  collapsedTreeIds: Set<string>;
   selectedId: string | null;
   onSelectNode: (id: string) => void;
   onToggleNode: (id: string) => void;
   diagnosticsCount: number;
+  nodeDiagnostics: Record<string, number>;
   onAiScan: () => void;
   onCopy: () => void;
   searchQuery: string;
@@ -41,13 +44,16 @@ interface DomTreeItem {
 export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
   defaultTab = "source",
   html,
-  onHtmlChange,
+  sourceDraft,
+  onSourceDraftChange,
   isSynced,
   domTree,
+  collapsedTreeIds,
   selectedId,
   onSelectNode,
   onToggleNode,
   diagnosticsCount,
+  nodeDiagnostics,
   onAiScan,
   onCopy,
   searchQuery,
@@ -62,7 +68,6 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
 }, ref) => {
   const [activeTab, setActiveTab] = useState<"source" | "structure">(defaultTab);
   const [isAiPopoverOpen, setIsAiPopoverOpen] = useState(false);
-  const [draftHtml, setDraftHtml] = useState(html);
   const aiScanTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const popoverStatus = useMemo(() => {
@@ -92,23 +97,22 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
       label: node.label || node.text || node.tagName,
       depth: node.depth,
       hasChildren: (depthCount.get(node.hftId) ?? 0) > 0,
-      isOpen: !(node as any).isCollapsed,
-      diagnostics: 0,
+      isOpen: !collapsedTreeIds.has(node.hftId),
+      diagnostics: nodeDiagnostics[node.hftId] ?? 0,
     }));
-  }, [domTree]);
+  }, [domTree, collapsedTreeIds, nodeDiagnostics]);
 
   const handleAiScan = () => {
     onAiScan();
   };
 
   const handleApplyDraft = (newHtml: string) => {
-    onHtmlChange(newHtml);
-    setDraftHtml(newHtml);
+    onSourceDraftChange(newHtml);
     onApplySource?.(newHtml);
   };
 
   const handleCancelDraft = () => {
-    setDraftHtml(html);
+    onSourceDraftChange(html);
   };
 
   const handleTabChange = (tab: "source" | "structure") => {
@@ -189,7 +193,8 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
       {!isCollapsed && (
         activeTab === "source" ? (
           <SourceCodeView
-            html={draftHtml}
+            value={sourceDraft}
+            onChange={onSourceDraftChange}
             searchQuery={searchQuery}
             onSearchChange={onSearchChange}
             lineCount={lineCount}

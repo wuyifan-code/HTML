@@ -5,7 +5,8 @@ import { Tooltip } from "../../Tooltip";
 import { useState } from "react";
 
 interface SourceCodeViewProps {
-  html: string;
+  value: string;
+  onChange: (newValue: string) => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   lineCount: number;
@@ -16,7 +17,8 @@ interface SourceCodeViewProps {
 }
 
 export function SourceCodeView({
-  html,
+  value,
+  onChange,
   searchQuery,
   onSearchChange,
   lineCount,
@@ -25,13 +27,12 @@ export function SourceCodeView({
   onCancelDraft,
   onCopy,
 }: SourceCodeViewProps) {
-  const [draftHtml, setDraftHtml] = useState(html);
   const [copied, setCopied] = useState(false);
 
   const hasSearchResults = useMemo(() => {
     if (!searchQuery.trim()) return true;
-    return html.toLowerCase().includes(searchQuery.toLowerCase());
-  }, [html, searchQuery]);
+    return value.toLowerCase().includes(searchQuery.toLowerCase());
+  }, [value, searchQuery]);
 
   const handleCopy = () => {
     onCopy();
@@ -68,8 +69,8 @@ export function SourceCodeView({
       <textarea
         className="source-code-textarea"
         spellCheck={false}
-        value={draftHtml}
-        onChange={(event) => setDraftHtml(event.target.value)}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
         aria-label="HTML 源码"
       />
 
@@ -98,7 +99,6 @@ export function SourceCodeView({
           <button
             type="button"
             onClick={() => {
-              setDraftHtml(html);
               onCancelDraft();
             }}
           >
@@ -107,7 +107,7 @@ export function SourceCodeView({
           <button
             className="source-editor-btn-primary"
             type="button"
-            onClick={() => onApplyDraft(draftHtml)}
+            onClick={() => onApplyDraft(value)}
           >
             应用
           </button>

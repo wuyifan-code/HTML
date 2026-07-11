@@ -2025,14 +2025,19 @@ export default function App() {
         )}
         <SourcePanel
           ref={sourcePanelRef}
-          html={sourceDraft}
-          onHtmlChange={setSourceDraft}
+          html={state.html}
+          sourceDraft={sourceDraft}
+          onSourceDraftChange={setSourceDraft}
           isSynced={sourceSyncState === "synced"}
           domTree={domTree}
+          collapsedTreeIds={collapsedTreeIds}
           selectedId={selectedId}
           onSelectNode={selectElement}
           onToggleNode={handleToggleTreeNode}
           diagnosticsCount={aiRiskAnnotations.length}
+          nodeDiagnostics={Object.fromEntries(
+            Object.entries(aiAnnotations).map(([hftId, a]) => [hftId, a.issues.length])
+          )}
           onAiScan={handleManualAnalyzeStructure}
           onCopy={handleCopy}
           searchQuery={search}

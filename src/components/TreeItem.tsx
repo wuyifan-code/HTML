@@ -33,6 +33,7 @@ export function TreeItemNode({
   annotation,
   childCount,
   isCollapsed,
+  diagnosticsCount,
   onSelect,
   onToggleCollapse,
 }: {
@@ -41,6 +42,7 @@ export function TreeItemNode({
   annotation?: AiTreeAnnotation;
   childCount: number;
   isCollapsed: boolean;
+  diagnosticsCount?: number;
   onSelect: (hftId: string) => void;
   onToggleCollapse: (hftId: string) => void;
 }) {
@@ -79,6 +81,11 @@ export function TreeItemNode({
         ) : null}
       </span>
       {hasChildren ? <span className="tree-node__meta">x{childCount}</span> : null}
+      {diagnosticsCount ? (
+        <span className="tree-node__diag" role="status" aria-label={`${diagnosticsCount} 个诊断`}>
+          {diagnosticsCount}
+        </span>
+      ) : null}
     </button>
   );
 }

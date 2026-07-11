@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { buildEditableDomTree } from "../utils/domTree";
+import { buildEditableDomTree, filterCollapsedTree } from "../utils/domTree";
 import { injectEditableIds } from "../utils/injectEditableIds";
 
 describe("buildEditableDomTree", () => {
@@ -28,5 +28,33 @@ describe("buildEditableDomTree", () => {
     const tree = buildEditableDomTree(withIds);
 
     expect(tree.some((node) => node.tagName === "text" && node.text === "40.9%")).toBe(true);
+  });
+});
+
+describe("filterCollapsedTree", () => {
+  it("hides children of collapsed nodes", () => {
+    const tree = [
+      { hftId: "1", tagName: "div", label: "Parent", text: "", depth: 0, className: "", id: "1" },
+      { hftId: "2", tagName: "p", label: "Child", text: "hello", depth: 1, className: "", id: "2" },
+      { hftId: "3", tagName: "p", label: "Child2", text: "world", depth: 1, className: "", id: "3" },
+    ] as any;
+    const collapsed = new Set(["1"]);
+    const result = filterCollapsedTree(tree, collapsed);
+    expect(result).toHaveLength(1);
+    expect(result[0].hftId).toBe("1");
+  });
+
+  it("shows children of expanded nodes", () => {
+    const tree = [
+      { hftId: "1", tagName: "div", label: "Parent", text: "", depth: 0, className: "", id: "1" },
+      { hftId: "2", tagName: "p", label: "Child", text: "hello", depth: 1, className: "", id: "2" },
+    ] as any;
+    const collapsed = new Set<string>();
+    const result = filterCollapsedTree(tree, collapsed);
+    expect(result).toHaveLength(2);
+  });
+
+  it("returns empty for empty input", () => {
+    expect(filterCollapsedTree([], new Set())).toHaveLength(0);
   });
 });
