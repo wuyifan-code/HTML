@@ -234,3 +234,124 @@ describe("CanvasPanel", () => {
     expect(iframe?.getAttribute("srcdoc")).toBe("<!doctype html><html><body>Hello World</body></html>");
   });
 });
+
+describe("CanvasPanel DeviceFrame integration (D05)", () => {
+  it("renders device frame for mobile preset", () => {
+    const { container } = render(
+      <CanvasPanel
+        srcDoc="<html><body>test</body></html>"
+        viewportSize={{ width: 375, height: 667 }}
+        zoomMode="100"
+        isFocusMode={false}
+        viewportPreset="mobile"
+        matchingViewportPreset="mobile"
+        aiStatus="idle"
+        onViewportChange={noop}
+        onZoomChange={noop}
+        onFocusToggle={noop}
+        onViewportPresetChange={noop}
+        onIframeLoad={noop}
+        iframeRef={createMockRef<HTMLIFrameElement>()}
+        stageRef={createMockRef<HTMLDivElement>()}
+      />
+    );
+
+    expect(container.querySelector(".device-frame")).not.toBeNull();
+    expect(container.querySelector(".device-notch")).not.toBeNull();
+    expect(container.querySelector(".device-home")).not.toBeNull();
+  });
+
+  it("renders device frame with notch for mobile, not for desktop", () => {
+    const { container: mobileContainer } = render(
+      <CanvasPanel
+        srcDoc="<html><body>test</body></html>"
+        viewportSize={{ width: 375, height: 667 }}
+        zoomMode="100"
+        isFocusMode={false}
+        viewportPreset="mobile"
+        matchingViewportPreset="mobile"
+        aiStatus="idle"
+        onViewportChange={noop}
+        onZoomChange={noop}
+        onFocusToggle={noop}
+        onViewportPresetChange={noop}
+        onIframeLoad={noop}
+        iframeRef={createMockRef<HTMLIFrameElement>()}
+        stageRef={createMockRef<HTMLDivElement>()}
+      />
+    );
+    expect(mobileContainer.querySelector(".device-frame")).not.toBeNull();
+
+    const { container: desktopContainer } = render(
+      <CanvasPanel
+        srcDoc="<html><body>test</body></html>"
+        viewportSize={{ width: 1440, height: 900 }}
+        zoomMode="100"
+        isFocusMode={false}
+        viewportPreset="desktop"
+        matchingViewportPreset="desktop"
+        aiStatus="idle"
+        onViewportChange={noop}
+        onZoomChange={noop}
+        onFocusToggle={noop}
+        onViewportPresetChange={noop}
+        onIframeLoad={noop}
+        iframeRef={createMockRef<HTMLIFrameElement>()}
+        stageRef={createMockRef<HTMLDivElement>()}
+      />
+    );
+    expect(desktopContainer.querySelector(".device-frame")).toBeNull();
+  });
+
+  it("mobile device frame outer dimensions are viewport + 24px padding", () => {
+    const { container } = render(
+      <CanvasPanel
+        srcDoc="<html><body>test</body></html>"
+        viewportSize={{ width: 375, height: 667 }}
+        zoomMode="100"
+        isFocusMode={false}
+        viewportPreset="mobile"
+        matchingViewportPreset="mobile"
+        aiStatus="idle"
+        onViewportChange={noop}
+        onZoomChange={noop}
+        onFocusToggle={noop}
+        onViewportPresetChange={noop}
+        onIframeLoad={noop}
+        iframeRef={createMockRef<HTMLIFrameElement>()}
+        stageRef={createMockRef<HTMLDivElement>()}
+      />
+    );
+
+    const frame = container.querySelector(".device-frame") as HTMLElement;
+    expect(frame).not.toBeNull();
+    expect(frame?.style.width).toBe("399px");
+    expect(frame?.style.height).toBe("691px");
+  });
+
+  it("iframe is rendered inside device frame for mobile preset", () => {
+    const { container } = render(
+      <CanvasPanel
+        srcDoc="<html><body>test</body></html>"
+        viewportSize={{ width: 375, height: 667 }}
+        zoomMode="100"
+        isFocusMode={false}
+        viewportPreset="mobile"
+        matchingViewportPreset="mobile"
+        aiStatus="idle"
+        onViewportChange={noop}
+        onZoomChange={noop}
+        onFocusToggle={noop}
+        onViewportPresetChange={noop}
+        onIframeLoad={noop}
+        iframeRef={createMockRef<HTMLIFrameElement>()}
+        stageRef={createMockRef<HTMLDivElement>()}
+      />
+    );
+
+    const frame = container.querySelector(".device-frame");
+    expect(frame).not.toBeNull();
+    const iframe = frame?.querySelector("iframe.live-preview-frame");
+    expect(iframe).not.toBeNull();
+  });
+});

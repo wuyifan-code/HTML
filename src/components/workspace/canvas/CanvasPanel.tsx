@@ -8,8 +8,11 @@ import {
   IconZoomIn,
   IconMaximize,
 } from "../../Icons";
+import { DeviceFrame } from "./DeviceFrame";
 
 type ZoomMode = "fit" | "88" | "100";
+
+type ViewportPreset = "desktop" | "tablet" | "mobile";
 
 interface CanvasPanelProps {
   srcDoc: string;
@@ -18,7 +21,7 @@ interface CanvasPanelProps {
   isFocusMode: boolean;
   matchingViewportPreset?: string | null;
   aiStatus: "idle" | "running" | "ready" | "error";
-  onViewportPresetChange?: (preset: "desktop" | "tablet" | "mobile") => void;
+  onViewportPresetChange?: (preset: ViewportPreset) => void;
   onZoomModeChange?: (mode: ZoomMode) => void;
   onFocusToggle?: () => void;
   iframeRef: RefObject<HTMLIFrameElement | null>;
@@ -34,6 +37,19 @@ interface CanvasPanelProps {
   viewportPreset?: string | null;
   onViewportChange?: (preset: any) => void;
   onZoomChange?: (zoom: any) => void;
+}
+
+function resolvePreset(
+  matchingViewportPreset: string | null | undefined,
+  viewportPreset: string | null | undefined
+): ViewportPreset {
+  if (matchingViewportPreset === "desktop" || matchingViewportPreset === "tablet" || matchingViewportPreset === "mobile") {
+    return matchingViewportPreset;
+  }
+  if (viewportPreset === "desktop" || viewportPreset === "tablet" || viewportPreset === "mobile") {
+    return viewportPreset;
+  }
+  return "desktop";
 }
 
 export function CanvasPanel({
@@ -58,6 +74,23 @@ export function CanvasPanel({
   onViewportChange,
   onZoomChange,
 }: CanvasPanelProps) {
+  const preset = resolvePreset(matchingViewportPreset, viewportPreset);
+  const useDeviceFrame = preset === "mobile" || preset === "tablet";
+  const deviceOuterWidth = viewportSize.width + 24;
+  const deviceOuterHeight = viewportSize.height + 24;
+
+  const previewContent = (
+    <iframe
+      ref={iframeRef}
+      className="live-preview-frame"
+      title="实时 HTML 预览"
+      srcDoc={srcDoc}
+      sandbox="allow-scripts allow-forms allow-popups"
+      style={previewIframeStyle}
+      onLoad={onIframeLoad}
+    />
+  );
+
   return (
     <section className="nw-canvas panel stage-panel" aria-label="画布" data-od-id="canvas" tabIndex={-1}>
       <div className="viewport-bar" aria-label="画布工具栏">
@@ -65,11 +98,11 @@ export function CanvasPanel({
           <span className="segmented-active-slide-bg" />
           <button
             type="button"
-            className={"segmented-button" + ((matchingViewportPreset === "desktop" || matchingViewportPreset === "wide") ? " is-on" : "")}
+            className={"segmented-button" + (preset === "desktop" ? " is-on" : "")}
             data-dom-id="vp-desktop"
             title="桌面端"
             aria-label="桌面端"
-            aria-pressed={matchingViewportPreset === "desktop" || matchingViewportPreset === "wide"}
+            aria-pressed={preset === "desktop"}
             onClick={() => onViewportPresetChange("desktop")}
           >
             <IconMonitor />
@@ -77,11 +110,11 @@ export function CanvasPanel({
           </button>
           <button
             type="button"
-            className={"segmented-button" + (matchingViewportPreset === "tablet" ? " is-on" : "")}
+            className={"segmented-button" + (preset === "tablet" ? " is-on" : "")}
             data-dom-id="vp-tablet"
             title="平板端"
             aria-label="平板端"
-            aria-pressed={matchingViewportPreset === "tablet"}
+            aria-pressed={preset === "tablet"}
             onClick={() => onViewportPresetChange("tablet")}
           >
             <IconTablet />
@@ -89,11 +122,11 @@ export function CanvasPanel({
           </button>
           <button
             type="button"
-            className={"segmented-button" + (matchingViewportPreset === "mobile" ? " is-on" : "")}
+            className={"segmented-button" + (preset === "mobile" ? " is-on" : "")}
             data-dom-id="vp-mobile"
             title="移动端"
             aria-label="移动端"
-            aria-pressed={matchingViewportPreset === "mobile"}
+            aria-pressed={preset === "mobile"}
             onClick={() => onViewportPresetChange("mobile")}
           >
             <IconSmartphone />
@@ -155,35 +188,57 @@ export function CanvasPanel({
           </div>
         ) : null}
         <section className="nw-canvas" aria-label="预览画布">
-          <div className="nw-preview-card">
-            <div className="nw-preview-urlbar">
-              <span className="nw-preview-urlbar-dot" />
-              <span className="nw-preview-urlbar-dot" />
-              <span className="nw-preview-urlbar-dot" />
-              <div className="nw-preview-urlbar-input">localhost:5173</div>
+          {useDeviceFrame ? (
+            <DeviceFrame
+              viewportWidth={deviceOuterWidth}
+              viewportHeight={deviceOuterHeight}
+              preset={preset}
+            >
+              <div className="nw-preview-card">
+                <div className="nw-preview-urlbar">
+                  <span className="nw-preview-urlbar-dot" />
+                  <span className="nw-preview-urlbar-dot" />
+                  <span className="nw-preview-urlbar-dot" />
+                  <div className="nw-preview-urlbar-input">localhost:5173</div>
+                </div>
+                <div className="page-preview-shell" style={previewShellStyle}>
+                  <article
+                    className={"page-preview" + (isContentFitPreview ? " page-preview--content-fit" : "")}
+                    aria-label="页面预览"
+                    style={{
+                      width: viewportSize.width,
+                      height: viewportSize.height,
+                      transform: `scale(${previewScale})`,
+                    }}
+                  >
+                    {previewContent}
+                  </article>
+                </div>
+              </div>
+            </DeviceFrame>
+          ) : (
+            <div className="nw-preview-card">
+              <div className="nw-preview-urlbar">
+                <span className="nw-preview-urlbar-dot" />
+                <span className="nw-preview-urlbar-dot" />
+                <span className="nw-preview-urlbar-dot" />
+                <div className="nw-preview-urlbar-input">localhost:5173</div>
+              </div>
+              <div className="page-preview-shell" style={previewShellStyle}>
+                <article
+                  className={"page-preview" + (isContentFitPreview ? " page-preview--content-fit" : "")}
+                  aria-label="页面预览"
+                  style={{
+                    width: previewFrameBounds.width,
+                    height: previewFrameBounds.height,
+                    transform: `scale(${previewScale})`,
+                  }}
+                >
+                  {previewContent}
+                </article>
+              </div>
             </div>
-            <div className="page-preview-shell" style={previewShellStyle}>
-              <article
-                className={"page-preview" + (isContentFitPreview ? " page-preview--content-fit" : "")}
-                aria-label="页面预览"
-                style={{
-                  width: previewFrameBounds.width,
-                  height: previewFrameBounds.height,
-                  transform: `scale(${previewScale})`,
-                }}
-              >
-                <iframe
-                  ref={iframeRef}
-                  className="live-preview-frame"
-                  title="实时 HTML 预览"
-                  srcDoc={srcDoc}
-                  sandbox="allow-scripts allow-forms allow-popups"
-                  style={previewIframeStyle}
-                  onLoad={onIframeLoad}
-                />
-              </article>
-            </div>
-          </div>
+          )}
         </section>
       </div>
     </section>
