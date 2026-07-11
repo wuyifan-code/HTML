@@ -1,0 +1,2 @@
+# Preserve the supplied design-source HTML byte-for-byte.
+docs/design-source/pages/*.html -text -diff

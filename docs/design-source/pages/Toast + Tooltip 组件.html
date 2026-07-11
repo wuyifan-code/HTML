@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="light" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toast + Tooltip + Controls</title>
+    <style id="theme-vars">
+/* ════════════════════════════════════════════════════════════
+   Notion-style brand CSS — html-finetune-notion
+   ════════════════════════════════════════════════════════════ */
+
+@theme inline {
+  --color-n-bg-base:        #ffffff;
+  --color-n-bg-elevated:    #ffffff;
+  --color-n-bg-subtle:      #fbfbfa;
+  --color-n-bg-hover:       #f1f1f0;
+  --color-n-bg-sidebar:     #f7f6f3;
+  --color-n-bg-canvas:      #f7f6f3;
+  --color-n-bg-inverse:     #2f3437;
+  --color-n-fg-default:     #37352f;
+  --color-n-fg-secondary:   #787774;
+  --color-n-fg-tertiary:    #9b9a97;
+  --color-n-fg-disabled:    #c4c4c2;
+  --color-n-fg-link:        #2383e2;
+  --color-n-fg-onbrand:     #ffffff;
+  --color-n-brand:          #2383e2;
+  --color-n-brand-hover:    #1a72cf;
+  --color-n-brand-active:   #1761b3;
+  --color-n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --color-n-success:        #0f7b0f;
+  --color-n-warning:        #cb912f;
+  --color-n-danger:         #e03e3e;
+  --color-n-border-default: #e9e9e7;
+  --color-n-border-strong:  #d3d3d0;
+  --color-n-border-focus:   rgba(35, 131, 226, 0.40);
+  --color-n-ring-focus-out: rgba(35, 131, 226, 0.40);
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+  --n-ease: cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast: 120ms;
+  --n-duration-base: 180ms;
+  --n-duration-slow: 240ms;
+}
+
+:root {
+  /* surface */
+  --n-bg-base:        #ffffff;
+  --n-bg-elevated:    #ffffff;
+  --n-bg-subtle:      #fbfbfa;
+  --n-bg-hover:       #f1f1f0;
+  --n-bg-sidebar:     #f7f6f3;
+  --n-bg-canvas:      #f7f6f3;
+  --n-bg-inverse:     #2f3437;
+
+  /* text */
+  --n-fg-default:     #37352f;
+  --n-fg-secondary:   #787774;
+  --n-fg-tertiary:    #9b9a97;
+  --n-fg-disabled:    #c4c4c2;
+  --n-fg-link:        #2383e2;
+  --n-fg-onbrand:     #ffffff;
+
+  /* brand & accent */
+  --n-brand:          #2383e2;
+  --n-brand-hover:    #1a72cf;
+  --n-brand-active:   #1761b3;
+  --n-brand-disabled: rgba(35, 131, 226, 0.40);
+  --n-success:        #0f7b0f;
+  --n-warning:        #cb912f;
+  --n-danger:         #e03e3e;
+
+  /* border */
+  --n-border-default: #e9e9e7;
+  --n-border-strong:  #d3d3d0;
+  --n-border-focus:   rgba(35, 131, 226, 0.40);
+
+  /* radius */
+  --n-radius-sm: 4px;
+  --n-radius-md: 5px;
+  --n-radius-lg: 6px;
+
+  /* shadow */
+  --n-shadow-card:    0 1px 3px rgba(15,15,15,0.04), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-pop:     0 4px 12px rgba(15,15,15,0.05), 0 0 0 1px rgba(15,15,15,0.04);
+  --n-shadow-overlay: 0 12px 32px rgba(15,15,15,0.14), 0 3px 8px rgba(15,15,15,0.08);
+  --n-ring-focus:     0 0 0 2px var(--n-bg-base), 0 0 0 4px var(--n-border-focus);
+
+  /* font */
+  --n-font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --n-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+
+  /* motion */
+  --n-ease:           cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-duration-fast:  120ms;
+  --n-duration-base:  180ms;
+  --n-duration-slow:  240ms;
+}
+
+.dark {
+  --n-bg-base:     #191919;
+  --n-bg-elevated: #202020;
+  --n-bg-subtle:   #252525;
+  --n-bg-sidebar:  #202020;
+  --n-bg-canvas:   #2c2c2c;
+  --n-bg-inverse:  #e8e8e8;
+  --n-fg-default:  rgba(255, 255, 255, 0.90);
+  --n-fg-secondary:rgba(255, 255, 255, 0.66);
+  --n-fg-tertiary: rgba(255, 255, 255, 0.45);
+  --n-fg-disabled: rgba(255, 255, 255, 0.25);
+  --n-fg-link:     #4dabf7;
+  --n-fg-onbrand:  #191919;
+  --n-brand:          #4dabf7;
+  --n-brand-hover:    #5bb8ff;
+  --n-brand-active:   #3d9be6;
+  --n-brand-disabled: rgba(77, 171, 247, 0.35);
+  --n-success:        #4caf50;
+  --n-warning:        #f5c542;
+  --n-danger:         #f44336;
+  --n-border-default: rgba(255, 255, 255, 0.10);
+  --n-border-strong:  rgba(255, 255, 255, 0.16);
+  --n-border-focus:   rgba(77, 171, 247, 0.45);
+  --n-shadow-card:    0 1px 3px rgba(0,0,0,0.40);
+  --n-shadow-pop:     0 6px 16px rgba(0,0,0,0.50);
+  --n-shadow-overlay: 0 12px 32px rgba(0,0,0,0.60);
+  --n-ring-focus:     0 0 0 2px #191919, 0 0 0 4px rgba(77,171,247,0.45);
+}
+
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.3.1/dist/index.global.js"></script>
+    <script src="https://unpkg.com/lucide@1.8.0/dist/umd/lucide.min.js"></script>
+    <style>
+      /* ── Reset & Base ── */
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body {
+        width: 1440px;
+        height: 900px;
+        overflow: hidden;
+        font-family: var(--n-font-sans);
+        background: var(--n-bg-canvas);
+        color: var(--n-fg-default);
+        font-size: 14px;
+        line-height: 1.5;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* ── Section Headers ── */
+      .section-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--n-fg-tertiary);
+        margin-bottom: 12px;
+      }
+
+      /* ── Buttons ── */
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        height: 32px;
+        padding: 0 12px;
+        font-size: 14px;
+        font-weight: 500;
+        font-family: inherit;
+        border: none;
+        border-radius: var(--n-radius-md);
+        cursor: pointer;
+        white-space: nowrap;
+        transition: background var(--n-duration-fast) var(--n-ease);
+        color: var(--n-fg-default);
+        background: transparent;
+      }
+      .btn:hover { background: var(--n-bg-hover); }
+
+      .btn-ghost { background: transparent; }
+
+      .btn-secondary {
+        background: var(--n-bg-base);
+        border: 1px solid var(--n-border-default);
+      }
+      .btn-secondary:hover { background: var(--n-bg-hover); }
+
+      .btn-primary {
+        background: var(--n-brand);
+        color: var(--n-fg-onbrand);
+      }
+      .btn-primary:hover { background: var(--n-brand-hover); }
+
+      .btn-danger {
+        background: var(--n-danger);
+        color: var(--n-fg-onbrand);
+      }
+      .btn-danger:hover { background: #c93535; }
+
+      .btn-icon {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        border-radius: var(--n-radius-md);
+      }
+      .btn-icon svg { width: 16px; height: 16px; }
+
+      .btn-disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      .btn-with-icon svg { width: 16px; height: 16px; }
+
+      /* ── Button Group ── */
+      .btn-group {
+        display: inline-flex;
+        border: 1px solid var(--n-border-default);
+        border-radius: var(--n-radius-md);
+        overflow: hidden;
+      }
+      .btn-group .btn {
+        height: 32px;
+        padding: 0 14px;
+        border-radius: 0;
+        border-right: 1px solid var(--n-border-default);
+        font-size: 13px;
+      }
+      .btn-group .btn:last-child { border-right: none; }
+      .btn-group .btn.active {
+        background: var(--n-bg-hover);
+        font-weight: 500;
+      }
+
+      /* ── Inputs ── */
+      .input-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        height: 32px;
+        padding: 0 10px;
+        background: var(--n-bg-base);
+        border: 1px solid var(--n-border-default);
+        border-radius: var(--n-radius-md);
+        font-size: 14px;
+        color: var(--n-fg-default);
+      }
+      .input-wrap svg { width: 16px; height: 16px; color: var(--n-fg-tertiary); flex-shrink: 0; }
+      .input-wrap input {
+        border: none;
+        outline: none;
+        background: transparent;
+        font-family: inherit;
+        font-size: 14px;
+        color: var(--n-fg-default);
+        width: 100%;
+      }
+      .input-wrap input::placeholder { color: var(--n-fg-tertiary); }
+
+      /* Numeric input */
+      .num-input {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+      .num-input-label {
+        font-size: 13px;
+        color: var(--n-fg-secondary);
+        margin-right: 4px;
+      }
+      .num-input-stepper {
+        display: flex;
+        flex-direction: column;
+        margin-left: 2px;
+      }
+      .num-input-stepper button {
+        width: 16px;
+        height: 14px;
+        border: none;
+        background: transparent;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--n-fg-tertiary);
+        padding: 0;
+      }
+      .num-input-stepper button:hover { color: var(--n-fg-default); }
+      .num-input-stepper svg { width: 12px; height: 12px; }
+      .num-input .input-wrap { width: 64px; }
+      .num-input .input-wrap input {
+        text-align: left;
+        width: 100%;
+      }
+
+      /* ── Checkbox ── */
+      .checkbox-row { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; }
+      .checkbox-box {
+        width: 16px;
+        height: 16px;
+        border-radius: 3px;
+        border: 1px solid var(--n-border-strong);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        transition: all var(--n-duration-fast) var(--n-ease);
+      }
+      .checkbox-box.checked {
+        background: var(--n-brand);
+        border-color: var(--n-brand);
+      }
+      .checkbox-box.checked svg { width: 12px; height: 12px; color: white; }
+      .checkbox-label { font-size: 13px; color: var(--n-fg-default); }
+
+      /* ── Toggle Switch ── */
+      .toggle-row { display: inline-flex; align-items: center; gap: 8px; }
+      .toggle {
+        width: 28px;
+        height: 16px;
+        border-radius: 999px;
+        background: var(--n-border-strong);
+        position: relative;
+        cursor: pointer;
+        transition: background var(--n-duration-fast) var(--n-ease);
+        flex-shrink: 0;
+      }
+      .toggle.on { background: var(--n-brand); }
+      .toggle-knob {
+        position: absolute;
+        top: 2px;
+        left: 2px;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: white;
+        transition: left var(--n-duration-fast) var(--n-ease);
+      }
+      .toggle.on .toggle-knob { left: 14px; }
+      .toggle-label { font-size: 13px; color: var(--n-fg-secondary); }
+
+      /* ── Segmented Control ── */
+      .segmented {
+        display: inline-flex;
+        padding: 3px;
+        background: var(--n-bg-subtle);
+        border: 1px solid var(--n-border-default);
+        border-radius: var(--n-radius-md);
+        gap: 2px;
+      }
+      .segmented-item {
+        padding: 4px 14px;
+        font-size: 13px;
+        font-weight: 500;
+        border-radius: 3px;
+        cursor: pointer;
+        color: var(--n-fg-secondary);
+        transition: all var(--n-duration-fast) var(--n-ease);
+        white-space: nowrap;
+      }
+      .segmented-item.active {
+        background: var(--n-bg-base);
+        color: var(--n-fg-default);
+        box-shadow: 0 1px 2px rgba(15,15,15,0.06);
+      }
+
+      /* ── Dropdown Select ── */
+      .dropdown {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 32px;
+        padding: 0 10px;
+        background: var(--n-bg-base);
+        border: 1px solid var(--n-border-default);
+        border-radius: var(--n-radius-md);
+        font-size: 14px;
+        color: var(--n-fg-default);
+        cursor: pointer;
+      }
+      .dropdown svg { width: 14px; height: 14px; color: var(--n-fg-tertiary); }
+
+      /* ── Tooltips ── */
+      .tooltip-wrap {
+        position: relative;
+        display: inline-flex;
+      }
+      .tooltip {
+        position: absolute;
+        background: var(--n-bg-inverse);
+        color: var(--n-fg-onbrand);
+        font-size: 11px;
+        padding: 4px 8px;
+        border-radius: var(--n-radius-sm);
+        box-shadow: var(--n-shadow-pop);
+        white-space: nowrap;
+        pointer-events: none;
+        z-index: 10;
+        line-height: 1.4;
+      }
+      /* Arrow using pseudo-element */
+      .tooltip::after {
+        content: '';
+        position: absolute;
+        width: 6px;
+        height: 6px;
+        background: var(--n-bg-inverse);
+      }
+      .tooltip-top {
+        bottom: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .tooltip-top::after {
+        top: 100%;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+      }
+      .tooltip-bottom {
+        top: calc(100% + 8px);
+        left: 50%;
+        transform: translateX(-50%);
+      }
+      .tooltip-bottom::after {
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%) rotate(45deg);
+      }
+      .tooltip-left {
+        right: calc(100% + 8px);
+        top: 50%;
+        transform: translateY(-50%);
+      }
+      .tooltip-left::after {
+        left: 100%;
+        top: 50%;
+        transform: translateY(-50%) rotate(45deg);
+      }
+      .tooltip-right {
+        left: calc(100% + 8px);
+        top: 50%;
+        transform: translateY(-50%);
+      }
+      .tooltip-right::after {
+        right: 100%;
+        top: 50%;
+        transform: translateY(-50%) rotate(45deg);
+      }
+
+      /* ── Toasts ── */
+      .toast-container {
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        z-index: 100;
+      }
+      .toast {
+        width: 320px;
+        min-height: 40px;
+        background: var(--n-bg-inverse);
+        color: var(--n-fg-onbrand);
+        font-size: 13px;
+        padding: 12px;
+        border-radius: var(--n-radius-md);
+        box-shadow: var(--n-shadow-overlay);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        position: relative;
+        overflow: hidden;
+      }
+      .toast-icon {
+        flex-shrink: 0;
+        width: 16px;
+        height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      .toast-icon svg { width: 16px; height: 16px; }
+      .toast-msg {
+        flex: 1;
+        line-height: 1.4;
+      }
+      /* Left accent bar */
+      .toast::before {
+        content: '';
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 4px;
+      }
+      .toast-success::before { background: var(--n-success); }
+      .toast-error::before { background: var(--n-danger); }
+      .toast-success .toast-icon { color: var(--n-success); }
+      .toast-error .toast-icon { color: var(--n-danger); }
+      .toast-info .toast-icon { color: var(--n-fg-onbrand); opacity: 0.7; }
+      .toast-loading .toast-icon { color: var(--n-fg-onbrand); opacity: 0.7; }
+
+      /* Spinner */
+      .spinner {
+        width: 14px;
+        height: 14px;
+        border: 2px solid rgba(255,255,255,0.25);
+        border-top-color: rgba(255,255,255,0.9);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin { to { transform: rotate(360deg); } }
+
+      /* ── Badges ── */
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 8px;
+        font-size: 12px;
+        font-weight: 500;
+        border-radius: var(--n-radius-sm);
+        line-height: 1.4;
+      }
+      .badge-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        flex-shrink: 0;
+      }
+      .badge-ready { background: rgba(15,123,15,0.08); color: var(--n-success); }
+      .badge-ready .badge-dot { background: var(--n-success); }
+      .badge-warn { background: rgba(203,145,47,0.10); color: var(--n-warning); }
+      .badge-warn .badge-dot { background: var(--n-warning); }
+      .badge-err { background: rgba(224,62,62,0.08); color: var(--n-danger); }
+      .badge-err .badge-dot { background: var(--n-danger); }
+      .badge-beta { background: var(--n-bg-hover); color: var(--n-fg-secondary); }
+
+      /* ── Chips / Tags ── */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 22px;
+        padding: 0 6px 0 8px;
+        background: var(--n-bg-subtle);
+        border: 1px solid var(--n-border-default);
+        border-radius: var(--n-radius-sm);
+        font-size: 12px;
+        color: var(--n-fg-default);
+      }
+      .chip-x {
+        width: 16px;
+        height: 16px;
+        border: none;
+        background: transparent;
+        border-radius: 3px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--n-fg-tertiary);
+        padding: 0;
+        transition: background var(--n-duration-fast) var(--n-ease);
+      }
+      .chip-x:hover { background: var(--n-bg-hover); color: var(--n-fg-default); }
+      .chip-x svg { width: 12px; height: 12px; }
+
+      /* ── Layout ── */
+      .page {
+        width: 1440px;
+        height: 900px;
+        padding: 48px 64px;
+        display: flex;
+        flex-direction: column;
+        gap: 36px;
+        position: relative;
+      }
+      .section-row {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        flex-wrap: wrap;
+      }
+      .tooltip-area {
+        display: flex;
+        align-items: center;
+        gap: 120px;
+        padding: 40px 0;
+        justify-content: center;
+      }
+      .tooltip-area .tooltip-wrap { margin: 24px; }
+    </style>
+</head>
+<body>
+    <div class="page">
+      <!-- Section 1: Buttons -->
+      <section>
+        <div class="section-label">Buttons</div>
+        <div class="section-row">
+          <!-- Ghost -->
+          <button class="btn btn-ghost">取消</button>
+          <!-- Secondary -->
+          <button class="btn btn-secondary">保存草稿</button>
+          <!-- Primary -->
+          <button class="btn btn-primary">确认导出</button>
+          <!-- Danger -->
+          <button class="btn btn-danger">删除</button>
+          <!-- Icon only -->
+          <button class="btn btn-icon btn-ghost" aria-label="关闭">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+          <!-- Disabled -->
+          <button class="btn btn-secondary btn-disabled">不可用</button>
+          <!-- Button with icon -->
+          <button class="btn btn-secondary">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            导出 HTML
+          </button>
+          <!-- Button group -->
+          <div class="btn-group">
+            <button class="btn btn-ghost">HTML</button>
+            <button class="btn btn-ghost active">PDF</button>
+            <button class="btn btn-ghost">PPTX</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 2: Inputs & Form Controls -->
+      <section>
+        <div class="section-label">Inputs &amp; Form Controls</div>
+        <div class="section-row">
+          <!-- Search input -->
+          <div class="input-wrap" style="width: 240px;">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+            <input type="text" placeholder="搜索元素或样式..." />
+          </div>
+
+          <!-- Numeric input -->
+          <div class="num-input">
+            <span class="num-input-label">字号</span>
+            <div class="input-wrap" style="width: 64px;">
+              <input type="text" value="16" style="text-align:left;" />
+              <div class="num-input-stepper">
+                <button tabindex="-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="18 15 12 9 6 15"></polyline></svg>
+                </button>
+                <button tabindex="-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Checkbox checked -->
+          <label class="checkbox-row">
+            <span class="checkbox-box checked">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+            </span>
+            <span class="checkbox-label">显示网格</span>
+          </label>
+
+          <!-- Checkbox unchecked -->
+          <label class="checkbox-row">
+            <span class="checkbox-box"></span>
+            <span class="checkbox-label">自动保存</span>
+          </label>
+
+          <!-- Toggle off -->
+          <div class="toggle-row">
+            <div class="toggle">
+              <div class="toggle-knob"></div>
+            </div>
+            <span class="toggle-label">深色模式</span>
+          </div>
+
+          <!-- Toggle on -->
+          <div class="toggle-row">
+            <div class="toggle on">
+              <div class="toggle-knob"></div>
+            </div>
+            <span class="toggle-label">实时预览</span>
+          </div>
+
+          <!-- Segmented control -->
+          <div class="segmented">
+            <span class="segmented-item">来源</span>
+            <span class="segmented-item active">DOM 树</span>
+          </div>
+
+          <!-- Dropdown select -->
+          <div class="dropdown">
+            <span>Inter</span>
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 3: Tooltips -->
+      <section>
+        <div class="section-label">Tooltips</div>
+        <div class="tooltip-area">
+          <!-- Top tooltip -->
+          <div class="tooltip-wrap">
+            <button class="btn btn-secondary">顶部提示</button>
+            <div class="tooltip tooltip-top">撤销上一步操作 (⌘Z)</div>
+          </div>
+          <!-- Bottom tooltip -->
+          <div class="tooltip-wrap">
+            <button class="btn btn-secondary">底部提示</button>
+            <div class="tooltip tooltip-bottom">导出为 HTML 文件</div>
+          </div>
+          <!-- Left tooltip -->
+          <div class="tooltip-wrap">
+            <button class="btn btn-secondary">左侧提示</button>
+            <div class="tooltip tooltip-left">返回</div>
+          </div>
+          <!-- Right tooltip -->
+          <div class="tooltip-wrap">
+            <button class="btn btn-secondary">右侧提示</button>
+            <div class="tooltip tooltip-right">更多选项</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Section 5: Badges & Chips -->
+      <section>
+        <div class="section-label">Badges &amp; Chips</div>
+        <div class="section-row">
+          <!-- Status badges -->
+          <span class="badge badge-ready">
+            <span class="badge-dot"></span>
+            就绪
+          </span>
+          <span class="badge badge-warn">
+            <span class="badge-dot"></span>
+            警告
+          </span>
+          <span class="badge badge-err">
+            <span class="badge-dot"></span>
+            错误
+          </span>
+          <span class="badge badge-beta">Beta</span>
+
+          <!-- Divider spacer -->
+          <span style="width: 16px; display: inline-block;"></span>
+
+          <!-- Tag chips -->
+          <span class="chip">
+            Inter
+            <button class="chip-x" aria-label="移除">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </span>
+          <span class="chip">
+            16px
+            <button class="chip-x" aria-label="移除">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </span>
+          <span class="chip">
+            加粗
+            <button class="chip-x" aria-label="移除">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+            </button>
+          </span>
+        </div>
+      </section>
+    </div>
+
+    <!-- Section 4: Toasts (fixed bottom-right) -->
+    <div class="toast-container">
+      <!-- Success toast -->
+      <div class="toast toast-success">
+        <span class="toast-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        </span>
+        <span class="toast-msg">HTML 已复制到剪贴板</span>
+      </div>
+      <!-- Error toast -->
+      <div class="toast toast-error">
+        <span class="toast-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </span>
+        <span class="toast-msg">导出失败：文件被占用</span>
+      </div>
+      <!-- Info toast -->
+      <div class="toast toast-info">
+        <span class="toast-icon">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+        </span>
+        <span class="toast-msg">已自动保存</span>
+      </div>
+      <!-- Loading toast -->
+      <div class="toast toast-loading">
+        <span class="toast-icon">
+          <span class="spinner"></span>
+        </span>
+        <span class="toast-msg">正在导出 PDF...</span>
+      </div>
+    </div>
+
+    <script>lucide.createIcons();</script>
+</body>
+</html>
