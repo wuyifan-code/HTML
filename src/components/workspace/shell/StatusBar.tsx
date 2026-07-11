@@ -7,6 +7,9 @@ export interface StatusBarProps {
   statusTone: StatusTone;
   viewportWidth: number;
   viewportHeight: number;
+  diagnosticsErrors?: number;
+  diagnosticsWarnings?: number;
+  diagnosticsInfos?: number;
 }
 
 export function StatusBar({
@@ -16,7 +19,11 @@ export function StatusBar({
   statusTone,
   viewportWidth,
   viewportHeight,
+  diagnosticsErrors = 0,
+  diagnosticsWarnings = 0,
+  diagnosticsInfos = 0,
 }: StatusBarProps) {
+  const totalDiagnostics = diagnosticsErrors + diagnosticsWarnings + diagnosticsInfos;
   return (
     <footer className="statusbar" data-dom-id="status-bar">
       <div className="statusbar-zone statusbar-zone--left">
@@ -26,6 +33,17 @@ export function StatusBar({
         </span>
         <span className="statusbar-sep" aria-hidden="true" />
         <span className="statusbar-metric">{htmlLength.toLocaleString()} 个字符</span>
+        {totalDiagnostics > 0 && (
+          <>
+            <span className="statusbar-sep" aria-hidden="true" />
+            <span className="statusbar-metric" title={`${diagnosticsErrors} 错误, ${diagnosticsWarnings} 警告, ${diagnosticsInfos} 提示`}>
+              {diagnosticsErrors > 0 && `${diagnosticsErrors} 错误`}
+              {diagnosticsErrors > 0 && diagnosticsWarnings > 0 && ", "}
+              {diagnosticsWarnings > 0 && `${diagnosticsWarnings} 警告`}
+              {diagnosticsInfos > 0 && `, ${diagnosticsInfos} 提示`}
+            </span>
+          </>
+        )}
       </div>
 
       <div className="statusbar-zone statusbar-zone--center">

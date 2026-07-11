@@ -113,6 +113,7 @@ import { TopBar } from "./components/workspace/shell/TopBar";
 import { StatusBar } from "./components/workspace/shell/StatusBar";
 import { EmptyWorkspace } from "./components/workspace/EmptyWorkspace";
 import { hasMeaningfulHtml, createEmptyDocument } from "./utils/documentState";
+import { scanDiagnostics, type EditorProblem } from "./utils/diagnostics";
 import { SourcePanel } from "./components/workspace/source/SourcePanel";
 import { CanvasPanel } from "./components/workspace/canvas/CanvasPanel";
 import { InspectorPanel } from "./components/workspace/inspector/InspectorPanel";
@@ -396,6 +397,13 @@ export default function App() {
   const previewSrcDoc = useMemo(() => buildPreviewSrcDoc(state.html, selectedId, bridgeTokenRef.current), [selectedId, state.html]);
   const cleanHtml = useMemo(() => cleanHtmlForExport(state.html), [state.html]);
   const exportWarnings = useMemo(() => getExportWarnings(cleanHtml), [cleanHtml]);
+  const diagnostics = useMemo(() => scanDiagnostics(state.html), [state.html]);
+  const diagnosticsBySeverity = useMemo(() => ({
+    errors: diagnostics.filter((p) => p.severity === "error" && !p.ignored).length,
+    warnings: diagnostics.filter((p) => p.severity === "warning" && !p.ignored).length,
+    infos: diagnostics.filter((p) => p.severity === "info" && !p.ignored).length,
+    total: diagnostics.filter((p) => !p.ignored).length,
+  }), [diagnostics]);
   const isDocumentEmpty = useMemo(() => !hasMeaningfulHtml(state.html), [state.html]);
   const sourceLineCount = useMemo(() => countSourceLines(sourceDraft), [sourceDraft]);
   const sourceLineNumbers = useMemo(
@@ -2170,6 +2178,9 @@ export default function App() {
         statusTone={statusTone}
         viewportWidth={viewportSize.width}
         viewportHeight={viewportSize.height}
+        diagnosticsErrors={diagnosticsBySeverity.errors}
+        diagnosticsWarnings={diagnosticsBySeverity.warnings}
+        diagnosticsInfos={diagnosticsBySeverity.infos}
       />
 
       {isExportDialogOpen ? (
