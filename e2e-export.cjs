@@ -1,7 +1,7 @@
 /**
  * 真实端到端导出测试
  *
- * 启动 e2e-serve.cjs(本脚本假定 4174 已起),用 Playwright + 系统 Chrome 打开
+ * 启动 e2e-serve.cjs(本脚本假定 4174 已起),用 Playwright + Chrome/Chromium 打开
  * /HTML/ 页面,分别点击"导出 PDF"与"导出 PPTX",捕获浏览器下载文件,
  * 用第三方库独立验证:
  *   - PDF: pdf-parse v2.x (Node) 提取文本、metadata、image 数量
@@ -20,7 +20,8 @@ const PDFParse = pdfParseModule.PDFParse || pdfParseModule;
 
 const PREVIEW_URL = process.env.PREVIEW_URL || "http://localhost:4174/HTML/";
 const CHROME_PATH =
-  process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+  process.env.CHROME_PATH ||
+  (process.platform === "win32" ? "C:/Program Files/Google/Chrome/Application/chrome.exe" : "");
 const SCREENSHOT_TIMEOUT_MS = 60_000;
 const PERSIST_DIR = process.env.PERSIST_DIR
   ? path.resolve(process.env.PERSIST_DIR)
@@ -447,9 +448,9 @@ async function runPptxScenario(context) {
 }
 
 (async () => {
-  log("Launching Chrome at", CHROME_PATH);
+  log("Launching browser:", CHROME_PATH || "Playwright Chromium");
   const browser = await chromium.launch({
-    executablePath: CHROME_PATH,
+    ...(CHROME_PATH ? { executablePath: CHROME_PATH } : {}),
     headless: true,
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });

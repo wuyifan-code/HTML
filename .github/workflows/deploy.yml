@@ -29,10 +29,13 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm install --prefer-offline --no-audit --no-fund
+        run: npm ci --prefer-offline --no-audit --no-fund
 
-      - name: Build
-        run: npm run build
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Verify
+        run: npm run ci
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

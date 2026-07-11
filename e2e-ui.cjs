@@ -1,7 +1,7 @@
 /**
  * E2E: 界面操作与截图测试
  *
- * 启动 Playwright + 系统 Chrome，进行 12 步核心交互并保存截图到 .screenshots/
+ * 启动 Playwright + Chrome/Chromium，进行 12 步核心交互并保存截图到 .screenshots/
  */
 const fs = require("fs");
 const path = require("path");
@@ -9,7 +9,8 @@ const { chromium } = require("playwright");
 
 const PREVIEW_URL = process.env.PREVIEW_URL || "http://localhost:4174/HTML/";
 const CHROME_PATH =
-  process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+  process.env.CHROME_PATH ||
+  (process.platform === "win32" ? "C:/Program Files/Google/Chrome/Application/chrome.exe" : "");
 const TIMEOUT_MS = 60_000;
 const SCREENSHOT_DIR = path.join(__dirname, ".screenshots");
 
@@ -28,9 +29,9 @@ if (!fs.existsSync(SCREENSHOT_DIR)) {
 }
 
 async function run() {
-  log("Launching Chrome at", CHROME_PATH);
+  log("Launching browser:", CHROME_PATH || "Playwright Chromium");
   const browser = await chromium.launch({
-    executablePath: CHROME_PATH,
+    ...(CHROME_PATH ? { executablePath: CHROME_PATH } : {}),
     headless: true,
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });

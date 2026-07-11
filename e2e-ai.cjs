@@ -1,14 +1,15 @@
 /**
  * E2E: AI 预检异常拦截测试
  *
- * 启动 Playwright + 系统 Chrome，拦截 Google AI 接口，注入损坏的 JSON 响应体。
+ * 启动 Playwright + Chrome/Chromium，拦截 Google AI 接口，注入损坏的 JSON 响应体。
  * 随后进行四大硬断言：渲染 AI_STRUCTURE_INVALID_JSON_MESSAGE；无运行时 JS 报错；.app-shell 依然存活；顶栏导出按钮可用。
  */
 const { chromium } = require("playwright");
 
 const PREVIEW_URL = process.env.PREVIEW_URL || "http://localhost:4174/HTML/";
 const CHROME_PATH =
-  process.env.CHROME_PATH || "C:/Program Files/Google/Chrome/Application/chrome.exe";
+  process.env.CHROME_PATH ||
+  (process.platform === "win32" ? "C:/Program Files/Google/Chrome/Application/chrome.exe" : "");
 const TIMEOUT_MS = 60_000;
 
 function log(...args) {
@@ -21,9 +22,9 @@ function fail(msg) {
 }
 
 async function run() {
-  log("Launching Chrome at", CHROME_PATH);
+  log("Launching browser:", CHROME_PATH || "Playwright Chromium");
   const browser = await chromium.launch({
-    executablePath: CHROME_PATH,
+    ...(CHROME_PATH ? { executablePath: CHROME_PATH } : {}),
     headless: true,
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   });
