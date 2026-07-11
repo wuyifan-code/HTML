@@ -17,7 +17,9 @@
     "e2e:ai": "node e2e-ai.cjs",
     "design:render": "node scripts/render-design-references.cjs --update",
     "design:check": "node scripts/render-design-references.cjs --check",
+    "design:compare": "node scripts/e2e-design-14.cjs --compare",
     "ci": "npm run test && npm run build && node scripts/run-e2e.cjs",
+    "ci:design": "npm run test && npm run build && node scripts/run-e2e.cjs --compare",
     "bundle:vendors": "node scripts/bundle-vendors.mjs"
   },
   "dependencies": {

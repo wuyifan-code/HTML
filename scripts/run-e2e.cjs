@@ -119,12 +119,17 @@ function runScript(scriptPath, port) {
     await waitUrl(checkUrl);
     log("Server is ready for tests!");
 
-    // 3. 顺序运行三个 E2E 脚本
+    // 3. 顺序运行 E2E 脚本
     const scripts = [
       path.join(__dirname, "../e2e-ui.cjs"),
       path.join(__dirname, "../e2e-ai.cjs"),
       path.join(__dirname, "../e2e-export.cjs"),
     ];
+
+    // 4. 可选：14 状态视觉对比（仅在 --compare 时运行）
+    if (process.argv.includes("--compare")) {
+      scripts.push(path.join(__dirname, "../scripts/e2e-design-14.cjs"));
+    }
 
     let allPassed = true;
     for (const script of scripts) {
