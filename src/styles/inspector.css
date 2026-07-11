@@ -160,6 +160,10 @@
   border-bottom: 1px solid var(--n-border-default);
 }
 
+.inspector-card.is-active {
+  border-left: 3px solid var(--n-brand);
+}
+
 .inspector-card__head {
   display: flex;
   align-items: center;

@@ -12,7 +12,7 @@ export function InspectorSection({ title, icon, children, defaultOpen = true }: 
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="inspector-card">
+    <div className={`inspector-card${isOpen ? " is-active" : ""}`}>
       <button
         className="inspector-card__head"
         type="button"

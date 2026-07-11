@@ -425,6 +425,27 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                 </label>
               </InspectorSection>
 
+              <InspectorSection title="颜色" icon={<IconPalette />}>
+                <ColorField
+                  label="文字色"
+                  value={draftColor}
+                  onChange={onColorChange}
+                  full
+                />
+                <ColorField
+                  label="背景色"
+                  value={draftBackgroundColor}
+                  onChange={onBackgroundColorChange}
+                  full
+                />
+                <ColorField
+                  label="Hover 背景"
+                  value={draftHoverBackground}
+                  onChange={onHoverBackgroundChange}
+                  full
+                />
+              </InspectorSection>
+
               <InspectorSection title="尺寸" icon={<IconRuler />}>
                 <div className="field-grid two-col">
                   <label className="field">
@@ -448,27 +469,6 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                     />
                   </label>
                 </div>
-              </InspectorSection>
-
-              <InspectorSection title="颜色" icon={<IconPalette />}>
-                <ColorField
-                  label="文字色"
-                  value={draftColor}
-                  onChange={onColorChange}
-                  full
-                />
-                <ColorField
-                  label="背景色"
-                  value={draftBackgroundColor}
-                  onChange={onBackgroundColorChange}
-                  full
-                />
-                <ColorField
-                  label="Hover 背景"
-                  value={draftHoverBackground}
-                  onChange={onHoverBackgroundChange}
-                  full
-                />
               </InspectorSection>
 
               <InspectorSection title="边框" icon={<IconBorder />} defaultOpen={false}>
