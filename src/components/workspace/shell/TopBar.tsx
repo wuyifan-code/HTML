@@ -31,6 +31,10 @@ export interface TopBarProps {
   exportTriggerRef: RefObject<HTMLButtonElement | null>;
   mobileActionsRef: RefObject<HTMLDivElement | null>;
   onFileSelected: (file: File | undefined) => void;
+  zoomMode: "fit" | "88" | "100";
+  onZoomChange: (mode: "fit" | "88" | "100") => void;
+  viewportPreset: string;
+  onViewportPresetChange: (preset: string) => void;
 }
 
 export function TopBar({
@@ -44,6 +48,8 @@ export function TopBar({
   isMobileShell, isMobileActionsOpen, onToggleMobileActions,
   fileInputRef, historyTriggerRef, exportTriggerRef, mobileActionsRef,
   onFileSelected,
+  zoomMode, onZoomChange,
+  viewportPreset, onViewportPresetChange,
 }: TopBarProps) {
   return (
     <header className="app-topbar" role="banner">
@@ -68,6 +74,48 @@ export function TopBar({
           <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button"
                   aria-label="重做" data-dom-id="btn-redo" onClick={onRedo} disabled={!canRedo}>
             <IconRedo />
+          </button>
+        </Tooltip>
+        <span className="topbar-separator" />
+
+        <Tooltip content="缩小" placement="bottom">
+          <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button"
+                  aria-label="缩小" data-dom-id="btn-zoom-out"
+                  onClick={() => onZoomChange("88")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+          </button>
+        </Tooltip>
+        <Tooltip content="100%" placement="bottom">
+          <button className="ds-btn ds-btn--ghost ds-btn--sm" type="button"
+                  aria-label="100%" data-dom-id="btn-zoom-100"
+                  onClick={() => onZoomChange("100")}>
+            100%
+          </button>
+        </Tooltip>
+        <Tooltip content="放大" placement="bottom">
+          <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button"
+                  aria-label="放大" data-dom-id="btn-zoom-in"
+                  onClick={() => onZoomChange("fit")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+            </svg>
+          </button>
+        </Tooltip>
+        <Tooltip content="适应" placement="bottom">
+          <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon" type="button"
+                  aria-label="适应" data-dom-id="btn-zoom-fit"
+                  onClick={() => onZoomChange("fit")}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+              <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+            </svg>
           </button>
         </Tooltip>
         <span className="topbar-separator" />

@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { EmptyWorkspace } from "../components/workspace/EmptyWorkspace";
+
+const shellCss = readFileSync(resolve(process.cwd(), "src/styles/shell.css"), "utf-8");
 
 describe("EmptyWorkspace", () => {
   const defaultProps = {
@@ -57,5 +61,25 @@ describe("EmptyWorkspace", () => {
     fireEvent.dragEnter(section, { dataTransfer: { items: [{ kind: "file" }] } });
     fireEvent.dragLeave(section, { dataTransfer: { items: [] } });
     expect(section.className).not.toContain("empty-workspace--drag-over");
+  });
+});
+
+describe("Empty workspace three-column layout", () => {
+  it("illustration area is 200×160 in shell.css", () => {
+    expect(shellCss).toMatch(/\.empty-workspace__illustration\s*\{[\s\S]*?width:\s*200px/);
+    expect(shellCss).toMatch(/\.empty-workspace__illustration\s*\{[\s\S]*?height:\s*160px/);
+  });
+
+  it("CTA has height 36px with margin-top 28px in shell.css", () => {
+    expect(shellCss).toMatch(/\.empty-workspace__cta\s*\{[\s\S]*?height:\s*36px/);
+    expect(shellCss).toMatch(/\.empty-workspace__cta\s*\{[\s\S]*?margin-top:\s*28px/);
+  });
+
+  it("paste link has margin-top 14px in shell.css", () => {
+    expect(shellCss).toMatch(/\.empty-workspace__link\s*\{[\s\S]*?margin-top:\s*14px/);
+  });
+
+  it("description has max-width 420px in shell.css", () => {
+    expect(shellCss).toMatch(/\.empty-workspace__description\s*\{[\s\S]*?max-width:\s*420px/);
   });
 });

@@ -164,7 +164,7 @@ const BLOCKING_EXPORT_WARNING_TYPES: ExportWarning["type"][] = [
   "empty-html",
 ];
 const DEFAULT_SOURCE_WIDTH = 280;
-const DEFAULT_INSPECTOR_WIDTH = 360;
+const DEFAULT_INSPECTOR_WIDTH = 320;
 const MIN_SOURCE_WIDTH = 220;
 const MIN_INSPECTOR_WIDTH = 320;
 const MIN_STAGE_WIDTH = 520;
@@ -1949,6 +1949,14 @@ export default function App() {
         exportTriggerRef={exportTriggerRef}
         mobileActionsRef={mobileActionsRef}
         onFileSelected={(file) => { handleFile(file); }}
+        zoomMode={zoomMode}
+        onZoomChange={setZoomMode}
+        viewportPreset={matchingViewportPreset ?? "desktop"}
+        onViewportPresetChange={(preset) => {
+          if (preset === "desktop" || preset === "tablet" || preset === "mobile") {
+            applyViewportPreset(preset);
+          }
+        }}
       />
 
       {isHistoryOpen ? (

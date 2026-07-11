@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { TopBar } from "../components/workspace/shell/TopBar";
 import { StatusBar } from "../components/workspace/shell/StatusBar";
+
+const tokens = readFileSync(resolve(process.cwd(), "src/styles/tokens.css"), "utf-8");
 
 describe("TopBar", () => {
   const defaultProps = {
@@ -26,6 +30,10 @@ describe("TopBar", () => {
     exportTriggerRef: { current: null },
     mobileActionsRef: { current: null },
     onFileSelected: () => {},
+    zoomMode: "fit" as const,
+    onZoomChange: () => {},
+    viewportPreset: "desktop" as const,
+    onViewportPresetChange: () => {},
   };
 
   it("renders brand and export button", () => {
@@ -56,6 +64,20 @@ describe("TopBar", () => {
     const btn = screen.getByLabelText("查看历史");
     expect(btn.getAttribute("aria-expanded")).toBe("true");
     expect(btn.getAttribute("aria-controls")).toBe("history-drawer");
+  });
+
+  it("renders zoom controls in topbar center", () => {
+    render(<TopBar {...defaultProps} />);
+    expect(screen.getByLabelText("缩小")).toBeTruthy();
+    expect(screen.getByLabelText("放大")).toBeTruthy();
+    expect(screen.getByLabelText("100%")).toBeTruthy();
+    expect(screen.getByLabelText("适应")).toBeTruthy();
+  });
+});
+
+describe("TopBar geometry", () => {
+  it("topbar height token is 56px in tokens.css", () => {
+    expect(tokens).toMatch(/--topbar-height:\s*56px/);
   });
 });
 
@@ -89,5 +111,19 @@ describe("StatusBar", () => {
     );
     const pill = document.querySelector(".statusbar-pill--ready");
     expect(pill).toBeTruthy();
+  });
+
+  it("statusbar height token is 28px in tokens.css", () => {
+    expect(tokens).toMatch(/--statusbar-height:\s*28px/);
+  });
+});
+
+describe("Shell source and inspector default widths", () => {
+  it("source width token is 280px in tokens.css", () => {
+    expect(tokens).toMatch(/--source-col:\s*280px/);
+  });
+
+  it("inspector width token is 320px per design contract", () => {
+    expect(tokens).toMatch(/--inspector-col:\s*320px/);
   });
 });

@@ -60,7 +60,7 @@ const EditorContext = createContext<EditorContextProps | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: ReactNode }) {
   const [sourceWidth, setSourceWidth] = useState(280);
-  const [inspectorWidth, setInspectorWidth] = useState(360);
+  const [inspectorWidth, setInspectorWidth] = useState(320);
   const [isSourceCollapsed, setIsSourceCollapsed] = useState(false);
   const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);
   const [zoomMode, setZoomMode] = useState<ZoomMode>("fit");

@@ -93,3 +93,31 @@ describe("themeProvider", () => {
     expect(screen.getByTestId("theme").textContent).toBe("light");
   });
 });
+
+describe("themeProvider geometry preservation", () => {
+  it("default inspectorWidth is 320 (design contract)", () => {
+    function InspectorProbe() {
+      const { inspectorWidth } = useEditorStore();
+      return <span data-testid="inspector-width">{inspectorWidth}</span>;
+    }
+    render(
+      <EditorProvider>
+        <InspectorProbe />
+      </EditorProvider>
+    );
+    expect(screen.getByTestId("inspector-width").textContent).toBe("320");
+  });
+
+  it("default sourceWidth is 280 (design contract)", () => {
+    function SourceProbe() {
+      const { sourceWidth } = useEditorStore();
+      return <span data-testid="source-width">{sourceWidth}</span>;
+    }
+    render(
+      <EditorProvider>
+        <SourceProbe />
+      </EditorProvider>
+    );
+    expect(screen.getByTestId("source-width").textContent).toBe("280");
+  });
+});

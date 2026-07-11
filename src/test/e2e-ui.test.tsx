@@ -60,6 +60,10 @@ describe("E2E UI Smoke Tests", () => {
           exportTriggerRef={{ current: null }}
           mobileActionsRef={{ current: null }}
           onFileSelected={noop}
+          zoomMode="fit"
+          onZoomChange={noop}
+          viewportPreset="desktop"
+          onViewportPresetChange={noop}
         />
       );
       expect(screen.getByLabelText("撤销")).toBeInTheDocument();
@@ -89,6 +93,10 @@ describe("E2E UI Smoke Tests", () => {
           exportTriggerRef={{ current: null }}
           mobileActionsRef={{ current: null }}
           onFileSelected={noop}
+          zoomMode="fit"
+          onZoomChange={noop}
+          viewportPreset="desktop"
+          onViewportPresetChange={noop}
         />
       );
       fireEvent.click(screen.getByLabelText("导出 HTML"));
