@@ -141,3 +141,58 @@ describe("Menu", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe("Menu extended features", () => {
+  it("renders danger item with danger class", () => {
+    const dangerItems: MenuItem[] = [
+      { key: "delete", label: "删除", danger: true },
+    ];
+    function Harness() {
+      const triggerRef = useRef<HTMLButtonElement>(null);
+      return (
+        <div>
+          <button ref={triggerRef} type="button">打开</button>
+          <Menu items={dangerItems} onSelect={vi.fn()} onClose={vi.fn()} triggerRef={triggerRef} />
+        </div>
+      );
+    }
+    render(<Harness />);
+    expect(document.querySelector(".menu-item-danger")).toBeTruthy();
+  });
+
+  it("renders checked item with check mark", () => {
+    const checkedItems: MenuItem[] = [
+      { key: "option1", label: "选项1", checked: true },
+      { key: "option2", label: "选项2", checked: false },
+    ];
+    function Harness() {
+      const triggerRef = useRef<HTMLButtonElement>(null);
+      return (
+        <div>
+          <button ref={triggerRef} type="button">打开</button>
+          <Menu items={checkedItems} onSelect={vi.fn()} onClose={vi.fn()} triggerRef={triggerRef} />
+        </div>
+      );
+    }
+    render(<Harness />);
+    expect(document.querySelector(".menu-item-checked")).toBeTruthy();
+    expect(document.querySelector(".menu-item-check")).toBeTruthy();
+  });
+
+  it("renders shortcut text", () => {
+    const shortcutItems: MenuItem[] = [
+      { key: "save", label: "保存", shortcut: "⌘S" },
+    ];
+    function Harness() {
+      const triggerRef = useRef<HTMLButtonElement>(null);
+      return (
+        <div>
+          <button ref={triggerRef} type="button">打开</button>
+          <Menu items={shortcutItems} onSelect={vi.fn()} onClose={vi.fn()} triggerRef={triggerRef} />
+        </div>
+      );
+    }
+    render(<Harness />);
+    expect(document.querySelector(".menu-item-shortcut")?.textContent).toBe("⌘S");
+  });
+});

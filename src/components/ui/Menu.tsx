@@ -13,8 +13,13 @@ export interface MenuItem {
   label: string;
   icon?: ReactNode;
   shortcut?: string;
+  description?: string;
   disabled?: boolean;
+  danger?: boolean;
+  checked?: boolean;
   divider?: boolean;
+  header?: boolean;
+  footer?: boolean;
 }
 
 interface MenuProps {
@@ -30,7 +35,7 @@ export function Menu({ items, onSelect, onClose, triggerRef }: MenuProps) {
   const [coords, setCoords] = useState<{ top: number; left: number } | null>(null);
   const [open, setOpen] = useState(false);
 
-  const enabledItems = items.filter((item) => !item.divider && !item.disabled);
+  const enabledItems = items.filter((item) => !item.divider && !item.disabled && !item.header && !item.footer);
 
   useEffect(() => {
     const trigger = triggerRef.current;
@@ -123,16 +128,25 @@ export function Menu({ items, onSelect, onClose, triggerRef }: MenuProps) {
         if (item.divider) {
           return <div key={item.key} className="menu-divider" />;
         }
+        if (item.header) {
+          return <div key={item.key} className="menu-header">{item.label}</div>;
+        }
+        if (item.footer) {
+          return <div key={item.key} className="menu-footer">{item.label}</div>;
+        }
 
         const itemIndex = enabledItems.indexOf(item);
         const isActive = itemIndex === activeIndex;
+        const dangerClass = item.danger ? " menu-item-danger" : "";
+        const checkedClass = item.checked ? " menu-item-checked" : "";
 
         return (
           <button
             key={item.key}
             role="menuitem"
-            className={`menu-item${isActive ? " menu-item-active" : ""}${item.disabled ? " menu-item-disabled" : ""}`}
+            className={`menu-item${isActive ? " menu-item-active" : ""}${item.disabled ? " menu-item-disabled" : ""}${dangerClass}${checkedClass}`}
             disabled={item.disabled}
+            aria-checked={item.checked}
             onClick={() => {
               if (!item.disabled) {
                 onSelect(item.key);
@@ -141,8 +155,10 @@ export function Menu({ items, onSelect, onClose, triggerRef }: MenuProps) {
             }}
             onMouseEnter={() => setActiveIndex(itemIndex)}
           >
+            {item.checked && <span className="menu-item-check" aria-hidden="true">✓</span>}
             {item.icon && <span className="menu-item-icon">{item.icon}</span>}
             <span className="menu-item-label">{item.label}</span>
+            {item.description && <span className="menu-item-desc">{item.description}</span>}
             {item.shortcut && <span className="menu-item-shortcut">{item.shortcut}</span>}
           </button>
         );
