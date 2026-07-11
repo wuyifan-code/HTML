@@ -15,6 +15,7 @@
     "e2e:serve": "node e2e-serve.cjs",
     "e2e:export": "node e2e-export.cjs",
     "e2e:ai": "node e2e-ai.cjs",
+    "ci": "npm run test && npm run build && node scripts/run-e2e.cjs",
     "bundle:vendors": "node scripts/bundle-vendors.mjs"
   },
   "dependencies": {

@@ -1,10 +1,9 @@
-import { useState, useRef, useMemo } from "react";
-import { PanelLeftClose } from "lucide-react";
+import { useState, useRef, useMemo, forwardRef, type PointerEvent } from "react";
+import { ChevronLeft } from "lucide-react";
 import { SourceCodeView } from "./SourceCodeView";
 import { DomTreeView } from "./DomTreeView";
 import { AiScanPopover } from "./AiScanPopover";
-import { Tooltip } from "../../Tooltip";
-import type { DomTreeNode } from "../../../types/editor";
+import type { DomTreeNode, AiTreeAnnotation } from "../../../types/editor";
 
 interface SourcePanelProps {
   defaultTab?: "source" | "structure";
@@ -21,6 +20,12 @@ interface SourcePanelProps {
   searchQuery: string;
   onSearchChange: (query: string) => void;
   lineCount: number;
+  aiStatus?: "idle" | "running" | "ready" | "error";
+  aiError?: string;
+  isCollapsed?: boolean;
+  onResizeStart?: (event: PointerEvent<HTMLButtonElement>) => void;
+  onCollapseToggle?: () => void;
+  onApplySource?: (newHtml: string) => void;
 }
 
 interface DomTreeItem {
@@ -33,7 +38,7 @@ interface DomTreeItem {
   diagnostics: number;
 }
 
-export function SourcePanel({
+export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
   defaultTab = "source",
   html,
   onHtmlChange,
@@ -48,14 +53,24 @@ export function SourcePanel({
   searchQuery,
   onSearchChange,
   lineCount,
-}: SourcePanelProps) {
+  aiStatus = "idle",
+  aiError = "",
+  isCollapsed = false,
+  onResizeStart,
+  onCollapseToggle,
+  onApplySource,
+}, ref) => {
   const [activeTab, setActiveTab] = useState<"source" | "structure">(defaultTab);
   const [isAiPopoverOpen, setIsAiPopoverOpen] = useState(false);
-  const [aiScanStatus, setAiScanStatus] = useState<"idle" | "scanning" | "done" | "error">("idle");
-  const [aiScanResultCount, setAiScanResultCount] = useState(0);
-  const [aiScanError, setAiScanError] = useState<string | undefined>();
   const [draftHtml, setDraftHtml] = useState(html);
   const aiScanTriggerRef = useRef<HTMLButtonElement | null>(null);
+
+  const popoverStatus = useMemo(() => {
+    if (aiStatus === "running") return "scanning";
+    if (aiStatus === "ready") return "done";
+    if (aiStatus === "error") return "error";
+    return "idle";
+  }, [aiStatus]);
 
   const treeItems = useMemo<DomTreeItem[]>(() => {
     const depthCount = new Map<string, number>();
@@ -77,24 +92,19 @@ export function SourcePanel({
       label: node.label || node.text || node.tagName,
       depth: node.depth,
       hasChildren: (depthCount.get(node.hftId) ?? 0) > 0,
-      isOpen: true,
+      isOpen: !(node as any).isCollapsed,
       diagnostics: 0,
     }));
   }, [domTree]);
 
   const handleAiScan = () => {
-    setAiScanStatus("scanning");
-    setAiScanError(undefined);
     onAiScan();
-    setTimeout(() => {
-      setAiScanStatus("done");
-      setAiScanResultCount(diagnosticsCount);
-    }, 500);
   };
 
   const handleApplyDraft = (newHtml: string) => {
     onHtmlChange(newHtml);
     setDraftHtml(newHtml);
+    onApplySource?.(newHtml);
   };
 
   const handleCancelDraft = () => {
@@ -106,7 +116,25 @@ export function SourcePanel({
   };
 
   return (
-    <section className="source-panel" aria-label="源代码面板">
+    <aside
+      id="source-panel"
+      ref={ref}
+      className={[
+        "nw-left-panel",
+        "panel",
+        isCollapsed ? "is-collapsed" : "",
+      ].filter(Boolean).join(" ")}
+      aria-label="结构树"
+      data-dom-id="panel-source-tree"
+    >
+      {!isCollapsed && (
+        <button
+          className="panel-resizer panel-resizer-source"
+          type="button"
+          aria-label="拖拽调整结构面板宽度"
+          onPointerDown={onResizeStart}
+        />
+      )}
       <div
         className="nw-panel-tabs-row"
         style={{
@@ -141,42 +169,62 @@ export function SourcePanel({
             DOM 树
           </button>
         </div>
+        {!isCollapsed && (
+          <div style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 8px" }}>
+            <button
+              className="panel-collapse-btn nw-tool-btn nw-tool-btn-icon"
+              type="button"
+              aria-label="收起结构树"
+              aria-controls="source-panel"
+              aria-expanded="true"
+              title="收起侧边栏"
+              onClick={onCollapseToggle}
+            >
+              <ChevronLeft size={14} />
+            </button>
+          </div>
+        )}
       </div>
 
-      {activeTab === "source" ? (
-        <SourceCodeView
-          html={draftHtml}
-          searchQuery={searchQuery}
-          onSearchChange={onSearchChange}
-          lineCount={lineCount}
-          isSynced={isSynced}
-          onApplyDraft={handleApplyDraft}
-          onCancelDraft={handleCancelDraft}
-          onCopy={onCopy}
-        />
-      ) : (
-        <>
-          <DomTreeView
-            domTree={treeItems}
+      {!isCollapsed && (
+        activeTab === "source" ? (
+          <SourceCodeView
+            html={draftHtml}
             searchQuery={searchQuery}
             onSearchChange={onSearchChange}
-            selectedId={selectedId}
-            onSelect={onSelectNode}
-            onToggle={onToggleNode}
-            onAiScan={() => setIsAiPopoverOpen(true)}
-            diagnosticsCount={diagnosticsCount}
+            lineCount={lineCount}
+            isSynced={isSynced}
+            onApplyDraft={handleApplyDraft}
+            onCancelDraft={handleCancelDraft}
+            onCopy={onCopy}
           />
-          <AiScanPopover
-            isOpen={isAiPopoverOpen}
-            onClose={() => setIsAiPopoverOpen(false)}
-            triggerRef={aiScanTriggerRef}
-            onScan={handleAiScan}
-            status={aiScanStatus}
-            resultCount={aiScanResultCount}
-            errorMessage={aiScanError}
-          />
-        </>
+        ) : (
+          <>
+            <DomTreeView
+              domTree={treeItems}
+              searchQuery={searchQuery}
+              onSearchChange={onSearchChange}
+              selectedId={selectedId}
+              onSelect={onSelectNode}
+              onToggle={onToggleNode}
+              onAiScan={() => setIsAiPopoverOpen(true)}
+              diagnosticsCount={diagnosticsCount}
+              triggerRef={aiScanTriggerRef}
+            />
+            <AiScanPopover
+              isOpen={isAiPopoverOpen}
+              onClose={() => setIsAiPopoverOpen(false)}
+              triggerRef={aiScanTriggerRef}
+              onScan={handleAiScan}
+              status={popoverStatus}
+              resultCount={diagnosticsCount}
+              errorMessage={aiError}
+            />
+          </>
+        )
       )}
-    </section>
+    </aside>
   );
-}
+});
+
+SourcePanel.displayName = "SourcePanel";

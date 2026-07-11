@@ -66,8 +66,8 @@ describe("E2E UI Smoke Tests", () => {
       expect(screen.getByLabelText("重做")).toBeInTheDocument();
       expect(screen.getByLabelText("切换主题")).toBeInTheDocument();
       expect(screen.getByLabelText("导出 HTML")).toBeInTheDocument();
-      expect(screen.getByLabelText("导出 PDF")).toBeInTheDocument();
-      expect(screen.getByLabelText("导出 PPTX")).toBeInTheDocument();
+      expect(screen.queryByLabelText("导出 PDF")).not.toBeInTheDocument();
+      expect(screen.queryByLabelText("导出 PPTX")).not.toBeInTheDocument();
     });
 
     it("calls onExport when export button clicked", () => {

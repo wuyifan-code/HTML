@@ -1,29 +1,39 @@
-import type { RefObject } from "react";
-import { ViewportToolbar } from "./ViewportToolbar";
-import { DeviceFrame } from "./DeviceFrame";
+import type { RefObject, CSSProperties } from "react";
+import {
+  IconMonitor,
+  IconTablet,
+  IconSmartphone,
+  IconMove,
+  IconZoomOut,
+  IconZoomIn,
+  IconMaximize,
+} from "../../Icons";
 
-interface ViewportSize {
-  width: number;
-  height: number;
-}
-
-type ViewportPreset = "desktop" | "tablet" | "mobile";
 type ZoomMode = "fit" | "88" | "100";
 
 interface CanvasPanelProps {
   srcDoc: string;
-  viewportSize: ViewportSize;
+  viewportSize: { width: number; height: number };
   zoomMode: ZoomMode;
   isFocusMode: boolean;
-  viewportPreset: ViewportPreset;
-  aiStatus: "idle" | "running";
-  onViewportChange: (size: ViewportSize) => void;
-  onZoomChange: (mode: ZoomMode) => void;
-  onFocusToggle: () => void;
-  onViewportPresetChange: (preset: ViewportPreset) => void;
-  onIframeLoad: () => void;
+  matchingViewportPreset?: string | null;
+  aiStatus: "idle" | "running" | "ready" | "error";
+  onViewportPresetChange?: (preset: "desktop" | "tablet" | "mobile") => void;
+  onZoomModeChange?: (mode: ZoomMode) => void;
+  onFocusToggle?: () => void;
   iframeRef: RefObject<HTMLIFrameElement | null>;
   stageRef: RefObject<HTMLDivElement | null>;
+  onIframeLoad: () => void;
+  previewShellStyle?: CSSProperties;
+  previewFrameBounds?: { x: number; y: number; width: number; height: number };
+  previewScale?: number;
+  isContentFitPreview?: boolean;
+  previewIframeStyle?: CSSProperties | undefined;
+
+  // 兼容老单测参数
+  viewportPreset?: string | null;
+  onViewportChange?: (preset: any) => void;
+  onZoomChange?: (zoom: any) => void;
 }
 
 export function CanvasPanel({
@@ -31,53 +41,150 @@ export function CanvasPanel({
   viewportSize,
   zoomMode,
   isFocusMode,
-  viewportPreset,
+  matchingViewportPreset = null,
   aiStatus,
-  onViewportChange,
-  onZoomChange,
-  onFocusToggle,
-  onIframeLoad,
+  onViewportPresetChange = () => {},
+  onZoomModeChange = () => {},
+  onFocusToggle = () => {},
   iframeRef,
   stageRef,
+  onIframeLoad,
+  previewShellStyle = {},
+  previewFrameBounds = { x: 0, y: 0, width: 1440, height: 900 },
+  previewScale = 1,
+  isContentFitPreview = false,
+  previewIframeStyle = {},
+  viewportPreset,
+  onViewportChange,
+  onZoomChange,
 }: CanvasPanelProps) {
   return (
-    <section className="nw-canvas panel stage-panel" aria-label="画布">
-      <ViewportToolbar
-        viewportSize={viewportSize}
-        zoomMode={zoomMode}
-        isFocusMode={isFocusMode}
-        onViewportChange={onViewportChange}
-        onZoomChange={onZoomChange}
-        onFocusToggle={onFocusToggle}
-      />
+    <section className="nw-canvas panel stage-panel" aria-label="画布" data-od-id="canvas" tabIndex={-1}>
+      <div className="viewport-bar" aria-label="画布工具栏">
+        <div className="segmented-viewport-control" aria-label="视口预设切换">
+          <span className="segmented-active-slide-bg" />
+          <button
+            type="button"
+            className={"segmented-button" + ((matchingViewportPreset === "desktop" || matchingViewportPreset === "wide") ? " is-on" : "")}
+            data-dom-id="vp-desktop"
+            title="桌面端"
+            aria-label="桌面端"
+            aria-pressed={matchingViewportPreset === "desktop" || matchingViewportPreset === "wide"}
+            onClick={() => onViewportPresetChange("desktop")}
+          >
+            <IconMonitor />
+            <span style={{ display: "none" }}>桌面</span>
+          </button>
+          <button
+            type="button"
+            className={"segmented-button" + (matchingViewportPreset === "tablet" ? " is-on" : "")}
+            data-dom-id="vp-tablet"
+            title="平板端"
+            aria-label="平板端"
+            aria-pressed={matchingViewportPreset === "tablet"}
+            onClick={() => onViewportPresetChange("tablet")}
+          >
+            <IconTablet />
+            <span style={{ display: "none" }}>平板</span>
+          </button>
+          <button
+            type="button"
+            className={"segmented-button" + (matchingViewportPreset === "mobile" ? " is-on" : "")}
+            data-dom-id="vp-mobile"
+            title="移动端"
+            aria-label="移动端"
+            aria-pressed={matchingViewportPreset === "mobile"}
+            onClick={() => onViewportPresetChange("mobile")}
+          >
+            <IconSmartphone />
+            <span style={{ display: "none" }}>手机</span>
+          </button>
+        </div>
+        <span className="app-toolbar-sep" aria-hidden="true"></span>
+        <span className="viewport-bar__dim">
+          <IconMove />
+          <span>{viewportSize.width} × {viewportSize.height}</span>
+        </span>
+        <div className="viewport-bar__group">
+          <button
+            type="button"
+            className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
+            data-dom-id="btn-zoom-out"
+            title="缩小"
+            aria-label="缩小"
+            onClick={() => onZoomModeChange(zoomMode === "100" ? "88" : "fit")}
+          >
+            <IconZoomOut />
+          </button>
+          <span className="viewport-bar__zoom">{zoomMode === "fit" ? "适配" : (zoomMode === "88" ? "88%" : "100%")}</span>
+          <button
+            type="button"
+            className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
+            data-dom-id="btn-zoom-in"
+            title="放大"
+            aria-label="放大"
+            onClick={() => onZoomModeChange(zoomMode === "fit" ? "88" : "100")}
+          >
+            <IconZoomIn />
+          </button>
+          <button
+            type="button"
+            className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
+            data-dom-id="btn-fit"
+            title="适应窗口"
+            aria-label="适应窗口"
+            onClick={() => onZoomModeChange("fit")}
+          >
+            <IconMaximize />
+          </button>
+          <span className="app-toolbar-sep" aria-hidden="true"></span>
+          <button
+            className={"ds-btn ds-btn--ghost ds-btn--sm" + (isFocusMode ? " is-on" : "")}
+            type="button"
+            aria-pressed={isFocusMode}
+            onClick={onFocusToggle}
+          >
+            {isFocusMode ? "退出专注" : "专注"}
+          </button>
+        </div>
+      </div>
       <div className="stage" ref={stageRef}>
-        <DeviceFrame
-          viewportWidth={viewportSize.width}
-          viewportHeight={viewportSize.height}
-          preset={viewportPreset}
-        >
-          <div className="nw-preview-card" style={{ width: `${viewportSize.width}px`, height: `${viewportSize.height}px` }}>
-            <div className="nw-preview-card__url-bar">
-              <span className="nw-preview-card__url-dot" />
-              <span className="nw-preview-card__url-dot" />
-              <span className="nw-preview-card__url-dot" />
-              <span className="nw-preview-card__url-field">localhost</span>
-            </div>
-            <iframe
-              ref={iframeRef}
-              className="live-preview-frame"
-              title="实时预览"
-              sandbox="allow-scripts"
-              srcDoc={srcDoc}
-              onLoad={onIframeLoad}
-            />
-          </div>
-        </DeviceFrame>
-        {aiStatus === "running" && (
+        {aiStatus === "running" ? (
           <div className="canvas-scan-overlay">
-            <div className="canvas-scan-overlay__spinner" />
+            <div className="canvas-scan-line" />
           </div>
-        )}
+        ) : null}
+        <section className="nw-canvas" aria-label="预览画布">
+          <div className="nw-preview-card">
+            <div className="nw-preview-urlbar">
+              <span className="nw-preview-urlbar-dot" />
+              <span className="nw-preview-urlbar-dot" />
+              <span className="nw-preview-urlbar-dot" />
+              <div className="nw-preview-urlbar-input">localhost:5173</div>
+            </div>
+            <div className="page-preview-shell" style={previewShellStyle}>
+              <article
+                className={"page-preview" + (isContentFitPreview ? " page-preview--content-fit" : "")}
+                aria-label="页面预览"
+                style={{
+                  width: previewFrameBounds.width,
+                  height: previewFrameBounds.height,
+                  transform: `scale(${previewScale})`,
+                }}
+              >
+                <iframe
+                  ref={iframeRef}
+                  className="live-preview-frame"
+                  title="实时 HTML 预览"
+                  srcDoc={srcDoc}
+                  sandbox="allow-scripts allow-forms allow-popups"
+                  style={previewIframeStyle}
+                  onLoad={onIframeLoad}
+                />
+              </article>
+            </div>
+          </div>
+        </section>
       </div>
     </section>
   );

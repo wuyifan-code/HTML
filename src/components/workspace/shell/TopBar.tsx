@@ -127,22 +127,6 @@ export function TopBar({
             <span>复制</span>
           </button>
         </Tooltip>
-        <Tooltip content="导出 PDF" placement="bottom">
-          <button className="ds-btn ds-btn--secondary ds-btn--sm topbar-export-secondary" type="button"
-                  aria-label="导出 PDF" data-dom-id="btn-pdf"
-                  onClick={() => onExport("pdf")} disabled={exportingFormat !== null}>
-            <IconDownload />
-            <span>PDF</span>
-          </button>
-        </Tooltip>
-        <Tooltip content="导出 PPTX" placement="bottom">
-          <button className="ds-btn ds-btn--secondary ds-btn--sm topbar-export-secondary" type="button"
-                  aria-label="导出 PPTX" data-dom-id="btn-pptx"
-                  onClick={() => onExport("pptx")} disabled={exportingFormat !== null}>
-            <IconDownload />
-            <span>PPTX</span>
-          </button>
-        </Tooltip>
         <Tooltip content="快捷键 (?)" placement="bottom">
           <button className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon topbar-cheatsheet" type="button"
                   aria-label="快捷键" data-dom-id="btn-cheatsheet" onClick={onToggleCheatsheet}>
@@ -162,8 +146,7 @@ export function TopBar({
           {isMobileActionsOpen && (
             <div className="mobile-actions-popover" id="mobile-actions-menu" role="menu" aria-label="更多操作">
               <button type="button" role="menuitem" onClick={onCopy}>复制 HTML</button>
-              <button type="button" role="menuitem" onClick={() => onExport("pdf")} disabled={exportingFormat !== null}>导出 PDF</button>
-              <button type="button" role="menuitem" onClick={() => onExport("pptx")} disabled={exportingFormat !== null}>导出 PPTX</button>
+              <button type="button" role="menuitem" onClick={() => onExport("html")}>导出文件</button>
               <button type="button" role="menuitem" onClick={onToggleHistory}>历史记录</button>
               <button type="button" role="menuitem" onClick={onToggleCheatsheet}>快捷键</button>
               <button type="button" role="menuitem" onClick={onToggleTheme}>切换主题</button>

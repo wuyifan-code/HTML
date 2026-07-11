@@ -11,6 +11,7 @@ interface DomTreeViewProps {
   onToggle: (id: string) => void;
   onAiScan: () => void;
   diagnosticsCount: number;
+  triggerRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export function DomTreeView({
@@ -22,6 +23,7 @@ export function DomTreeView({
   onToggle,
   onAiScan,
   diagnosticsCount,
+  triggerRef,
 }: DomTreeViewProps) {
   const filteredNodes = searchQuery.trim()
     ? domTree.filter((node) =>
@@ -58,6 +60,7 @@ export function DomTreeView({
 
       <div className="dom-tree-toolbar-row">
         <button
+          ref={triggerRef}
           className="dom-tree-ai-scan-btn"
           type="button"
           onClick={onAiScan}

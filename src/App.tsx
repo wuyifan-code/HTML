@@ -113,6 +113,9 @@ import { TopBar } from "./components/workspace/shell/TopBar";
 import { StatusBar } from "./components/workspace/shell/StatusBar";
 import { EmptyWorkspace } from "./components/workspace/EmptyWorkspace";
 import { hasMeaningfulHtml, createEmptyDocument } from "./utils/documentState";
+import { SourcePanel } from "./components/workspace/source/SourcePanel";
+import { CanvasPanel } from "./components/workspace/canvas/CanvasPanel";
+import { InspectorPanel } from "./components/workspace/inspector/InspectorPanel";
 
 const initialHtml = createEmptyDocument().html;
 const AI_KEY_STORAGE = "html-finetune.ai-provider-keys";
@@ -323,7 +326,6 @@ export default function App() {
   const [toastMessage, setToastMessage] = useState("");
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
-  const [isExportOpen, setIsExportOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportDialogFormat, setExportDialogFormat] = useState<ExportFormat>("html");
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "pptx" | null>(null);
@@ -1090,9 +1092,10 @@ export default function App() {
     showToast("已更新属性");
   }, [commitHtml, draftAlt, draftSrc, selected, showToast, state.html]);
 
-  const handleApplySource = useCallback(() => {
+  const handleApplySource = useCallback((customHtml?: string) => {
     try {
-      const nextHtml = injectEditableIds(sourceDraft).html;
+      const htmlToApply = customHtml !== undefined ? customHtml : sourceDraft;
+      const nextHtml = injectEditableIds(htmlToApply).html;
       setIsSelectionCleared(false);
       reset({ html: nextHtml, selectedId: null });
       setStatusMessage("源码已重新解析");
@@ -1197,7 +1200,6 @@ export default function App() {
   const handleOpenExport = useCallback((format: ExportFormat) => {
     assertCleanExport(cleanHtml);
     exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
-    setIsExportOpen(false);
     setIsMobileActionsOpen(false);
     setExportDialogFormat(format);
     setIsExportDialogOpen(true);
@@ -1245,7 +1247,6 @@ export default function App() {
     try {
       assertCleanExport(cleanHtml);
       exportHtml(cleanHtml);
-      setIsExportOpen(false);
       setIsExportDialogOpen(false);
       setStatusMessage("已导出 HTML");
       showToast("HTML 已导出");
@@ -1283,6 +1284,12 @@ export default function App() {
       throw error;
     }
   }, [aiProvider, currentAiKey, currentAiModel, domTree, showToast, state.html]);
+
+  const handleManualAnalyzeStructure = useCallback(() => {
+    void handleAnalyzeStructure().catch(() => {
+      // 错误已同步到 AI 状态、错误提示和 Toast；手动事件只需消费 rejection。
+    });
+  }, [handleAnalyzeStructure]);
 
   const handleRefreshAiModels = useCallback(async (mode: "manual" | "auto" = "manual", signal?: AbortSignal) => {
     const trimmedKey = currentAiKey.trim();
@@ -1449,7 +1456,6 @@ export default function App() {
     assertCleanExport(cleanHtml);
     exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
     if (hasBlockingExportWarnings(exportWarnings)) {
-      setIsExportOpen(false);
       setExportDialogFormat("pdf");
       setIsExportDialogOpen(true);
       setStatusMessage(`PDF 导出已暂停：${exportWarnings.length} 项导出警告`);
@@ -1457,7 +1463,6 @@ export default function App() {
       return;
     }
     setExportingFormat("pdf");
-    setIsExportOpen(false);
     setStatusMessage("正在导出 PDF");
     try {
       const annotations = await runAiExportPreflight();
@@ -1480,7 +1485,6 @@ export default function App() {
     assertCleanExport(cleanHtml);
     exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
     if (hasBlockingExportWarnings(exportWarnings)) {
-      setIsExportOpen(false);
       setExportDialogFormat("pptx");
       setIsExportDialogOpen(true);
       setStatusMessage(`PPTX 导出已暂停：${exportWarnings.length} 项导出警告`);
@@ -1488,7 +1492,6 @@ export default function App() {
       return;
     }
     setExportingFormat("pptx");
-    setIsExportOpen(false);
     setStatusMessage("正在导出 PPTX");
     try {
       const annotations = await runAiExportPreflight();
@@ -1535,7 +1538,6 @@ export default function App() {
         }
         event.preventDefault();
         setIsHistoryOpen(false);
-        setIsExportOpen(false);
         setIsExportDialogOpen(false);
         setIsSelectionCleared(true);
         commit({ html: state.html, selectedId: null }, { record: false });
@@ -2013,462 +2015,54 @@ export default function App() {
             <ChevronRight size={14} />
           </button>
         )}
-        <aside
-          id="source-panel"
+        <SourcePanel
           ref={sourcePanelRef}
-          className={[
-            "nw-left-panel",
-            "panel",
-            isSourceCollapsed ? "is-collapsed" : "",
-          ].filter(Boolean).join(" ")}
-          aria-label="结构树"
-          data-dom-id="panel-source-tree"
-        >
-          {!isSourceCollapsed && (
-            <button
-              className="panel-resizer panel-resizer-source"
-              type="button"
-              aria-label="拖拽调整结构面板宽度"
-              onPointerDown={handleStartPanelResize("source")}
-            />
-          )}
-          <div
-            className="nw-panel-tabs-row"
-            style={{
-              display: "flex",
-              alignItems: "center",
-              borderBottom: "1px solid var(--n-border-default)",
-              flexShrink: 0,
-            }}
-          >
-            <div
-              className="nw-tabs"
-              role="tablist"
-              style={{ flex: 1, borderBottom: "none" }}
-            >
-              <button
-                className={`nw-tab ${sourceTab === "source" ? "nw-tab-active" : ""}`}
-                type="button"
-                onClick={() => setSourceTab("source")}
-                role="tab"
-                aria-selected={sourceTab === "source"}
-                data-dom-id="tab-source"
-              >来源</button>
-              <button
-                className={`nw-tab ${sourceTab === "structure" ? "nw-tab-active" : ""}`}
-                type="button"
-                onClick={() => setSourceTab("structure")}
-                role="tab"
-                aria-selected={sourceTab === "structure"}
-              >DOM 树</button>
-            </div>
-            <div
-              style={{ display: "flex", alignItems: "center", gap: 4, padding: "0 8px" }}
-            >
-              <button
-                className={`nw-tool-btn nw-tool-btn-icon${sourceTab === "ai" ? " is-on" : ""}`}
-                type="button"
-                aria-label="AI 结构扫描"
-                aria-pressed={sourceTab === "ai"}
-                onClick={() => setSourceTab("ai")}
-                title="AI 结构扫描"
-              >
-                <IconSparkles />
-              </button>
-              {!isSourceCollapsed && (
-                <button
-                  className="panel-collapse-btn nw-tool-btn nw-tool-btn-icon"
-                  type="button"
-                  aria-label="收起结构树"
-                  aria-controls="source-panel"
-                  aria-expanded="true"
-                  title="收起侧边栏"
-                  onClick={handleCloseSourcePanel}
-                >
-                  <ChevronLeft size={14} />
-                </button>
-              )}
-            </div>
-          </div>
+          html={sourceDraft}
+          onHtmlChange={setSourceDraft}
+          isSynced={sourceSyncState === "synced"}
+          domTree={domTree}
+          selectedId={selectedId}
+          onSelectNode={selectElement}
+          onToggleNode={handleToggleTreeNode}
+          diagnosticsCount={aiRiskAnnotations.length}
+          onAiScan={handleManualAnalyzeStructure}
+          onCopy={handleCopy}
+          searchQuery={search}
+          onSearchChange={setSearch}
+          lineCount={sourceLineCount}
+          aiStatus={aiStatus}
+          aiError={aiError}
+          isCollapsed={isSourceCollapsed}
+          onResizeStart={handleStartPanelResize("source")}
+          onCollapseToggle={handleCloseSourcePanel}
+          onApplySource={handleApplySource}
+        />
 
-          {sourceTab === "structure" ? (
-            <>
-              {/* Search bar */}
-              <div className="search-bar">
-                <div className="ds-input">
-                  <IconSearch />
-                  <input
-                    type="text"
-                    data-tree-search-input
-                    placeholder="搜索元素..."
-                    aria-label="搜索元素"
-                    value={search}
-                    onChange={(event) => setSearch(event.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Structure tree */}
-              <div className="structure-tree" ref={treeScrollRef}>
-                {visibleTree.map((node) => (
-                  <TreeItemNode
-                    key={node.hftId}
-                    node={node}
-                    isSelected={node.hftId === selectedId}
-                    annotation={aiAnnotations[node.hftId]}
-                    childCount={treeChildCounts[node.hftId] ?? 0}
-                    isCollapsed={collapsedTreeIds.has(node.hftId)}
-                    onSelect={selectElement}
-                    onToggleCollapse={handleToggleTreeNode}
-                  />
-                ))}
-                {visibleTree.length === 0 ? (
-                  <div className="empty-state-card">
-                    <div className="empty-state-card__icon">
-                      <IconSearch />
-                    </div>
-                    <h3>搜索无匹配项</h3>
-                    <p>没有找到与 “{search}” 相关的元素。换一个关键词,或直接在画布中选择对象。</p>
-                  </div>
-                ) : null}
-              </div>
-            </>
-          ) : null}
-
-          {sourceTab === "ai" ? (
-            <div className="ai-tab-panel">
-              <div className="ai-scan-card">
-                <button
-                  className={"ai-scan-card__head" + (isAiCardCollapsed ? " is-collapsed" : "")}
-                  type="button"
-                  aria-expanded={!isAiCardCollapsed}
-                  onClick={() => setIsAiCardCollapsed((value) => !value)}
-                >
-                  <IconChevronDown />
-                  <IconSparkles />
-                  <span className="ai-scan-card__title">AI 结构扫描</span>
-                  <span className="ai-scan-card__count">
-                    <span className="dot" aria-hidden="true"></span>
-                    {domTree.length} 节点
-                  </span>
-                </button>
-                <div className={"ai-scan-card__body" + (isAiCardCollapsed ? " is-hidden" : "")}>
-                  <div className="ai-scan-row">
-                    <label htmlFor="aiProvider">厂商</label>
-                    <AiProviderPicker
-                      provider={aiProvider}
-                      providers={AI_PROVIDER_DEFINITIONS}
-                      onProviderChange={(nextProvider) => {
-                        setAiProvider(nextProvider);
-                        setAiModels((models) => ({
-                          ...models,
-                          [nextProvider]: models[nextProvider] || AI_PROVIDER_MAP[nextProvider].defaultModel,
-                        }));
-                        setAiModelFetchError("");
-                      }}
-                    />
-                  </div>
-                  <div className="ai-scan-row">
-                    <label htmlFor="aiApiKey">Key</label>
-                    <div className="ds-input">
-                      <input
-                        id="aiApiKey"
-                        type="password"
-                        value={currentAiKey}
-                        placeholder={aiModelFetchStatus === "idle" ? "输入 Key 自动获取模型" : ""}
-                        onChange={(event) => {
-                          const nextKey = event.target.value;
-                          setAiApiKeys((keys) => ({ ...keys, [aiProvider]: nextKey }));
-                        }}
-                      />
-                    </div>
-                  </div>
-                  {aiModelFetchStatus === "loading" ? (
-                    <p className="ai-scan-model-status">正在获取模型...</p>
-                  ) : aiModelFetchStatus === "ready" ? (
-                    <p className="ai-scan-model-status">已加载 {currentAiModels.length} 个模型</p>
-                  ) : null}
-                  <div className="ai-scan-row">
-                    <label htmlFor="aiModel">模型</label>
-                    <div className="ds-input">
-                      <input
-                        id="aiModel"
-                        value={currentAiModel}
-                        list="aiModelPresets"
-                        onChange={(event) => {
-                          const nextModel = event.target.value;
-                          setAiModels((models) => ({ ...models, [aiProvider]: nextModel }));
-                        }}
-                      />
-                      <datalist id="aiModelPresets">
-                        {currentAiModels.map((model) => (
-                          <option key={model.value} value={model.value}>{model.label}</option>
-                        ))}
-                      </datalist>
-                      {aiModelFetchStatus === "loading" ? (
-                        <span className="ai-scan-loading" aria-live="polite" title="正在获取模型列表">
-                          <span className="spinner" aria-hidden="true"></span>
-                        </span>
-                      ) : aiModelFetchStatus === "ready" ? (
-                        <span className="ai-scan-ok" aria-live="polite" title={`已加载 ${currentAiModels.length} 个模型`}>✓</span>
-                      ) : null}
-                    </div>
-                  </div>
-                  <div className="ai-scan-actions">
-                    <button
-                      className="ds-btn ds-btn--ghost ds-btn--sm"
-                      type="button"
-                      onClick={handleClearAiAnnotations}
-                      disabled={Object.keys(aiAnnotations).length === 0 || aiStatus === "running"}
-                    >清空标注</button>
-                    <button
-                      className="ds-btn ds-btn--brand ds-btn--sm"
-                      type="button"
-                      onClick={() => void handleAnalyzeStructure()}
-                      disabled={aiStatus === "running"}
-                    >
-                      <IconScan />
-                      <span>{aiStatus === "running" ? "扫描中" : "AI 扫描"}</span>
-                    </button>
-                  </div>
-                  {aiError ? (
-                    <p className="meta ai-error" tabIndex={0} title={aiError} role="status">
-                      {aiError}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          {sourceTab === "source" ? (
-            <div className="source-editor" onDrop={handleSourceDrop} onDragOver={handleSourceDragOver}>
-              <div className="source-import-dropzone">
-                <div>
-                  <strong>拖入 HTML 文件</strong>
-                  <span>{sourceLineCount.toLocaleString()} 行 · {sourceCharCount.toLocaleString()} 字符 · {isSourceDirty ? "未应用" : "已同步"}</span>
-                </div>
-                <button className="ds-btn ds-btn--secondary ds-btn--sm" type="button" onClick={handleImportClick}>
-                  导入
-                </button>
-              </div>
-              <div
-                id="source-editor-status"
-                className="source-editor-status"
-                data-state={sourceSyncState}
-                role="status"
-                aria-live="polite"
-              >
-                <span className="source-editor-status__dot" aria-hidden="true" />
-                <strong>{sourceSyncTitle}</strong>
-                <span>{sourceSyncDetail}</span>
-              </div>
-              <div className="source-editor-tools" aria-label="源码工具">
-                <label className="source-search-field" data-state={sourceSearchState}>
-                  <IconSearch />
-                  <input
-                    type="search"
-                    value={sourceSearch}
-                    placeholder="搜索源码"
-                    aria-label="搜索源码"
-                    onChange={(event) => setSourceSearch(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        handleFindSourceMatch();
-                      }
-                    }}
-                  />
-                </label>
-                <span className="source-search-count" data-state={sourceSearchState} aria-live="polite">
-                  {sourceSearchQuery
-                    ? sourceSearchMatchCount > 0
-                      ? sourceSearchPosition
-                        ? `${sourceSearchPosition.matchNumber}/${sourceSearchMatchCount} · 第 ${sourceSearchPosition.lineNumber} 行`
-                        : `${sourceSearchMatchCount} 项`
-                      : "0 项"
-                    : "未搜索"}
-                </span>
-                <button
-                  className="ds-btn ds-btn--ghost ds-btn--sm"
-                  type="button"
-                  onClick={handleFindSourceMatch}
-                  disabled={!sourceSearchQuery}
-                  aria-label="定位下一个源码匹配"
-                  title="定位下一个源码匹配"
-                >
-                  定位
-                </button>
-                <button className={"ds-btn ds-btn--ghost ds-btn--sm" + (isSourceSoftWrap ? " is-on" : "")} type="button" aria-pressed={isSourceSoftWrap} onClick={() => setIsSourceSoftWrap((value) => !value)}>
-                  {isSourceSoftWrap ? "软换行" : "横向滚动"}
-                </button>
-                <button className={"ds-btn ds-btn--secondary ds-btn--sm" + (isSourceExpanded ? " is-on" : "")} type="button" aria-pressed={isSourceExpanded} onClick={() => setIsSourceExpanded((value) => !value)}>
-                  {isSourceExpanded ? "回到侧栏" : "展开源码"}
-                </button>
-              </div>
-              <div className="field">
-                <label htmlFor="sourceCode">HTML 源码</label>
-                <div className="source-code-shell">
-                  <pre ref={sourceLineGutterRef} className="source-line-gutter" aria-hidden="true">{sourceLineNumbers}</pre>
-                  <textarea
-                    ref={sourceTextareaRef}
-                    id="sourceCode"
-                    className={"textarea code-editor source-textarea" + (isSourceSoftWrap ? " source-textarea--wrap" : " source-textarea--nowrap")}
-                    aria-label="HTML 源码"
-                    aria-describedby="source-editor-status"
-                    value={sourceDraft}
-                    wrap={isSourceSoftWrap ? "soft" : "off"}
-                    spellCheck={false}
-                    onScroll={handleSourceScroll}
-                    onChange={(event) => setSourceDraft(event.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="source-editor-actions">
-                <button className="ds-btn ds-btn--brand ds-btn--sm" type="button" onClick={handleApplySource} disabled={!isSourceDirty}>
-                  {isSourceDirty ? <span className="dirty-breath-dot" /> : null}
-                  <span>应用源码</span>
-                </button>
-                <button className="ds-btn ds-btn--ghost ds-btn--sm" type="button" onClick={handleResetSourceDraft} disabled={!isSourceDirty}>重置草稿</button>
-                {hasHtmlUnclosedRisk ? (
-                  <span className="source-validator-warning" title="检测到可能存在未闭合的标签，应用后可能引起预览乱序，请仔细核查">⚠️ 标签未闭合</span>
-                ) : null}
-              </div>
-            </div>
-          ) : null}
-        </aside>
-
-        <section className="nw-canvas panel stage-panel" aria-label="画布" data-od-id="canvas" tabIndex={-1}>
-          <div className="viewport-bar" aria-label="画布工具栏">
-            <div className="segmented-viewport-control" aria-label="视口预设切换">
-              <span className="segmented-active-slide-bg" />
-              <button
-                type="button"
-                className={"segmented-button" + ((matchingViewportPreset === "desktop" || matchingViewportPreset === "wide") ? " is-on" : "")}
-                data-dom-id="vp-desktop"
-                title="桌面端"
-                aria-label="桌面端"
-                aria-pressed={matchingViewportPreset === "desktop" || matchingViewportPreset === "wide"}
-                onClick={() => applyViewportPreset("desktop")}
-              >
-                <IconMonitor />
-              </button>
-              <button
-                type="button"
-                className={"segmented-button" + (matchingViewportPreset === "tablet" ? " is-on" : "")}
-                data-dom-id="vp-tablet"
-                title="平板端"
-                aria-label="平板端"
-                aria-pressed={matchingViewportPreset === "tablet"}
-                onClick={() => applyViewportPreset("tablet")}
-              >
-                <IconTablet />
-              </button>
-              <button
-                type="button"
-                className={"segmented-button" + (matchingViewportPreset === "mobile" ? " is-on" : "")}
-                data-dom-id="vp-mobile"
-                title="移动端"
-                aria-label="移动端"
-                aria-pressed={matchingViewportPreset === "mobile"}
-                onClick={() => applyViewportPreset("mobile")}
-              >
-                <IconSmartphone />
-              </button>
-            </div>
-            <span className="app-toolbar-sep" aria-hidden="true"></span>
-            <span className="viewport-bar__dim">
-              <IconMove />
-              <span>{viewportSize.width} × {viewportSize.height}</span>
-            </span>
-            <div className="viewport-bar__group">
-              <button
-                type="button"
-                className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
-                data-dom-id="btn-zoom-out"
-                title="缩小"
-                aria-label="缩小"
-                onClick={() => setZoomMode(zoomMode === "100" ? "88" : "fit")}
-              >
-                <IconZoomOut />
-              </button>
-              <span className="viewport-bar__zoom">{zoomMode === "fit" ? "适配" : (zoomMode === "88" ? "88%" : "100%")}</span>
-              <button
-                type="button"
-                className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
-                data-dom-id="btn-zoom-in"
-                title="放大"
-                aria-label="放大"
-                onClick={() => setZoomMode(zoomMode === "fit" ? "88" : "100")}
-              >
-                <IconZoomIn />
-              </button>
-              <button
-                type="button"
-                className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
-                data-dom-id="btn-fit"
-                title="适应窗口"
-                aria-label="适应窗口"
-                onClick={() => setZoomMode("fit")}
-              >
-                <IconMaximize />
-              </button>
-              <span className="app-toolbar-sep" aria-hidden="true"></span>
-              <button
-                className={"ds-btn ds-btn--ghost ds-btn--sm" + (isFocusMode ? " is-on" : "")}
-                type="button"
-                aria-pressed={isFocusMode}
-                onClick={() => {
-                  setIsFocusMode(!isFocusMode);
-                  setStatusMessage(isFocusMode ? "已退出专注模式" : "已进入专注模式");
-                }}
-              >
-                {isFocusMode ? "退出专注" : "专注"}
-              </button>
-            </div>
-          </div>
-          <div className="stage" ref={stageRef}>
-            {aiStatus === "running" ? (
-              <div className="canvas-scan-overlay">
-                <div className="canvas-scan-line" />
-              </div>
-            ) : null}
-            <section className="nw-canvas" aria-label="预览画布">
-              <div className="nw-preview-card">
-                <div className="nw-preview-urlbar">
-                  <span className="nw-preview-urlbar-dot" />
-                  <span className="nw-preview-urlbar-dot" />
-                  <span className="nw-preview-urlbar-dot" />
-                  <div className="nw-preview-urlbar-input">localhost:5173</div>
-                </div>
-                <div className="page-preview-shell" style={previewShellStyle}>
-                  <article
-                    className={"page-preview" + (isContentFitPreview ? " page-preview--content-fit" : "")}
-                    aria-label="页面预览"
-                    style={{
-                      width: previewFrameBounds.width,
-                      height: previewFrameBounds.height,
-                      transform: `scale(${previewScale})`,
-                    }}
-                  >
-                    <iframe
-                      ref={previewFrameRef}
-                      className="live-preview-frame"
-                      title="实时 HTML 预览"
-                      srcDoc={previewSrcDoc}
-                      sandbox="allow-scripts allow-forms allow-popups"
-                      style={previewIframeStyle}
-                      onLoad={() => {
-                        setIsPreviewReady(true);
-                        window.setTimeout(measurePreviewContent, 40);
-                      }}
-                    />
-                  </article>
-                </div>
-              </div>
-            </section>
-          </div>
-        </section>
+        <CanvasPanel
+          srcDoc={previewSrcDoc}
+          viewportSize={viewportSize}
+          zoomMode={zoomMode}
+          isFocusMode={isFocusMode}
+          matchingViewportPreset={matchingViewportPreset}
+          aiStatus={aiStatus}
+          onViewportPresetChange={applyViewportPreset}
+          onZoomModeChange={setZoomMode}
+          onFocusToggle={() => {
+            setIsFocusMode(!isFocusMode);
+            setStatusMessage(isFocusMode ? "已退出专注模式" : "已进入专注模式");
+          }}
+          iframeRef={previewFrameRef}
+          stageRef={stageRef}
+          onIframeLoad={() => {
+            setIsPreviewReady(true);
+            window.setTimeout(measurePreviewContent, 40);
+          }}
+          previewShellStyle={previewShellStyle}
+          previewFrameBounds={previewFrameBounds}
+          previewScale={previewScale}
+          isContentFitPreview={isContentFitPreview}
+          previewIframeStyle={previewIframeStyle}
+        />
 
         {isInspectorCollapsed && (
           <button
@@ -2483,457 +2077,76 @@ export default function App() {
             <ChevronLeft size={14} />
           </button>
         )}
-        <aside
-          id="inspector-panel"
+        <InspectorPanel
           ref={inspectorPanelRef}
-          className={[
-            "nw-right-panel",
-            "panel",
-            "inspector",
-            isInspectorCollapsed ? "is-collapsed" : "",
-          ].filter(Boolean).join(" ")}
-          aria-label="属性面板"
-          data-dom-id="panel-inspector"
-        >
-          {!isInspectorCollapsed && (
-            <button
-              className="panel-resizer panel-resizer-inspector"
-              type="button"
-              aria-label="拖拽调整属性面板宽度"
-              onPointerDown={handleStartPanelResize("inspector")}
-            />
+          selected={selected}
+          draftFontSize={draftFontSize}
+          draftFontWeight={draftFontWeight}
+          draftFontFamily={draftFontFamily}
+          draftLineHeight={draftLineHeight}
+          draftLetterSpacing={draftLetterSpacing}
+          draftColor={draftColor}
+          draftBackgroundColor={draftBackgroundColor}
+          draftHoverBackground={draftHoverBackground}
+          draftMarginTop={draftMarginTop}
+          draftMarginBottom={draftMarginBottom}
+          draftPaddingTop={draftPaddingTop}
+          draftPaddingBottom={draftPaddingBottom}
+          draftPaddingLeft={draftPaddingLeft}
+          draftPaddingRight={draftPaddingRight}
+          draftWidth={draftWidth}
+          draftHeight={draftHeight}
+          selectedAnnotation={selectedAnnotation}
+          onFontSizeChange={setDraftFontSize}
+          onFontWeightChange={setDraftFontWeight}
+          onFontFamilyChange={setDraftFontFamily}
+          onLineHeightChange={setDraftLineHeight}
+          onLetterSpacingChange={setDraftLetterSpacing}
+          onColorChange={setDraftColor}
+          onBackgroundColorChange={setDraftBackgroundColor}
+          onHoverBackgroundChange={setDraftHoverBackground}
+          onMarginTopChange={setDraftMarginTop}
+          onMarginBottomChange={setDraftMarginBottom}
+          onPaddingTopChange={setDraftPaddingTop}
+          onPaddingBottomChange={setDraftPaddingBottom}
+          onPaddingInlineChange={(val) => {
+            setDraftPaddingLeft(val);
+            setDraftPaddingRight(val);
+          }}
+          onWidthChange={setDraftWidth}
+          onHeightChange={setDraftHeight}
+          onApplyStyle={handleApplyStyle}
+          onApplyText={handleApplyText}
+          onAlignChange={(align) => applyShortcutStyle({ textAlign: align }, `已${align === "left" ? "左" : align === "center" ? "居中" : "右"}对齐`)}
+          onBoldToggle={() => applyShortcutStyle(
+            { fontWeight: (selected?.fontWeight === "bold" || selected?.fontWeight === "700") ? "400" : "700" },
+            "已切换字重"
           )}
-          <div className="inspector-tabs-wrap">
-            <span className="nw-inspector-title" style={{fontSize:'var(--n-text-xs)', fontWeight:600, color:'var(--n-fg-secondary)', textTransform:'uppercase', letterSpacing:'0.04em', fontFamily:'var(--n-font-sans)'}}>Inspector</span>
-            {!isInspectorCollapsed && (
-              <button
-                className="panel-collapse-btn"
-                type="button"
-                aria-label="收起样式检查器"
-                aria-controls="inspector-panel"
-                aria-expanded="true"
-                title="收起侧边栏"
-                onClick={handleCloseInspectorPanel}
-              >
-                <ChevronRight size={14} />
-              </button>
-            )}
-          </div>
-          {selected ? (
-            <div className="inspector-selection" data-dom-id="inspector-selection">
-              <div className="inspector-selection__row1">
-                <span className="inspector-selection__pill">{selected.tagName.toUpperCase()}</span>
-                <span className="inspector-selection__path" title={selected.path}>
-                  {selected.className ? `.${selected.className}` : (selected.label || selected.tagName)}
-                </span>
-              </div>
-              <div className="inspector-selection__metrics">
-                <span>{selected.width || "auto"} × {selected.height || "auto"} px</span>
-                <span>{selected.fontSize || "—"} / {selected.lineHeight || "—"}</span>
-                <span>{selected.fontWeight || "—"}</span>
-              </div>
-            </div>
-          ) : null}
-          <div className="inspector-body">
-            {selectedAnnotation ? (
-              <p className="meta ai-selected-note">
-                AI：{selectedAnnotation.label} · {selectedAnnotation.role}
-                {selectedAnnotation.issues.length ? " · " + selectedAnnotation.issues.join(" / ") : ""}
-              </p>
-            ) : null}
-            {!selected ? (
-              <section className="property-card inspector-empty" aria-label="选择提示">
-                <strong>未选择元素</strong>
-                <p className="meta">在左侧结构树或画布中点击任意元素即可在此处编辑内容、样式和属性。</p>
-                <p className="meta">提示：按 <kbd>?</kbd> 查看全部快捷键。</p>
-              </section>
-            ) : null}
-            {selected ? (
-              <section className="property-card inspector-card" data-dom-id="alignment-bar">
-                <div className="inspector-card__head">
-                  <IconAlignCenter />
-                  <span className="inspector-card__title">对齐</span>
-                </div>
-                <div className="alignment-bar">
-                  <button
-                    type="button"
-                    className={"ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" + (selected.textAlign === "left" ? " is-on" : "")}
-                    title="左对齐 · B"
-                    aria-label="左对齐"
-                    aria-pressed={selected.textAlign === "left"}
-                    onClick={() => applyShortcutStyle({ textAlign: "left" }, "已左对齐")}
-                  >
-                    <IconAlignLeft />
-                  </button>
-                  <button
-                    type="button"
-                    className={"ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" + (selected.textAlign === "center" ? " is-on" : "")}
-                    title="居中 · E"
-                    aria-label="居中对齐"
-                    aria-pressed={selected.textAlign === "center"}
-                    onClick={() => applyShortcutStyle({ textAlign: "center" }, "已居中")}
-                  >
-                    <IconAlignCenter />
-                  </button>
-                  <button
-                    type="button"
-                    className={"ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" + (selected.textAlign === "right" ? " is-on" : "")}
-                    title="右对齐 · R"
-                    aria-label="右对齐"
-                    aria-pressed={selected.textAlign === "right"}
-                    onClick={() => applyShortcutStyle({ textAlign: "right" }, "已右对齐")}
-                  >
-                    <IconAlignRight />
-                  </button>
-                  <span className="alignment-bar__sep" aria-hidden="true"></span>
-                  <button
-                    type="button"
-                    className={"ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" + (selected.fontWeight === "bold" || selected.fontWeight === "700" ? " is-on" : "")}
-                    title="加粗 · L"
-                    aria-label="加粗"
-                    aria-pressed={selected.fontWeight === "bold" || selected.fontWeight === "700"}
-                    onClick={() => applyShortcutStyle(
-                      { fontWeight: (selected.fontWeight === "bold" || selected.fontWeight === "700") ? "400" : "700" },
-                      "已切换字重"
-                    )}
-                  >
-                    <IconBold />
-                  </button>
-                  <button
-                    type="button"
-                    className={"ds-btn ds-btn--secondary ds-btn--sm ds-btn--icon" + (selected.fontStyle === "italic" ? " is-on" : "")}
-                    title="斜体 · J"
-                    aria-label="斜体"
-                    aria-pressed={selected.fontStyle === "italic"}
-                    onClick={() => {
-                      if (!selected) return;
-                      const currentStyle = selected.fontStyle;
-                      const nextHtml = updateHtmlElementByHftId(state.html, selected.hftId, {
-                        styles: { fontStyle: currentStyle === "italic" ? "normal" : "italic" },
-                      });
-                      commitHtml(nextHtml, selected.hftId);
-                      setStatusMessage(currentStyle === "italic" ? "已取消斜体" : "已应用斜体");
-                      showToast(currentStyle === "italic" ? "已取消斜体" : "已应用斜体");
-                    }}
-                  >
-                    <IconItalic />
-                  </button>
-                </div>
-              </section>
-            ) : null}
-            <section className="property-card" data-od-id="content-editor">
-              <section className="inspector-card" data-dom-id="inspector-content">
-                <div className="inspector-card__head">
-                  <IconText />
-                  <span className="inspector-card__title">文字内容</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="field">
-                    <label htmlFor="contentInput">正文</label>
-                    <textarea
-                      className="textarea"
-                      id="contentInput"
-                      aria-label="正文"
-                      aria-describedby="contentHint"
-                      aria-invalid={!draftText.trim()}
-                      disabled={!canEditSelectedText}
-                      value={draftText}
-                      onChange={(event) => setDraftText(event.target.value)}
-                    />
-                    <p className="meta" id="contentHint">
-                      {canEditSelectedText ? "留空会触发错误提示，避免误发布空文案。" : "当前元素包含子节点或媒体内容，暂不支持直接改文字。"}
-                    </p>
-                {selected && canEditSelectedText ? (
-                  <PretextMeasureBadge
-                    text={draftText}
-                    font={buildPretextFontFromDraft(selected, draftFontFamily, draftFontSize, draftFontWeight)}
-                    maxWidth={resolveMeasureWidth(draftWidth, draftMaxWidth, selected.width, selected.maxWidth)}
-                    lineHeight={resolveMeasureLineHeight(draftLineHeight, selected.lineHeight, draftFontSize, selected.fontSize)}
-                  />
-                ) : null}
-                </div>
-                </div>
-              </section>
-              <button className="btn btn-primary" type="button" onClick={handleApplyText} disabled={!canEditSelectedText}>应用到 Canvas</button>
-            </section>
-            <section className="property-card" data-od-id="style-editor">
-              <h3>快速样式</h3>
-              <div className="token-row">
-                <span>强调色</span>
-                <span className="token-swatch" aria-hidden="true" style={{ backgroundColor: draftColor || undefined }} />
-              </div>
-
-              {/* 字体 */}
-              <section className="inspector-card" data-dom-id="inspector-typography">
-                <div className="inspector-card__head">
-                  <IconType />
-                  <span className="inspector-card__title">字体</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="fontSize">字号</label>
-                      <input className="input" id="fontSize" value={draftFontSize} placeholder="66px" onChange={(event) => setDraftFontSize(event.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="fontWeightInput">字重</label>
-                      <select className="input" id="fontWeightInput" value={draftFontWeight} onChange={(event) => setDraftFontWeight(event.target.value)}>
-                        <option value="">继承</option>
-                        <option value="300">300</option>
-                        <option value="400">400</option>
-                        <option value="500">500</option>
-                        <option value="600">600</option>
-                        <option value="700">700</option>
-                        <option value="800">800</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="fontFamilyInput">字体</label>
-                    <input className="input" id="fontFamilyInput" value={draftFontFamily} placeholder="Inter, sans-serif" onChange={(event) => setDraftFontFamily(event.target.value)} />
-                  </div>
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="lineHeightInput">行高</label>
-                      <input className="input" id="lineHeightInput" value={draftLineHeight} placeholder="1.5 / 24px" onChange={(event) => setDraftLineHeight(event.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="letterSpacingInput">字距</label>
-                      <input className="input" id="letterSpacingInput" value={draftLetterSpacing} placeholder="0.2px" onChange={(event) => setDraftLetterSpacing(event.target.value)} />
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 间距 */}
-              <section className="inspector-card" data-dom-id="inspector-spacing">
-                <div className="inspector-card__head">
-                  <IconSpacing />
-                  <span className="inspector-card__title">间距</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="spacingInput">上外边距</label>
-                      <input className="input" id="spacingInput" value={draftMarginTop} placeholder="24px" onChange={(event) => setDraftMarginTop(event.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="marginBottomInput">下外边距</label>
-                      <input className="input" id="marginBottomInput" value={draftMarginBottom} placeholder="24px" onChange={(event) => setDraftMarginBottom(event.target.value)} />
-                    </div>
-                  </div>
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="paddingTopInput">上内边距</label>
-                      <input className="input" id="paddingTopInput" value={draftPaddingTop} placeholder="16px" onChange={(event) => setDraftPaddingTop(event.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="paddingBottomInput">下内边距</label>
-                      <input className="input" id="paddingBottomInput" value={draftPaddingBottom} placeholder="16px" onChange={(event) => setDraftPaddingBottom(event.target.value)} />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="paddingInlineInput">左右内边距</label>
-                    <input className="input" id="paddingInlineInput" value={draftPaddingLeft || draftPaddingRight} placeholder="24px" onChange={(event) => {
-                      setDraftPaddingLeft(event.target.value);
-                      setDraftPaddingRight(event.target.value);
-                    }} />
-                  </div>
-                </div>
-              </section>
-
-              {/* 颜色 */}
-              {/* 尺寸 + 图片填充 */}
-              <section className="inspector-card" data-dom-id="inspector-size">
-                <div className="inspector-card__head">
-                  <IconRuler />
-                  <span className="inspector-card__title">尺寸</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="widthInput">宽度</label>
-                      <input className="input" id="widthInput" value={draftWidth} placeholder="auto / 320px / 100%" onChange={(event) => setDraftWidth(event.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="heightInput">高度</label>
-                      <input className="input" id="heightInput" value={draftHeight} placeholder="auto / 240px" onChange={(event) => setDraftHeight(event.target.value)} />
-                    </div>
-                  </div>
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="maxWidthInput">最大宽度</label>
-                      <input className="input" id="maxWidthInput" value={draftMaxWidth} placeholder="640px / none" onChange={(event) => setDraftMaxWidth(event.target.value)} />
-                    </div>
-                    <div className="field">
-                      <label htmlFor="objectFitInput">图片填充</label>
-                      <select className="input" id="objectFitInput" value={draftObjectFit} onChange={(event) => setDraftObjectFit(event.target.value)}>
-                        <option value="">继承</option>
-                        <option value="cover">cover</option>
-                        <option value="contain">contain</option>
-                        <option value="fill">fill</option>
-                        <option value="none">none</option>
-                        <option value="scale-down">scale-down</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-              </section>
-
-              {/* 外观 — 颜色 */}
-              <section className="inspector-card" data-dom-id="inspector-color">
-                <div className="inspector-card__head">
-                  <IconPalette />
-                  <span className="inspector-card__title">颜色</span>
-                </div>
-                <div className="inspector-card__body">
-                  <ColorField label="文字" value={draftColor} onChange={(val) => {
-                    setDraftColor(val);
-                    if (selected) commitHtml(updateHtmlElementByHftId(state.html, selected.hftId, { styles: { color: val } }), selected.hftId);
-                  }} full />
-                  <ColorField label="背景" value={draftBackgroundColor} onChange={(val) => {
-                    setDraftBackgroundColor(val);
-                    if (selected) commitHtml(updateHtmlElementByHftId(state.html, selected.hftId, { styles: { backgroundColor: val } }), selected.hftId);
-                  }} full />
-                  <ColorField label="Hover 背景" value={draftHoverBackground} onChange={(val) => {
-                    setDraftHoverBackground(val);
-                    if (selected) commitHtml(updateHtmlElementByHftId(state.html, selected.hftId, { effects: { hoverBackgroundColor: val } }), selected.hftId);
-                  }} full />
-                </div>
-              </section>
-
-              {/* 外观 — 边框 */}
-              <section className="inspector-card" data-dom-id="inspector-border">
-                <div className="inspector-card__head">
-                  <IconBorder />
-                  <span className="inspector-card__title">边框</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="field-grid">
-                    <ColorField label="边框色" value={draftBorderColor} onChange={(val) => {
-                      setDraftBorderColor(val);
-                      if (selected) commitHtml(updateHtmlElementByHftId(state.html, selected.hftId, { styles: { borderColor: val } }), selected.hftId);
-                    }} />
-                    <div className="field">
-                      <label htmlFor="borderWidthInput">宽度</label>
-                      <input className="input" id="borderWidthInput" value={draftBorderWidth} placeholder="1px" onChange={(event) => setDraftBorderWidth(event.target.value)} />
-                    </div>
-                  </div>
-                  <div className="field-grid">
-                    <div className="field">
-                      <label htmlFor="borderStyleInput">样式</label>
-                      <select className="input" id="borderStyleInput" value={draftBorderStyle} onChange={(event) => setDraftBorderStyle(event.target.value)}>
-                        <option value="">继承</option>
-                        <option value="solid">solid</option>
-                        <option value="dashed">dashed</option>
-                        <option value="none">none</option>
-                      </select>
-                    </div>
-                    <div className="field">
-                      <label htmlFor="radiusInput">圆角</label>
-                      <input className="input" id="radiusInput" value={draftBorderRadius} placeholder="16px" onChange={(event) => setDraftBorderRadius(event.target.value)} />
-                    </div>
-                  </div>
-                  <div className="field">
-                    <label htmlFor="boxShadowInput">阴影</label>
-                    <input className="input" id="boxShadowInput" value={draftBoxShadow} placeholder="0 18px 50px rgba(15, 23, 42, .12)" onChange={(event) => setDraftBoxShadow(event.target.value)} />
-                  </div>
-                </div>
-              </section>
-
-              <button className="btn btn-primary" type="button" onClick={handleApplyStyle} disabled={!selected}>应用样式</button>
-            </section>
-            <section className="property-card" data-od-id="attribute-editor">
-              <section className="inspector-card" data-dom-id="inspector-attribute">
-                <div className="inspector-card__head">
-                  <IconImage />
-                  <span className="inspector-card__title">媒体 / 属性</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="field">
-                    <label htmlFor="srcInput">src / viewBox / href</label>
-                    <input className="input" id="srcInput" value={draftSrc} placeholder="图片地址、SVG viewBox 或 href" onChange={(event) => setDraftSrc(event.target.value)} />
-                  </div>
-                  <div className="field">
-                    <label htmlFor="altInput">alt / aria-label</label>
-                    <input className="input" id="altInput" value={draftAlt} placeholder="替代文本或可访问名称" onChange={(event) => setDraftAlt(event.target.value)} />
-                  </div>
-                </div>
-              </section>
-              <button className="btn btn-primary" type="button" onClick={handleApplyAttributes} disabled={!selected}>应用属性</button>
-            </section>
-            <section className="property-card" data-od-id="interaction-editor">
-              <section className="inspector-card" data-dom-id="inspector-interaction">
-                <div className="inspector-card__head">
-                  <IconActivity />
-                  <span className="inspector-card__title">交互状态</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="token-row"><span>悬停状态</span><span className="meta">预览可点击选中</span></div>
-                  <div className="token-row"><span>焦点状态</span><span className="meta">iframe 内可访问</span></div>
-                  <div className="token-row"><span>拖拽定位</span><span className="meta">松手后写回 HTML</span></div>
-                  <div className="token-row"><span>AI 预检</span><span className="meta">{aiPreflightNote}</span></div>
-                  <div className="token-row"><span>导出检查</span><span className="meta">{formatExportWarningSummary(exportWarnings.length, blockingExportWarningCount)}</span></div>
-                  <div className="token-row"><span>发布检查</span><span className="meta">{isChecking ? "检查中" : "可运行"}</span></div>
-                </div>
-              </section>
-              <InspectorDiagnostics selected={selected} />
-              <div className={`ai-risk-summary${aiRiskAnnotations.length > 0 ? " has-risk" : ""}`}>
-                <div>
-                  <strong>AI 风险摘要</strong>
-                  <span className="meta">
-                    {Object.keys(aiAnnotations).length === 0
-                      ? "尚未扫描"
-                      : aiRiskAnnotations.length > 0
-                        ? `${aiRiskAnnotations.length} 个节点需要复核`
-                        : "未发现风险"}
-                  </span>
-                </div>
-                {aiRiskAnnotations.length > 0 ? (
-                  <div className="ai-risk-list">
-                    {aiRiskAnnotations.slice(0, 5).map((annotation) => (
-                      <button key={annotation.hftId} type="button" onClick={() => selectElement(annotation.hftId)}>
-                        <span>{annotation.label}</span>
-                        <small>{annotation.issues.join(" / ")}</small>
-                      </button>
-                    ))}
-                    {aiRiskAnnotations.length > 5 ? <p className="meta">还有 {aiRiskAnnotations.length - 5} 项，请到 AI 建议列表查看。</p> : null}
-                  </div>
-                ) : null}
-              </div>
-              <div className="quick-actions" aria-label="元素操作">
-                <button className="btn" type="button" onClick={() => handleMoveElement("up")} disabled={!selected}>上移</button>
-                <button className="btn" type="button" onClick={() => handleMoveElement("down")} disabled={!selected}>下移</button>
-                <button className="btn" type="button" onClick={handleDuplicateElement} disabled={!selected}>复制元素</button>
-                <button className="btn" type="button" onClick={handleDeleteElement} disabled={!selected}>删除</button>
-                <button className="btn" type="button" onClick={handleCopyStyle} disabled={!selected}>复制样式</button>
-                <button className="btn" type="button" onClick={handlePasteStyle} disabled={!selected || !copiedStyle}>粘贴样式</button>
-                {selected ? (
-                  <>
-                    <button className="btn" type="button" onClick={() => handleModalCommand("open")}>打开弹窗</button>
-                    <button className="btn" type="button" onClick={() => handleModalCommand("close")}>关闭弹窗</button>
-                  </>
-                ) : null}
-              </div>
-            </section>
-            <section className="property-card is-compact" data-od-id="state-coverage">
-              <section className="inspector-card" data-dom-id="inspector-state">
-                <div className="inspector-card__head">
-                  <IconShield />
-                  <span className="inspector-card__title">状态覆盖</span>
-                </div>
-                <div className="inspector-card__body">
-                  <div className="state-grid" aria-live="polite">
-                    <div className={`state-card${isPreviewReady ? "" : " is-loading"}`}><span className="state-dot"></span><strong>{isPreviewReady ? "预览就绪" : "预览渲染中"}</strong><span className="meta">iframe</span></div>
-                    <div className="state-card" hidden={isChecking}><span className="state-dot"></span><strong>编辑就绪</strong><span className="meta">可编辑</span></div>
-                    <div className="state-card is-loading" hidden={!isChecking}><span className="state-dot"></span><strong>检查中</strong><span className="meta">0.7s</span></div>
-                  </div>
-                  <button className="btn" type="button" onClick={handleRunCheck}>运行发布检查</button>
-                </div>
-              </section>
-            </section>
-          </div>
-        </aside>
+          onItalicToggle={() => {
+            if (!selected) return;
+            const currentStyle = selected.fontStyle;
+            const nextHtml = updateHtmlElementByHftId(state.html, selected.hftId, {
+              styles: { fontStyle: currentStyle === "italic" ? "normal" : "italic" },
+            });
+            commitHtml(nextHtml, selected.hftId);
+            setStatusMessage(currentStyle === "italic" ? "已取消斜体" : "已应用斜体");
+            showToast(currentStyle === "italic" ? "已取消斜体" : "已应用斜体");
+          }}
+          canEditSelectedText={canEditSelectedText}
+          textContent={draftText}
+          onTextContentChange={setDraftText}
+          onMoveUp={() => handleMoveElement("up")}
+          onMoveDown={() => handleMoveElement("down")}
+          onDuplicate={handleDuplicateElement}
+          onDelete={handleDeleteElement}
+          onCopyStyle={handleCopyStyle}
+          onPasteStyle={handlePasteStyle}
+          onModalCommand={handleModalCommand}
+          hasCopiedStyle={!!copiedStyle}
+          isCollapsed={isInspectorCollapsed}
+          onResizeStart={handleStartPanelResize("inspector")}
+          onCollapseToggle={handleCloseInspectorPanel}
+        />
         </>)}
       </main>
 

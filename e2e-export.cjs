@@ -162,9 +162,36 @@ async function runPdfScenario(context) {
   page.on("pageerror", (err) => log("[page error]", err.message));
   await page.goto(PREVIEW_URL, { waitUntil: "networkidle", timeout: SCREENSHOT_TIMEOUT_MS });
   await page.waitForSelector(".app-topbar", { timeout: SCREENSHOT_TIMEOUT_MS });
-  const pdfButton = page.locator('[aria-label="导出 PDF"]');
+
+  // 初始化防空状态干扰：若为 empty 状态，则导入 HTML 初始化
+  const isEmptyVisible = await page.locator('.empty-workspace').isVisible().catch(() => false);
+  if (isEmptyVisible) {
+    log("Empty workspace detected, importing HTML file to initialize...");
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.locator('.empty-workspace__cta').click(),
+    ]);
+    await fileChooser.setFiles({
+      name: 'initial.html',
+      mimeType: 'text/html',
+      buffer: Buffer.from('<div id="root-div" style="min-height: 600px; padding: 40px;"><h1>Init</h1><p>Init Text</p></div>'),
+    });
+    await page.waitForTimeout(1000);
+    log("Initialization HTML imported successfully!");
+  }
+
+  // 1. 点击统一导出按钮，启动弹窗
+  const exportBtn = page.locator('[data-dom-id="btn-export"]');
+  await exportBtn.click();
+
+  // 2. 切换到 PDF 格式 Tab
+  const pdfTab = page.locator('[data-dom-id="tab-format-pdf"]');
+  await pdfTab.click();
+
+  // 3. 点击弹窗内的导出按钮并等待下载
+  const pdfDownloadButton = page.locator('button:has-text("导出 PDF")');
   const { download, path: dlPath, name } = await withTimeout(
-    clickAndWaitForDownload(page, pdfButton),
+    clickAndWaitForDownload(page, pdfDownloadButton),
     90_000,
     "PDF export"
   );
@@ -252,9 +279,36 @@ async function runPptxScenario(context) {
   page.on("pageerror", (err) => log("[page error]", err.message));
   await page.goto(PREVIEW_URL, { waitUntil: "networkidle", timeout: SCREENSHOT_TIMEOUT_MS });
   await page.waitForSelector(".app-topbar", { timeout: SCREENSHOT_TIMEOUT_MS });
-  const pptxButton = page.locator('[aria-label="导出 PPTX"]');
+
+  // 初始化防空状态干扰：若为 empty 状态，则导入 HTML 初始化
+  const isEmptyVisible = await page.locator('.empty-workspace').isVisible().catch(() => false);
+  if (isEmptyVisible) {
+    log("Empty workspace detected, importing HTML file to initialize...");
+    const [fileChooser] = await Promise.all([
+      page.waitForEvent('filechooser'),
+      page.locator('.empty-workspace__cta').click(),
+    ]);
+    await fileChooser.setFiles({
+      name: 'initial.html',
+      mimeType: 'text/html',
+      buffer: Buffer.from('<div id="root-div" style="min-height: 600px; padding: 40px;"><h1>Init</h1><p>Init Text</p></div>'),
+    });
+    await page.waitForTimeout(1000);
+    log("Initialization HTML imported successfully!");
+  }
+
+  // 1. 点击统一导出按钮，启动弹窗
+  const exportBtn = page.locator('[data-dom-id="btn-export"]');
+  await exportBtn.click();
+
+  // 2. 切换到 PPTX 格式 Tab
+  const pptxTab = page.locator('[data-dom-id="tab-format-pptx"]');
+  await pptxTab.click();
+
+  // 3. 点击弹窗内的导出按钮并等待下载
+  const pptxDownloadButton = page.locator('button:has-text("导出 PPTX")');
   const { download, path: dlPath, name } = await withTimeout(
-    clickAndWaitForDownload(page, pptxButton),
+    clickAndWaitForDownload(page, pptxDownloadButton),
     90_000,
     "PPTX export"
   );
