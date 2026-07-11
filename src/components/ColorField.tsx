@@ -23,7 +23,7 @@ interface ColorFieldProps {
 }
 
 const colorPopoverMetrics = {
-  width: 280,
+  width: 300,
   height: 392,
   gap: 8,
   margin: 10,
