@@ -6,6 +6,7 @@
 :root {
   /* ----- surface ----- */
   --n-bg-base:        #ffffff;
+  --n-bg-default:     var(--n-bg-base);
   --n-bg-elevated:    #ffffff;
   --n-bg-subtle:      #fbfbfa;
   --n-bg-hover:       #f1f1f0;
@@ -39,6 +40,7 @@
   --n-radius-sm: 4px;
   --n-radius-md: 5px;
   --n-radius-lg: 6px;
+  --n-radius-xl: 8px;
 
   /* ----- shadow ----- */
   --n-shadow-card:    0 1px 3px rgba(15,15,15,0.04), 0 0 0 1px rgba(15,15,15,0.04);
@@ -52,6 +54,7 @@
 
   /* ----- motion ----- */
   --n-ease:           cubic-bezier(0.165, 0.84, 0.44, 1);
+  --n-ease-out:       var(--n-ease);
   --n-duration-fast:  120ms;
   --n-duration-base:  180ms;
   --n-duration-slow:  240ms;
@@ -200,9 +203,10 @@
 
 .dark {
   --n-bg-base:        #191919;
+  --n-bg-default:     var(--n-bg-base);
   --n-bg-elevated:    #202020;
   --n-bg-subtle:      #252525;
-  --n-bg-hover:       #2c2c2c;
+  --n-bg-hover:       #2a2a2a;
   --n-bg-sidebar:     #202020;
   --n-bg-canvas:      #2c2c2c;
   --n-bg-inverse:     #e8e8e8;

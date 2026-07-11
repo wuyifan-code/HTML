@@ -356,26 +356,8 @@
 }
 
 /* ================================================================
-   Workspace (3-column layout)
+   Workspace (3-column layout) — authoritative definitions in shell.css
    ================================================================ */
-.workspace {
-  min-height: 0;
-  flex: 1 1 auto;
-  width: 100%;
-  display: grid;
-  grid-template-columns: var(--source-col) minmax(0, 1fr) var(--inspector-col);
-  align-items: stretch;
-  background: var(--n-bg-base);
-}
-.workspace.workspace-source-collapsed {
-  grid-template-columns: 44px minmax(0, 1fr) var(--inspector-col);
-}
-.workspace.workspace-inspector-collapsed {
-  grid-template-columns: var(--source-col) minmax(0, 1fr) 44px;
-}
-.workspace.workspace-source-collapsed.workspace-inspector-collapsed {
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
-}
 
 .workspace-resizer {
   width: var(--resizer-width);
@@ -402,43 +384,6 @@
 .workspace-resizer-inspector { border-left: 1px solid var(--border-neutral-l1); }
 
 body.is-resizing-panels { cursor: col-resize; user-select: none; }
-
-.workspace.workspace-source-bottom {
-  grid-template-columns: var(--source-col) minmax(0, 1fr) var(--inspector-col);
-  grid-template-rows: minmax(0, 1fr) minmax(220px, 0.45fr);
-  grid-template-areas:
-    "source canvas inspector"
-    "source bottom inspector";
-}
-.workspace.workspace-source-bottom > aside:first-child { grid-area: source; }
-.workspace.workspace-source-bottom > .workspace-resizer-source { display: none; }
-.workspace.workspace-source-bottom > section,
-.workspace.workspace-source-bottom > .canvas-panel {
-  grid-area: canvas;
-  border-bottom: 1px solid var(--border-neutral-l1);
-}
-.workspace.workspace-source-bottom .source-bottom-host {
-  grid-area: bottom;
-  border-top: 1px solid var(--border-neutral-l1);
-  background: var(--bg-base-secondary);
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
-.workspace.workspace-source-expanded {
-  grid-template-columns: minmax(0, 1fr);
-}
-.workspace.workspace-source-expanded > .stage-panel,
-.workspace.workspace-source-expanded > .inspector,
-.workspace.workspace-source-expanded > .panel-resizer,
-.workspace.workspace-source-expanded > .panel-expand-btn {
-  display: none !important;
-}
-.workspace.workspace-source-expanded > aside.panel {
-  width: auto !important;
-  max-width: none !important;
-  border-right: 0;
-}
 
 /* ================================================================
    Panels (Source / Canvas / Inspector) — flat bordered surface
@@ -1018,22 +963,6 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
 }
 .viewport-times { color: var(--text-tertiary); padding: 0 2px; }
 
-.stage {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding: var(--spacer-32);
-  background: var(--n-bg-canvas);
-  position: relative;
-  animation: stage-fade-in var(--n-duration-slow) var(--n-ease) both;
-}
-@keyframes stage-fade-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
 .page-preview {
   background: var(--n-bg-elevated);
   box-shadow:
@@ -1177,36 +1106,7 @@ body.is-resizing-panels { cursor: col-resize; user-select: none; }
   color: var(--text-secondary);
 }
 
-/* Property cards (matches design's "字体 / 间距 / 颜色 / 边框 / 对齐") */
-.property-card {
-  border: 1px solid var(--n-border-default);
-  border-radius: var(--n-radius-md);
-  background: var(--n-bg-elevated);
-  overflow: hidden;
-}
-.property-card[hidden] { display: none; }
-.property-card h3 {
-  display: flex;
-  align-items: center;
-  gap: var(--spacer-8);
-  padding: var(--spacer-12) var(--spacer-12) var(--spacer-8);
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--n-fg-default);
-  letter-spacing: -0.01em;
-  border-bottom: 1px solid var(--n-border-default);
-  margin-bottom: var(--spacer-8);
-  font-family: var(--n-font-sans);
-}
-.property-card h3::before {
-  content: "";
-  width: 3px;
-  height: 14px;
-  background: var(--n-brand);
-  border-radius: var(--n-radius-sm);
-}
-.property-card:hover h3::before { background: var(--n-brand-hover); }
-
+/* Property cards — authoritative definitions in inspector.css */
 /* Universal .meta — secondary helper text used across panels */
 .meta {
   font-size: 11px;

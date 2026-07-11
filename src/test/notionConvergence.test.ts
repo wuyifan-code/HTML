@@ -55,3 +55,63 @@ describe("canonical token source", () => {
     expect(tokens).toMatch(/--n-bg-sidebar:\s*#202020/);
   });
 });
+
+describe("no duplicate selectors across styles.css and module CSS", () => {
+  const moduleFiles = [
+    "src/styles/shell.css",
+    "src/styles/source-panel.css",
+    "src/styles/canvas.css",
+    "src/styles/inspector.css",
+    "src/styles/controls.css",
+    "src/styles/overlays.css",
+    "src/styles/responsive.css",
+  ];
+
+  // Only check the main CSS area (before the convergence layer marker)
+  // The convergence layer at the bottom of styles.css intentionally overrides
+  // module definitions and is not a "duplicate selector" problem.
+  const mainCss = start >= 0 ? css.slice(0, start) : css;
+
+  for (const modFile of moduleFiles) {
+    it(`${modFile} shares no structural selector with styles.css`, () => {
+      const modCss = readFileSync(resolve(process.cwd(), modFile), "utf8");
+      // Key structural selectors that must NOT appear in both files
+      const structuralSelectors = [
+        "workspace",
+        "topbar",
+        "app-header",
+        "panel",
+        "panel-head",
+        "panel-tabs",
+        "stage-panel",
+        "stage",
+        "canvas-panel",
+        "inspector-panel",
+        "property-card",
+        "export-dialog",
+        "history-drawer",
+        "color-popover",
+        "tooltip",
+        "toast",
+        "menu",
+        "dropdown-panel",
+      ];
+      for (const sel of structuralSelectors) {
+        // Match selector as a root-level definition: ^.selector { or ^.selector,
+        // (must start at column 0 — not indented inside @media or other blocks)
+        const rootDefRegex = new RegExp(
+          String.raw`^\.${sel}\s*\{`,
+          "m"
+        );
+        const inMain = rootDefRegex.test(mainCss);
+        const inModule = rootDefRegex.test(modCss);
+        if (inMain && inModule) {
+          // Fail: same structural selector defined in both files
+          expect(
+            `Selector .${sel} found in both styles.css and ${modFile}`
+          ).toBe("should only be in one file");
+        }
+      }
+    });
+  }
+});

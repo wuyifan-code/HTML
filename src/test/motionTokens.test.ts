@@ -104,4 +104,22 @@ describe("dark theme tokens", () => {
   it("dark theme uses flat surfaces (no glass blur)", () => {
     expect(tokens).toMatch(/--surface-vibrancy:\s*none/);
   });
+
+  it("dark --n-bg-hover is #2a2a2a per design contract (not #2c2c2c)", () => {
+    expect(tokens).toMatch(/\.dark\s*\{[\s\S]*?--n-bg-hover:\s*#2a2a2a/);
+  });
+});
+
+describe("design contract token completeness", () => {
+  it("declares --n-radius-xl: 8px for history drawer special radius", () => {
+    expect(tokens).toMatch(/--n-radius-xl:\s*8px/);
+  });
+
+  it("declares --n-ease-out alias: var(--n-ease)", () => {
+    expect(tokens).toMatch(/--n-ease-out:\s*var\(--n-ease\)/);
+  });
+
+  it("declares --n-bg-default alias: var(--n-bg-base)", () => {
+    expect(tokens).toMatch(/--n-bg-default:\s*var\(--n-bg-base\)/);
+  });
 });
