@@ -146,12 +146,15 @@ export function isValidIframeToHostMessage(data: unknown): data is IframeToHostM
  */
 export function isTrustedMessage(
   event: MessageEvent,
-  bridgeToken: string
+  bridgeToken: string,
+  expectedSource?: Window | null,
 ): boolean {
   // 只接受同源、null origin（iframe srcDoc）消息
   if (event.origin !== window.location.origin && event.origin !== "null") {
     return false;
   }
+
+  if (expectedSource && event.source !== expectedSource) return false;
 
   const data = event.data;
   if (!data || typeof data !== "object") return false;

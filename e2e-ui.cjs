@@ -147,7 +147,7 @@ async function run() {
   const fontSizeInput = page.locator('label:has-text("字号") input');
   await fontSizeInput.fill("28px");
   await page.waitForTimeout(300);
-  const applyStyleBtn = page.locator('button:has-text("应用样式到 Canvas")');
+  const applyStyleBtn = page.locator('button.inspector-apply-btn--full');
   await applyStyleBtn.click();
   await page.waitForTimeout(500);
   await page.screenshot({ path: path.join(SCREENSHOT_DIR, "07_change_fontsize.png") });
@@ -167,7 +167,7 @@ async function run() {
   if (await contentInput.isVisible()) {
     await contentInput.fill("FineTune Updated Heading Text");
     await page.waitForTimeout(300);
-    const applyTextBtn = page.locator('button:has-text("应用到 Canvas")');
+    const applyTextBtn = page.locator('button.inspector-apply-btn--secondary').filter({ hasText: "更新文字" });
     await applyTextBtn.click();
     await page.waitForTimeout(500);
   }

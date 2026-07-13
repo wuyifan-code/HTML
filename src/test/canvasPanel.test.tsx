@@ -29,6 +29,7 @@ describe("ViewportToolbar", () => {
     expect(container.querySelector('[data-dom-id="vp-desktop"]')).not.toBeNull();
     expect(container.querySelector('[data-dom-id="vp-tablet"]')).not.toBeNull();
     expect(container.querySelector('[data-dom-id="vp-mobile"]')  ).not.toBeNull();
+    expect(container.querySelector('[data-dom-id="vp-desktop"]')?.getAttribute("aria-label")).toBe("桌面");
   });
 
   it("marks the matching preset button as pressed", () => {

@@ -1,14 +1,6 @@
 import type { RefObject, CSSProperties } from "react";
-import {
-  IconMonitor,
-  IconTablet,
-  IconSmartphone,
-  IconMove,
-  IconZoomOut,
-  IconZoomIn,
-  IconMaximize,
-} from "../../Icons";
 import { DeviceFrame } from "./DeviceFrame";
+import { ViewportToolbar } from "./ViewportToolbar";
 
 type ZoomMode = "fit" | "88" | "100";
 
@@ -32,11 +24,12 @@ interface CanvasPanelProps {
   previewScale?: number;
   isContentFitPreview?: boolean;
   previewIframeStyle?: CSSProperties | undefined;
+  previewError?: string | null;
 
   // 兼容老单测参数
   viewportPreset?: string | null;
-  onViewportChange?: (preset: any) => void;
-  onZoomChange?: (zoom: any) => void;
+  onViewportChange?: (size: { width: number; height: number }) => void;
+  onZoomChange?: (zoom: ZoomMode) => void;
 }
 
 function resolvePreset(
@@ -60,7 +53,7 @@ export function CanvasPanel({
   matchingViewportPreset = null,
   aiStatus,
   onViewportPresetChange = () => {},
-  onZoomModeChange = () => {},
+  onZoomModeChange,
   onFocusToggle = () => {},
   iframeRef,
   stageRef,
@@ -70,6 +63,7 @@ export function CanvasPanel({
   previewScale = 1,
   isContentFitPreview = false,
   previewIframeStyle = {},
+  previewError = null,
   viewportPreset,
   onViewportChange,
   onZoomChange,
@@ -78,6 +72,21 @@ export function CanvasPanel({
   const useDeviceFrame = preset === "mobile" || preset === "tablet";
   const deviceOuterWidth = viewportSize.width + 24;
   const deviceOuterHeight = viewportSize.height + 24;
+  const handleViewportChange = (size: { width: number; height: number }) => {
+    if (size.width === 1440 && size.height === 900) {
+      onViewportPresetChange("desktop");
+      return;
+    }
+    if (size.width === 768 && size.height === 1024) {
+      onViewportPresetChange("tablet");
+      return;
+    }
+    if (size.width === 375 && size.height === 667) {
+      onViewportPresetChange("mobile");
+      return;
+    }
+    onViewportChange?.(size);
+  };
 
   const previewContent = (
     <iframe
@@ -93,95 +102,22 @@ export function CanvasPanel({
 
   return (
     <section className="nw-canvas panel stage-panel" aria-label="画布" data-od-id="canvas" tabIndex={-1}>
-      <div className="viewport-bar" aria-label="画布工具栏">
-        <div className="segmented-viewport-control" aria-label="视口预设切换">
-          <span className="segmented-active-slide-bg" />
-          <button
-            type="button"
-            className={"segmented-button" + (preset === "desktop" ? " is-on" : "")}
-            data-dom-id="vp-desktop"
-            title="桌面端"
-            aria-label="桌面端"
-            aria-pressed={preset === "desktop"}
-            onClick={() => onViewportPresetChange("desktop")}
-          >
-            <IconMonitor />
-            <span style={{ display: "none" }}>桌面</span>
-          </button>
-          <button
-            type="button"
-            className={"segmented-button" + (preset === "tablet" ? " is-on" : "")}
-            data-dom-id="vp-tablet"
-            title="平板端"
-            aria-label="平板端"
-            aria-pressed={preset === "tablet"}
-            onClick={() => onViewportPresetChange("tablet")}
-          >
-            <IconTablet />
-            <span style={{ display: "none" }}>平板</span>
-          </button>
-          <button
-            type="button"
-            className={"segmented-button" + (preset === "mobile" ? " is-on" : "")}
-            data-dom-id="vp-mobile"
-            title="移动端"
-            aria-label="移动端"
-            aria-pressed={preset === "mobile"}
-            onClick={() => onViewportPresetChange("mobile")}
-          >
-            <IconSmartphone />
-            <span style={{ display: "none" }}>手机</span>
-          </button>
-        </div>
-        <span className="app-toolbar-sep" aria-hidden="true"></span>
-        <span className="viewport-bar__dim">
-          <IconMove />
-          <span>{viewportSize.width} × {viewportSize.height}</span>
-        </span>
-        <div className="viewport-bar__group">
-          <button
-            type="button"
-            className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
-            data-dom-id="btn-zoom-out"
-            title="缩小"
-            aria-label="缩小"
-            onClick={() => onZoomModeChange(zoomMode === "100" ? "88" : "fit")}
-          >
-            <IconZoomOut />
-          </button>
-          <span className="viewport-bar__zoom">{zoomMode === "fit" ? "适配" : (zoomMode === "88" ? "88%" : "100%")}</span>
-          <button
-            type="button"
-            className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
-            data-dom-id="btn-zoom-in"
-            title="放大"
-            aria-label="放大"
-            onClick={() => onZoomModeChange(zoomMode === "fit" ? "88" : "100")}
-          >
-            <IconZoomIn />
-          </button>
-          <button
-            type="button"
-            className="ds-btn ds-btn--ghost ds-btn--sm ds-btn--icon"
-            data-dom-id="btn-fit"
-            title="适应窗口"
-            aria-label="适应窗口"
-            onClick={() => onZoomModeChange("fit")}
-          >
-            <IconMaximize />
-          </button>
-          <span className="app-toolbar-sep" aria-hidden="true"></span>
-          <button
-            className={"ds-btn ds-btn--ghost ds-btn--sm" + (isFocusMode ? " is-on" : "")}
-            type="button"
-            aria-pressed={isFocusMode}
-            onClick={onFocusToggle}
-          >
-            {isFocusMode ? "退出专注" : "专注"}
-          </button>
-        </div>
-      </div>
+      <ViewportToolbar
+        viewportSize={viewportSize}
+        zoomMode={zoomMode}
+        isFocusMode={isFocusMode}
+        onViewportChange={handleViewportChange}
+        onZoomChange={onZoomModeChange ?? onZoomChange ?? (() => {})}
+        onFocusToggle={onFocusToggle}
+      />
       <div className="stage" ref={stageRef}>
+        {previewError ? (
+          <div className="preview-build-error" role="alert">
+            <strong>预览暂时无法解析</strong>
+            <span>{previewError}</span>
+            <small>请检查源码标签是否闭合，修正后画布会自动恢复。</small>
+          </div>
+        ) : null}
         {aiStatus === "running" ? (
           <div className="canvas-scan-overlay">
             <div className="canvas-scan-line" />

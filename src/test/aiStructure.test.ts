@@ -8,6 +8,7 @@ import {
   getAiProviderIcon,
   normalizeAiStructureResponse,
   normalizeAiModelOptions,
+  normalizeAiApiKey,
 } from "../utils/aiStructure";
 import { buildEditableDomTree } from "../utils/domTree";
 import { injectEditableIds } from "../utils/injectEditableIds";
@@ -247,6 +248,26 @@ describe("normalizeAiStructureResponse", () => {
     expect(result[0]).toMatchObject({ hftId: "hft-8", label: "fence" });
   });
 
+  it("recovers complete annotations when the model truncates the closing JSON", () => {
+    const result = normalizeAiStructureResponse(
+      '{"annotations":[{"hftId":"hft-9","label":"已完成","role":"heading"},{"hftId":"hft-10","label":"第二项"',
+      new Set(["hft-9", "hft-10"])
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ hftId: "hft-9", label: "已完成" });
+  });
+
+  it("accepts a root annotation array from models that ignore the requested wrapper", () => {
+    const result = normalizeAiStructureResponse(
+      '[{"hftId":"hft-11","label":"数组结果","role":"body"}]',
+      new Set(["hft-11"])
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({ hftId: "hft-11", label: "数组结果" });
+  });
+
   it("throws a friendly error for unfixable JSON", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => undefined);
 
@@ -317,6 +338,36 @@ describe("analyzeStructureWithAi request failures", () => {
       expect(systemText).toContain('Root object must be exactly {"annotations": [...]}');
       expect(systemText).toContain("Do not omit commas between array elements");
       expect(systemText).toContain("Do not return partial JSON");
+      expect(systemText).toContain("Return at most 80 annotations");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("normalizes pasted Bearer keys and retries MiniMax across service regions", async () => {
+    expect(normalizeAiApiKey("  Bearer 'sk-demo'  ")).toBe("sk-demo");
+    const originalFetch = globalThis.fetch;
+    let calls = 0;
+    const fetchMock = vi.fn(async (_input: RequestInfo | URL) => {
+      calls += 1;
+      if (calls === 1) {
+        return new Response(JSON.stringify({ error: { message: "invalid api key (2049)" } }), { status: 401 });
+      }
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: JSON.stringify({ annotations: [] }) } }],
+        }),
+        { status: 200 },
+      );
+    });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    try {
+      const input = makeScanInput();
+      await analyzeStructureWithAi({ ...input, providerId: "minimax", apiKey: "Bearer sk-demo" });
+      expect(calls).toBe(2);
+      expect(String(fetchMock.mock.calls[0][0])).toContain("api.minimaxi.com");
+      expect(String(fetchMock.mock.calls[1][0])).toContain("api.minimax.io");
     } finally {
       globalThis.fetch = originalFetch;
     }

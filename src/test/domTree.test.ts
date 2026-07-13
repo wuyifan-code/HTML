@@ -29,6 +29,17 @@ describe("buildEditableDomTree", () => {
 
     expect(tree.some((node) => node.tagName === "text" && node.text === "40.9%")).toBe(true);
   });
+
+  it("does not repeat all descendant copy in container rows", () => {
+    const html = `<a class="hero" href="#"><span>主标题</span><small>正文内容</small></a>`;
+    const { html: withIds } = injectEditableIds(html);
+    const tree = buildEditableDomTree(withIds);
+    const container = tree.find((node) => node.tagName === "a");
+
+    expect(container?.text).toBe("");
+    expect(container?.label).not.toContain("主标题");
+    expect(tree.find((node) => node.tagName === "span")?.text).toBe("主标题");
+  });
 });
 
 describe("filterCollapsedTree", () => {

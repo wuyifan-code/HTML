@@ -108,7 +108,7 @@ describe("themeProvider geometry preservation", () => {
     expect(screen.getByTestId("inspector-width").textContent).toBe("320");
   });
 
-  it("default sourceWidth is 280 (design contract)", () => {
+  it("default sourceWidth is 260 (design contract)", () => {
     function SourceProbe() {
       const { sourceWidth } = useEditorStore();
       return <span data-testid="source-width">{sourceWidth}</span>;
@@ -118,6 +118,6 @@ describe("themeProvider geometry preservation", () => {
         <SourceProbe />
       </EditorProvider>
     );
-    expect(screen.getByTestId("source-width").textContent).toBe("280");
+    expect(screen.getByTestId("source-width").textContent).toBe("260");
   });
 });

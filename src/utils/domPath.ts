@@ -1,5 +1,6 @@
 import type { ElementUpdate } from "../types/editor";
 import { HFT_ID_ATTRIBUTE, isEditableSvgTextElement, isRootSvgElement, isSvgImageElement } from "./editableElement";
+import { restoreEmbeddedDataUrls } from "./embeddedAssets";
 import { syncRemoteFontLibraryLinks } from "./fontLibrary";
 import { parseHtmlDocument } from "./injectEditableIds";
 
@@ -198,7 +199,10 @@ export function getHoverBackgroundColor(html: string, hftId: string): string {
 }
 
 export function serializeDocument(documentRef: Document): string {
-  return `<!doctype html>\n${documentRef.documentElement.outerHTML}`;
+  return restoreEmbeddedDataUrls(
+    documentRef,
+    `<!doctype html>\n${documentRef.documentElement.outerHTML}`,
+  );
 }
 
 function getElementIndex(element: Element): number {

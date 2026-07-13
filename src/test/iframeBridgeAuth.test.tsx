@@ -10,6 +10,17 @@ describe("iframe bridge authentication", () => {
     expect(srcDoc).toContain(token);
   });
 
+  it("removes executable user content from the preview bridge document", () => {
+    const srcDoc = buildPreviewSrcDoc(
+      `<button onclick="alert('x')">click</button><script>window.__evil = true</script><a href="javascript:alert(1)">x</a>`,
+      null,
+      "tok-safe"
+    );
+    expect(srcDoc).not.toContain("window.__evil");
+    expect(srcDoc).not.toContain("onclick");
+    expect(srcDoc).not.toContain("javascript:alert");
+  });
+
   it("buildPreviewSrcDoc uses empty string when no token provided", () => {
     const html = "<div><p>hello</p></div>";
     const srcDoc = buildPreviewSrcDoc(html, null);

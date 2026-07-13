@@ -6,6 +6,7 @@ interface AiScanPopoverProps {
   onClose: () => void;
   triggerRef: RefObject<HTMLElement | null>;
   onScan: () => void;
+  onOpenSettings?: () => void;
   status: "idle" | "scanning" | "done" | "error";
   resultCount: number;
   errorMessage?: string;
@@ -16,6 +17,7 @@ export function AiScanPopover({
   onClose,
   triggerRef,
   onScan,
+  onOpenSettings,
   status,
   resultCount,
   errorMessage,
@@ -90,28 +92,21 @@ export function AiScanPopover({
 
       <div className="ai-scan-popover-body">
         {status === "idle" ? (
-          <button
-            type="button"
-            onClick={() => {
-              onScan();
-            }}
-            style={{
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              padding: "4px 10px",
-              border: "1px solid var(--n-border-default)",
-              borderRadius: "var(--n-radius-sm)",
-              background: "var(--n-bg-elevated)",
-              color: "var(--n-fg-default)",
-              fontSize: "var(--text-sm)",
-              cursor: "pointer",
-              fontFamily: "var(--n-font-sans)",
-            }}
-          >
-            <Sparkles size={13} />
-            开始扫描
-          </button>
+          <>
+            <button
+              className="ai-scan-start-btn"
+              type="button"
+              onClick={onScan}
+            >
+              <Sparkles size={13} />
+              开始扫描
+            </button>
+            {onOpenSettings ? (
+              <button className="ai-scan-settings-link" type="button" onClick={onOpenSettings}>
+                配置供应商与模型 →
+              </button>
+            ) : null}
+          </>
         ) : status === "scanning" ? (
           <span>
             <Loader size={13} style={{ marginRight: 4, verticalAlign: "middle", animation: "spin 1s linear infinite" }} />

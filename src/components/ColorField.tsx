@@ -19,6 +19,7 @@ interface ColorFieldProps {
   label: string;
   value: string;
   onChange: (value: string) => void;
+  onCommit?: () => void;
   full?: boolean;
 }
 
@@ -29,7 +30,7 @@ const colorPopoverMetrics = {
   margin: 10,
 };
 
-function ColorFieldComponent({ label, value, onChange, full = false }: ColorFieldProps) {
+function ColorFieldComponent({ label, value, onChange, onCommit, full = false }: ColorFieldProps) {
   const popoverId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -98,6 +99,7 @@ function ColorFieldComponent({ label, value, onChange, full = false }: ColorFiel
 
   const closePopover = useCallback((restoreFocus = false) => {
     if (!isOpen) return;
+    onCommit?.();
     setIsClosing(true);
     if (restoreFocus) {
       const focusSwatch = () => swatchRef.current?.focus();
@@ -112,7 +114,7 @@ function ColorFieldComponent({ label, value, onChange, full = false }: ColorFiel
       closingTimerRef.current = null;
       handleClosingEnd();
     }, 260);
-  }, [handleClosingEnd, isOpen]);
+  }, [handleClosingEnd, isOpen, onCommit]);
 
   useEffect(() => {
     return () => {

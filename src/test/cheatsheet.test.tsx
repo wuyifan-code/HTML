@@ -47,6 +47,32 @@ describe("Cheatsheet overlay (App)", () => {
     expect(allText).toMatch(/Esc|F|Ctrl/);
   });
 
+  it("uses labelled dialog semantics and a definition list for shortcut rows", () => {
+    renderApp();
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: /快捷键/ }));
+    });
+    const dialog = screen.getByRole("dialog", { name: "快捷键" });
+    expect(dialog.getAttribute("aria-labelledby")).toBe("shortcuts-dialog-title");
+    expect(dialog.getAttribute("aria-describedby")).toBe("shortcuts-dialog-description");
+    expect(dialog.querySelector("dl")).not.toBeNull();
+  });
+
+  it("focuses the close control on open and restores focus to the trigger", () => {
+    renderApp();
+    const trigger = screen.getByRole("button", { name: /快捷键/ });
+    act(() => {
+      fireEvent.click(trigger);
+    });
+    const closeButton = screen.getByRole("button", { name: "关闭快捷键" });
+    expect(document.activeElement).toBe(closeButton);
+
+    act(() => {
+      fireEvent.click(closeButton);
+    });
+    expect(document.activeElement).toBe(trigger);
+  });
+
   it("点击 backdrop 关闭 cheatsheet", () => {
     renderApp();
     act(() => {

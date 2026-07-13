@@ -120,6 +120,8 @@ export function ViewportToolbar({
               type="button"
               className="segmented-button"
               data-dom-id={PRESET_DOM_IDS[preset.key]}
+              aria-label={preset.label}
+              title={preset.label}
               aria-pressed={isActive}
               onClick={() => handlePresetClick(preset)}
             >

@@ -1,12 +1,21 @@
-import { useState, useRef, useMemo, forwardRef, type PointerEvent } from "react";
+import { useState, useMemo, forwardRef, type PointerEvent } from "react";
 import { ChevronLeft } from "lucide-react";
 import { SourceCodeView } from "./SourceCodeView";
 import { DomTreeView } from "./DomTreeView";
-import { AiScanPopover } from "./AiScanPopover";
+import { AiScanPanel } from "./AiScanPanel";
 import type { DomTreeNode, AiTreeAnnotation } from "../../../types/editor";
+import { countTreeChildren, filterCollapsedTree } from "../../../utils/domTree";
+import type {
+  AiModelFetchStatus,
+  AiModelOption,
+  AiProviderDefinition,
+  AiProviderId,
+} from "../../../utils/aiStructure";
 
 interface SourcePanelProps {
   defaultTab?: "source" | "structure";
+  activeTab?: "source" | "structure" | "ai";
+  onActiveTabChange?: (tab: "source" | "structure" | "ai") => void;
   html: string;
   sourceDraft: string;
   onSourceDraftChange: (draft: string) => void;
@@ -25,6 +34,24 @@ interface SourcePanelProps {
   lineCount: number;
   aiStatus?: "idle" | "running" | "ready" | "error";
   aiError?: string;
+  aiProvider?: AiProviderId;
+  aiProviders?: AiProviderDefinition[];
+  onAiProviderChange?: (provider: AiProviderId) => void;
+  aiApiKey?: string;
+  aiKeyPlaceholder?: string;
+  onAiApiKeyChange?: (value: string) => void;
+  aiRememberKey?: boolean;
+  onAiRememberKeyChange?: (value: boolean) => void;
+  aiModel?: string;
+  aiModels?: AiModelOption[];
+  onAiModelChange?: (value: string) => void;
+  aiModelFetchStatus?: AiModelFetchStatus;
+  aiModelFetchError?: string;
+  onRefreshAiModels?: () => void;
+  aiAnnotationCount?: number;
+  onClearAiAnnotations?: () => void;
+  isAiCardCollapsed?: boolean;
+  onToggleAiCard?: () => void;
   isCollapsed?: boolean;
   onResizeStart?: (event: PointerEvent<HTMLButtonElement>) => void;
   onCollapseToggle?: () => void;
@@ -37,12 +64,15 @@ interface DomTreeItem {
   label: string;
   depth: number;
   hasChildren: boolean;
+  childCount: number;
   isOpen: boolean;
   diagnostics: number;
 }
 
 export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
   defaultTab = "source",
+  activeTab: controlledActiveTab,
+  onActiveTabChange,
   html,
   sourceDraft,
   onSourceDraftChange,
@@ -61,46 +91,49 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
   lineCount,
   aiStatus = "idle",
   aiError = "",
+  aiProvider = "google",
+  aiProviders = [],
+  onAiProviderChange = () => {},
+  aiApiKey = "",
+  aiKeyPlaceholder = "输入 API Key",
+  onAiApiKeyChange = () => {},
+  aiRememberKey = false,
+  onAiRememberKeyChange = () => {},
+  aiModel = "",
+  aiModels = [],
+  onAiModelChange = () => {},
+  aiModelFetchStatus = "idle",
+  aiModelFetchError = "",
+  onRefreshAiModels = () => {},
+  aiAnnotationCount = 0,
+  onClearAiAnnotations = () => {},
+  isAiCardCollapsed = false,
+  onToggleAiCard = () => {},
   isCollapsed = false,
   onResizeStart,
   onCollapseToggle,
   onApplySource,
 }, ref) => {
-  const [activeTab, setActiveTab] = useState<"source" | "structure">(defaultTab);
-  const [isAiPopoverOpen, setIsAiPopoverOpen] = useState(false);
-  const aiScanTriggerRef = useRef<HTMLButtonElement | null>(null);
-
-  const popoverStatus = useMemo(() => {
-    if (aiStatus === "running") return "scanning";
-    if (aiStatus === "ready") return "done";
-    if (aiStatus === "error") return "error";
-    return "idle";
-  }, [aiStatus]);
+  const [internalActiveTab, setInternalActiveTab] = useState<"source" | "structure" | "ai">(defaultTab);
+  const activeTab = controlledActiveTab ?? internalActiveTab;
 
   const treeItems = useMemo<DomTreeItem[]>(() => {
-    const depthCount = new Map<string, number>();
-    domTree.forEach((node) => {
-      depthCount.set(node.hftId, 0);
-    });
-    domTree.forEach((node, index) => {
-      for (let i = index + 1; i < domTree.length; i++) {
-        if (domTree[i].depth <= node.depth) break;
-        if (domTree[i].depth === node.depth + 1) {
-          depthCount.set(node.hftId, (depthCount.get(node.hftId) ?? 0) + 1);
-        }
-      }
-    });
+    const childCounts = countTreeChildren(domTree);
+    const visibleNodes = searchQuery.trim()
+      ? domTree
+      : filterCollapsedTree(domTree, collapsedTreeIds);
 
-    return domTree.map((node) => ({
+    return visibleNodes.map((node) => ({
       id: node.hftId,
       tagName: node.tagName,
       label: node.label || node.text || node.tagName,
       depth: node.depth,
-      hasChildren: (depthCount.get(node.hftId) ?? 0) > 0,
+      hasChildren: (childCounts[node.hftId] ?? 0) > 0,
+      childCount: childCounts[node.hftId] ?? 0,
       isOpen: !collapsedTreeIds.has(node.hftId),
       diagnostics: nodeDiagnostics[node.hftId] ?? 0,
     }));
-  }, [domTree, collapsedTreeIds, nodeDiagnostics]);
+  }, [domTree, collapsedTreeIds, nodeDiagnostics, searchQuery]);
 
   const handleAiScan = () => {
     onAiScan();
@@ -115,8 +148,9 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
     onSourceDraftChange(html);
   };
 
-  const handleTabChange = (tab: "source" | "structure") => {
-    setActiveTab(tab);
+  const handleTabChange = (tab: "source" | "structure" | "ai") => {
+    if (controlledActiveTab === undefined) setInternalActiveTab(tab);
+    onActiveTabChange?.(tab);
   };
 
   return (
@@ -128,7 +162,7 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
         "panel",
         isCollapsed ? "is-collapsed" : "",
       ].filter(Boolean).join(" ")}
-      aria-label="结构树"
+       aria-label={activeTab === "ai" ? "AI 结构扫描" : "结构树"}
       data-dom-id="panel-source-tree"
     >
       {!isCollapsed && (
@@ -141,11 +175,6 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
       )}
       <div
         className="nw-panel-tabs-row"
-        style={{
-          display: "flex",
-          alignItems: "center",
-          borderBottom: "1px solid var(--n-border-default)",
-        }}
       >
         <div
           className="nw-tabs"
@@ -171,6 +200,16 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
             data-dom-id="tab-structure"
           >
             DOM 树
+          </button>
+          <button
+            className={`nw-tab ${activeTab === "ai" ? "nw-tab-active" : ""}`}
+            onClick={() => handleTabChange("ai")}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "ai"}
+            data-dom-id="tab-ai"
+          >
+             AI 结构扫描
           </button>
         </div>
         {!isCollapsed && (
@@ -203,6 +242,30 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
             onCancelDraft={handleCancelDraft}
             onCopy={onCopy}
           />
+        ) : activeTab === "ai" ? (
+          <AiScanPanel
+            provider={aiProvider}
+            providers={aiProviders}
+            onProviderChange={onAiProviderChange}
+            apiKey={aiApiKey}
+            keyPlaceholder={aiKeyPlaceholder}
+            onApiKeyChange={onAiApiKeyChange}
+            rememberKey={aiRememberKey}
+            onRememberKeyChange={onAiRememberKeyChange}
+            model={aiModel}
+            models={aiModels}
+            onModelChange={onAiModelChange}
+            modelFetchStatus={aiModelFetchStatus}
+            modelFetchError={aiModelFetchError}
+            onRefreshModels={onRefreshAiModels}
+            status={aiStatus}
+            errorMessage={aiError}
+            annotationCount={aiAnnotationCount}
+            onScan={handleAiScan}
+            onClear={onClearAiAnnotations}
+            isCollapsed={isAiCardCollapsed}
+            onToggleCollapsed={onToggleAiCard}
+          />
         ) : (
           <>
             <DomTreeView
@@ -212,18 +275,7 @@ export const SourcePanel = forwardRef<HTMLElement, SourcePanelProps>(({
               selectedId={selectedId}
               onSelect={onSelectNode}
               onToggle={onToggleNode}
-              onAiScan={() => setIsAiPopoverOpen(true)}
               diagnosticsCount={diagnosticsCount}
-              triggerRef={aiScanTriggerRef}
-            />
-            <AiScanPopover
-              isOpen={isAiPopoverOpen}
-              onClose={() => setIsAiPopoverOpen(false)}
-              triggerRef={aiScanTriggerRef}
-              onScan={handleAiScan}
-              status={popoverStatus}
-              resultCount={diagnosticsCount}
-              errorMessage={aiError}
             />
           </>
         )

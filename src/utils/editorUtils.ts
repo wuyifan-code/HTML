@@ -1,5 +1,6 @@
 import type { SelectedSnapshot, ZoomMode } from "../types/editor";
-import { HFT_ID_ATTRIBUTE, getElementClassName, getNormalizedTagName } from "./editableElement";
+import { HFT_ID_ATTRIBUTE, HFT_SELECTED_ATTRIBUTE, getElementClassName, getNormalizedTagName } from "./editableElement";
+import { restoreEmbeddedAssetValue } from "./embeddedAssets";
 import { parseHtmlDocument } from "./injectEditableIds";
 import { getDomPath, queryElementByHftId, serializeDocument, getHoverBackgroundColor } from "./domPath";
 import { toKindLabel } from "./domTree";
@@ -39,6 +40,12 @@ export function formatRelativeTime(timestamp: number): string {
   return new Date(timestamp).toLocaleTimeString();
 }
 
+export function formatPreviewStatusMessage(message: string): string {
+  const normalized = message.trim();
+  if (/预览桥接已就绪|preview bridge ready/i.test(normalized)) return "预览已同步";
+  return normalized.slice(0, 180);
+}
+
 export function cssString(value: string): string {
   // 注入到 <style> 块的 CSS attribute selector 中:转义反斜杠和双引号,
   // 防止用户 id 含特殊字符破坏 selector 解析。
@@ -52,8 +59,10 @@ export function countSourceLines(value: string): number {
 export function getElementSourceValue(element: HTMLElement | SVGElement): string {
   const tagName = getNormalizedTagName(element);
   if (tagName === "svg") return element.getAttribute("viewBox") ?? "";
-  if (tagName === "image") return element.getAttribute("href") ?? element.getAttribute("xlink:href") ?? "";
-  return element.getAttribute("src") ?? element.getAttribute("href") ?? "";
+  const value = tagName === "image"
+    ? element.getAttribute("href") ?? element.getAttribute("xlink:href") ?? ""
+    : element.getAttribute("src") ?? element.getAttribute("href") ?? "";
+  return restoreEmbeddedAssetValue(element.ownerDocument, value);
 }
 
 export function getElementAltValue(element: HTMLElement | SVGElement): string {
@@ -114,7 +123,7 @@ export function buildSelectedSnapshot(html: string, hftId: string): SelectedSnap
   }
 }
 
-export function buildPreviewSrcDoc(html: string, selectedId: string | null, bridgeToken?: string): string {
+export function buildPreviewSrcDoc(html: string, _selectedId: string | null, bridgeToken?: string): string {
   let documentRef;
   try {
     documentRef = parseHtmlDocument(html);
@@ -122,22 +131,39 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
     // 畸形 HTML 不再让 iframe srcdoc 变空白 — 渲染一个"加载失败"的占位
     const message = error instanceof Error ? error.message : String(error);
     const safeMessage = message.replace(/[<&>]/g, "");
+    return `<!doctype html><html><body style="font-family:sans-serif;padding:24px;color:#be123c"><h3 id="html-finetune-preview-error" data-preview-error="true">Preview parse failed</h3><pre>${safeMessage}</pre></body></html>`;
     return `<!doctype html><html><body style="font-family:sans-serif;padding:24px;color:#be123c"><h3>预览解析失败</h3><pre>${safeMessage}</pre></body></html>`;
   }
+
+  // 导入的 HTML 属于不可信内容。预览仍允许展示其样式与结构，但不执行
+  // 用户脚本、内联事件处理器或 javascript: URL，避免脚本读取桥接 token
+  // 后伪造 postMessage 操作宿主编辑器。
+  documentRef.querySelectorAll("script, iframe, object, embed").forEach((node) => node.remove());
+  documentRef.querySelectorAll("*").forEach((element) => {
+    Array.from(element.attributes).forEach((attribute) => {
+      if (/^on/i.test(attribute.name) || attribute.name.toLowerCase() === "srcdoc") {
+        element.removeAttribute(attribute.name);
+      }
+    });
+    ["href", "src", "action", "formaction"].forEach((name) => {
+      const value = element.getAttribute(name);
+      if (value && /^\s*javascript:/i.test(value)) element.removeAttribute(name);
+    });
+  });
   const styleElement = documentRef.createElement("style");
   styleElement.textContent = `
     [${HFT_ID_ATTRIBUTE}] {
       cursor: pointer;
     }
     [${HFT_ID_ATTRIBUTE}]:hover {
-      outline: 2px dashed rgba(16, 184, 168, 0.6) !important;
+      outline: 1px dashed rgba(35, 131, 226, 0.55) !important;
       outline-offset: 3px !important;
     }
-    ${selectedId ? `[${HFT_ID_ATTRIBUTE}="${cssString(selectedId)}"] {
-      outline: 4px solid #10b8a8 !important;
+    [${HFT_SELECTED_ATTRIBUTE}="true"] {
+      outline: 2px solid #2383e2 !important;
       outline-offset: 4px !important;
-      box-shadow: 0 0 0 8px rgba(16, 184, 168, 0.16) !important;
-    }` : ""}
+      box-shadow: 0 0 0 3px rgba(35, 131, 226, 0.16) !important;
+    }
     #html-finetune-quickbar {
       position: fixed !important;
       z-index: 2147483647 !important;
@@ -145,27 +171,22 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       align-items: center;
       gap: 5px;
       max-width: min(94vw, 620px);
-      padding: 6px;
-      border: 1px solid rgba(15, 23, 42, 0.12);
-      border-radius: 14px;
-      background: rgba(255, 255, 255, 0.86);
-      box-shadow:
-        0 24px 64px rgba(15, 23, 42, 0.18),
-        0 6px 18px rgba(15, 23, 42, 0.08),
-        inset 0 1px 0 rgba(255, 255, 255, 0.78);
-      backdrop-filter: saturate(180%) blur(18px);
-      -webkit-backdrop-filter: saturate(180%) blur(18px);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "PingFang SC", ui-sans-serif, system-ui, sans-serif;
-      transform: translateY(6px) scale(0.98);
+      padding: 4px;
+      border: 1px solid rgba(55, 53, 47, 0.16);
+      border-radius: 6px;
+      background: #ffffff;
+      box-shadow: 0 4px 12px rgba(15, 15, 15, 0.14);
+      font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      transform: translateY(4px);
       opacity: 0;
       transform-origin: bottom left;
-      transition: opacity 180ms cubic-bezier(0.22, 1, 0.36, 1),
-                  transform 220ms cubic-bezier(0.22, 1, 0.36, 1);
+      transition: opacity 120ms cubic-bezier(0.2, 0, 0, 1),
+                  transform 120ms cubic-bezier(0.2, 0, 0, 1);
     }
     #html-finetune-quickbar[data-open="true"] {
       display: flex;
       opacity: 1;
-      transform: translateY(0) scale(1);
+      transform: translateY(0);
     }
     #html-finetune-quickbar .hft-qb-meta {
       display: inline-flex;
@@ -173,9 +194,9 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       gap: 6px;
       min-height: 30px;
       padding: 0 8px 0 6px;
-      border-radius: 10px;
-      color: #0f766e;
-      background: rgba(16, 184, 168, 0.1);
+      border-radius: 4px;
+      color: #2383e2;
+      background: rgba(35, 131, 226, 0.10);
       font-size: 11px;
       font-weight: 750;
       letter-spacing: 0;
@@ -186,14 +207,13 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       width: 7px;
       height: 7px;
       border-radius: 999px;
-      background: #10b8a8;
-      box-shadow: 0 0 0 3px rgba(16, 184, 168, 0.15);
+      background: #2383e2;
     }
     #html-finetune-quickbar .hft-qb-divider {
       width: 1px;
       height: 22px;
       margin: 0 1px;
-      background: linear-gradient(180deg, transparent, rgba(15, 23, 42, 0.14), transparent);
+      background: rgba(55, 53, 47, 0.12);
     }
     #html-finetune-quickbar button {
       position: relative;
@@ -205,18 +225,16 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       height: 30px;
       min-height: 30px;
       border: 1px solid transparent;
-      border-radius: 10px;
+      border-radius: 4px;
       background: transparent;
       color: #334155;
       padding: 0;
       font-size: 12px;
       font-weight: 650;
       cursor: pointer;
-      transition: background 160ms cubic-bezier(0.2, 0, 0, 1),
-                  border-color 160ms cubic-bezier(0.2, 0, 0, 1),
-                  color 160ms cubic-bezier(0.2, 0, 0, 1),
-                  box-shadow 160ms cubic-bezier(0.2, 0, 0, 1),
-                  transform 180ms cubic-bezier(0.22, 1, 0.36, 1);
+      transition: background 120ms cubic-bezier(0.2, 0, 0, 1),
+                  border-color 120ms cubic-bezier(0.2, 0, 0, 1),
+                  color 120ms cubic-bezier(0.2, 0, 0, 1);
     }
     #html-finetune-quickbar button svg {
       width: 15px;
@@ -243,7 +261,7 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       top: -34px;
       z-index: 2;
       padding: 5px 7px;
-      border-radius: 7px;
+      border-radius: 4px;
       background: rgba(17, 24, 39, 0.92);
       color: #ffffff;
       font-size: 11px;
@@ -252,8 +270,8 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       white-space: nowrap;
       opacity: 0;
       pointer-events: none;
-      transform: translate(-50%, 4px);
-      transition: opacity 140ms ease, transform 140ms ease;
+      transform: translate(-50%, 2px);
+      transition: opacity 120ms ease, transform 120ms ease;
     }
     #html-finetune-quickbar button:hover::after,
     #html-finetune-quickbar button:focus-visible::after {
@@ -263,14 +281,12 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
     #html-finetune-quickbar button:hover,
     #html-finetune-quickbar button:focus-visible {
       outline: none;
-      background: rgba(16, 184, 168, 0.1);
-      color: #0f766e;
-      border-color: rgba(16, 184, 168, 0.16);
-      box-shadow: 0 8px 18px rgba(15, 118, 110, 0.12);
-      transform: translateY(-1px);
+      background: rgba(35, 131, 226, 0.10);
+      color: #1a72cf;
+      border-color: rgba(35, 131, 226, 0.20);
     }
     #html-finetune-quickbar button:active {
-      transform: translateY(0) scale(0.96);
+      background: rgba(55, 53, 47, 0.12);
     }
     #html-finetune-quickbar button[data-action="delete"] {
       color: #be123c;
@@ -280,7 +296,7 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       background: #e5483f;
       border-color: #e5483f;
       color: #ffffff;
-      box-shadow: 0 8px 20px rgba(229, 72, 63, 0.24);
+      box-shadow: none;
     }
   `;
   documentRef.head.appendChild(styleElement);
@@ -290,6 +306,8 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
     (() => {
       const BRIDGE_TOKEN = ${JSON.stringify(bridgeToken ?? "")};
       const attr = "${HFT_ID_ATTRIBUTE}";
+      const selectedAttr = "${HFT_SELECTED_ATTRIBUTE}";
+      let suppressClickBridge = false;
       const modalSelectors = [
         "dialog",
         "[role='dialog']",
@@ -302,6 +320,177 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
 
       function findModal() {
         return document.querySelector(modalSelectors.join(","));
+      }
+
+      // Imported slide decks often keep inactive pages in the DOM with
+      // display:none. Tree selection must ask the deck's own controller to
+      // activate that page before trying to scroll or paint a selection.
+      const slideSelector = [
+        "section.slide",
+        ".slide",
+        "[data-slide]",
+        "[data-page]",
+        "[data-pdf-page]",
+        ".page",
+        "section[id^='slide-']",
+        "article[id^='slide-']"
+      ].join(",");
+      const slideApiMethods = [
+        "showSlide",
+        "goToSlide",
+        "gotoSlide",
+        "setSlide",
+        "activateSlide",
+        "activatePage",
+        "showPage",
+        "selectSlide",
+        "selectPage",
+        "setCurrentSlide",
+        "navigateToSlide"
+      ];
+
+      function getSlideNodes() {
+        const seen = new Set();
+        return Array.from(document.querySelectorAll(slideSelector)).filter((slide) => {
+          if (seen.has(slide)) return false;
+          seen.add(slide);
+          return !slide.matches("button, a, input, [role='button']");
+        });
+      }
+
+      function isShown(element) {
+        if (!(element instanceof Element)) return false;
+        let current = element;
+        while (current && current !== document.documentElement) {
+          const computed = window.getComputedStyle(current);
+          if (
+            computed.display === "none" ||
+            computed.visibility === "hidden" ||
+            computed.visibility === "collapse" ||
+            computed.opacity === "0"
+          ) return false;
+          current = current.parentElement;
+        }
+        return true;
+      }
+
+      function waitForShown(element, attempts = 12) {
+        return new Promise((resolve) => {
+          const check = (remaining) => {
+            if (isShown(element)) {
+              resolve(true);
+              return;
+            }
+            if (remaining <= 0) {
+              resolve(false);
+              return;
+            }
+            window.requestAnimationFrame(() => check(remaining - 1));
+          };
+          check(attempts);
+        });
+      }
+
+      async function callSlideApi(owner, methodName, slideIndex, slide) {
+        if (!owner || typeof owner[methodName] !== "function") return false;
+        const candidates = [slideIndex, slideIndex + 1, slide.id, slide];
+        for (const candidate of candidates) {
+          try {
+            const result = owner[methodName].call(owner, candidate);
+            if (result && typeof result.then === "function") await result;
+          } catch {
+            continue;
+          }
+          if (await waitForShown(slide, 8)) return true;
+        }
+        return false;
+      }
+
+      function getSlideControlValues(control) {
+        return [
+          control.getAttribute("data-slide"),
+          control.getAttribute("data-slide-index"),
+          control.getAttribute("data-page"),
+          control.getAttribute("data-page-index"),
+          control.getAttribute("data-target"),
+          control.getAttribute("data-slide-target"),
+          control.getAttribute("data-page-target"),
+          control.getAttribute("aria-controls"),
+          control.getAttribute("href")
+        ].filter(Boolean).map((value) => String(value));
+      }
+
+      function controlTargetsSlide(control, slide, slideIndex) {
+        if (control === slide || slide.contains(control)) return false;
+        const slideId = slide.id;
+        const slideKeys = [
+          slideId,
+          slide.getAttribute("data-slide"),
+          slide.getAttribute("data-page"),
+          String(slideIndex),
+          String(slideIndex + 1),
+          "slide-" + String(slideIndex + 1),
+          "page-" + String(slideIndex + 1),
+          "#slide-" + String(slideIndex + 1),
+          "#page-" + String(slideIndex + 1)
+        ].filter(Boolean).map((value) => String(value));
+        const values = getSlideControlValues(control);
+        return values.some((value) => slideKeys.includes(value));
+      }
+
+      async function activateSlideFor(target) {
+        const slide = target.closest(slideSelector);
+        if (!slide || isShown(target)) return { slide: null, index: -1, activated: true };
+
+        const slides = getSlideNodes();
+        const slideIndex = slides.indexOf(slide);
+        if (slideIndex < 0) return { slide, index: -1, activated: false };
+
+        const owners = [
+          window,
+          window.slideDeck,
+          window.slideshow,
+          window.deck,
+          window.presentation,
+          window.app
+        ].filter(Boolean);
+
+        for (const owner of owners) {
+          for (const methodName of slideApiMethods) {
+            if (await callSlideApi(owner, methodName, slideIndex, slide)) {
+              return { slide, index: slideIndex, activated: true };
+            }
+          }
+        }
+
+        const controls = Array.from(document.querySelectorAll(
+          "button, a, input, [role='button'], [data-slide-target], [data-page-target]"
+        ));
+        for (const control of controls) {
+          if (!controlTargetsSlide(control, slide, slideIndex)) continue;
+          try {
+            suppressClickBridge = true;
+            control.click();
+          } catch {
+            continue;
+          } finally {
+            suppressClickBridge = false;
+          }
+          if (await waitForShown(slide, 12)) {
+            return { slide, index: slideIndex, activated: true };
+          }
+        }
+
+        // Give decks that listen to a custom navigation event one chance,
+        // without mutating their classes/styles behind their back.
+        try {
+          document.dispatchEvent(new CustomEvent("html-finetune:activate-slide", {
+            detail: { index: slideIndex, slide }
+          }));
+        } catch {
+          // CustomEvent may be unavailable in very old embedded browsers.
+        }
+        return { slide, index: slideIndex, activated: await waitForShown(slide, 6) };
       }
 
       function sendStatus(message) {
@@ -411,6 +600,41 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
         const quickbar = document.getElementById("html-finetune-quickbar");
         if (quickbar) quickbar.dataset.open = "false";
         quickbarTarget = null;
+      }
+
+      function setSelection(hftId, shouldScroll) {
+        const current = document.querySelector("[" + selectedAttr + "='true']");
+        if (current) current.removeAttribute(selectedAttr);
+        if (!hftId) {
+          hideQuickbar();
+          return;
+        }
+
+        const target = document.querySelector("[" + attr + "='" + CSS.escape(String(hftId)) + "']");
+        if (!target) return;
+        target.setAttribute(selectedAttr, "true");
+        if (shouldScroll && typeof target.scrollIntoView === "function") {
+          target.scrollIntoView({ block: "nearest", inline: "nearest" });
+        }
+      }
+
+      async function selectElementByHftId(hftId, shouldScroll) {
+        const target = document.querySelector("[" + attr + "='" + CSS.escape(String(hftId)) + "']");
+        if (!target) return false;
+        const activation = await activateSlideFor(target);
+        setSelection(hftId, shouldScroll);
+        if (activation.slide && activation.activated) {
+          window.parent.postMessage({
+            type: "HTML_FINETUNE_OPTIMIZED_SLIDE_ACTIVATED",
+            hftId,
+            slideIndex: activation.index,
+            token: BRIDGE_TOKEN
+          }, "*");
+        }
+        if (activation.slide && !activation.activated) {
+          sendStatus("目标元素所在页面无法自动激活");
+        }
+        return true;
       }
 
       function showQuickbarFor(element) {
@@ -530,6 +754,7 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       }, true);
 
       document.addEventListener("click", (event) => {
+        if (suppressClickBridge) return;
         if (event.target instanceof Element && event.target.closest("#html-finetune-quickbar")) return;
         const target = event.target instanceof Element ? event.target.closest("[" + attr + "]") : null;
         if (!target) {
@@ -538,6 +763,7 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
         }
         event.preventDefault();
         event.stopPropagation();
+        setSelection(target.getAttribute(attr), false);
         showQuickbarFor(target);
         window.parent.postMessage({ type: "HTML_FINETUNE_OPTIMIZED_SELECT", hftId: target.getAttribute(attr), token: BRIDGE_TOKEN }, "*");
       }, true);
@@ -547,7 +773,18 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
       }, true);
 
       window.addEventListener("message", (event) => {
+        if (event.source !== window.parent) return;
+        if (event.origin !== "null" && event.origin !== window.location.origin) return;
         const data = event.data || {};
+        if (data.type === "HTML_FINETUNE_OPTIMIZED_SET_SELECTION") {
+          if (data.token !== BRIDGE_TOKEN) return;
+          if (typeof data.hftId === "string") {
+            void selectElementByHftId(data.hftId, true);
+          } else {
+            setSelection(null, false);
+          }
+          return;
+        }
         if (data.type === "HTML_FINETUNE_OPTIMIZED_MEASURE_CONTENT") {
           sendContentBounds();
           return;
@@ -574,6 +811,12 @@ export function buildPreviewSrcDoc(html: string, selectedId: string | null, brid
   documentRef.body.appendChild(scriptElement);
 
   return serializeDocument(documentRef);
+}
+
+export function getPreviewBuildError(srcDoc: string): string | null {
+  if (!srcDoc.includes('data-preview-error="true"')) return null;
+  const match = srcDoc.match(/<pre>([\s\S]*?)<\/pre>/i);
+  return match?.[1]?.replace(/<[^>]+>/g, "").trim() || "HTML 解析失败，请检查标签和属性是否完整";
 }
 
 const BLOCKING_EXPORT_WARNING_TYPES = [

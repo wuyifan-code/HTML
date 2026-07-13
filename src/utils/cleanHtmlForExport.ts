@@ -20,7 +20,10 @@ const INTERNAL_ATTRIBUTES = [
 const INTERNAL_NODE_SELECTORS = ["#html-finetune-bridge-style"];
 const HOVER_STYLE_SELECTOR = "style[data-html-finetune-hover-rules]";
 
-export function cleanHtmlForExport(html: string): string {
+export function cleanHtmlForExport(
+  html: string,
+  options: { preserveHftIds?: boolean } = {},
+): string {
   const documentRef = parseHtmlDocument(html);
 
   convertHoverRulesForExport(documentRef);
@@ -35,7 +38,10 @@ export function cleanHtmlForExport(html: string): string {
   documentRef.querySelectorAll("script").forEach((node) => node.remove());
 
   documentRef.querySelectorAll("*").forEach((element) => {
-    INTERNAL_ATTRIBUTES.forEach((attribute) => element.removeAttribute(attribute));
+    INTERNAL_ATTRIBUTES.forEach((attribute) => {
+      if (options.preserveHftIds && attribute === HFT_ID_ATTRIBUTE) return;
+      element.removeAttribute(attribute);
+    });
   });
 
   syncRemoteFontLibraryLinks(documentRef);

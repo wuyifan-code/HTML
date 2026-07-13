@@ -111,6 +111,32 @@ describe("capturePreviewAsPng", () => {
     expect(htmlToImage.toPng).toHaveBeenCalledTimes(2);
   });
 
+  it("uses top-level sections as pages when the HTML has no slide classes", async () => {
+    const doc = document.implementation.createHTMLDocument("section deck");
+    doc.body.innerHTML = `
+      <main>
+        <section id="hero"><h1 data-hft-id="title">Title</h1></section>
+        <section id="question"><p>Question</p></section>
+        <section id="solution"><p>Solution</p></section>
+      </main>
+    `;
+    const iframe = fakeIframe({ contentDocument: doc }) as unknown as HTMLIFrameElement;
+    const htmlToImage = { toPng: vi.fn().mockResolvedValue(TINY_PNG_DATA_URL) };
+
+    const pages = await capturePreviewAsPng({
+      html: "<html><body><main>sections</main></body></html>",
+      aiAnnotations: [{ hftId: "title" }],
+      htmlToImage,
+      createIframe: () => iframe,
+      waitForAssets: async () => undefined,
+      settle: async () => undefined,
+      measureTarget: () => ({ width: 1200, height: 800 }),
+    });
+
+    expect(pages).toHaveLength(3);
+    expect(htmlToImage.toPng).toHaveBeenCalledTimes(3);
+  });
+
   it("freezes canvas size to the first slide's dimensions, ignoring later measure values", async () => {
     // 关键回归测试: 即使后面 slide 测量出更小的尺寸, 也必须用第一张 slide 的尺寸。
     // 防止 "每页按当前 slide 缩放 iframe" 的旧实现回归 → 修这个 bug 的目的是

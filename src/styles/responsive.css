@@ -9,6 +9,13 @@
     flex-shrink: 1;
   }
 
+  .app-topbar-center,
+  .topbar-history-actions,
+  .topbar-separator,
+  .app-topbar-path {
+    display: none;
+  }
+
   .nw-left-panel {
     position: fixed;
     top: 0;
@@ -82,5 +89,21 @@
   .viewport-bar__dim input {
     width: 40px;
     font-size: 11px;
+  }
+}
+
+@media (max-width: 1080px) and (min-width: 761px) {
+  .topbar-file-action > span {
+    display: none;
+  }
+
+  .topbar-file-actions .topbar-file-action {
+    width: 28px;
+    justify-content: center;
+    padding-inline: 4px;
+  }
+
+  .app-topbar-actions {
+    width: auto;
   }
 }

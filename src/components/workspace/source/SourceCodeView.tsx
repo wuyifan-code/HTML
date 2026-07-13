@@ -1,8 +1,7 @@
-import { useMemo } from "react";
-import { Search, X, Copy, Check } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
+import { X, Copy, Check } from "lucide-react";
 import { IconSearch } from "../../Icons";
 import { Tooltip } from "../../Tooltip";
-import { useState } from "react";
 
 interface SourceCodeViewProps {
   value: string;
@@ -28,11 +27,16 @@ export function SourceCodeView({
   onCopy,
 }: SourceCodeViewProps) {
   const [copied, setCopied] = useState(false);
+  const gutterRef = useRef<HTMLPreElement | null>(null);
 
   const hasSearchResults = useMemo(() => {
     if (!searchQuery.trim()) return true;
     return value.toLowerCase().includes(searchQuery.toLowerCase());
   }, [value, searchQuery]);
+  const lineNumbers = useMemo(
+    () => Array.from({ length: Math.max(1, lineCount) }, (_, index) => index + 1).join("\n"),
+    [lineCount],
+  );
 
   const handleCopy = () => {
     onCopy();
@@ -66,13 +70,19 @@ export function SourceCodeView({
         <span className="source-search-count">{lineCount} 行</span>
       </div>
 
-      <textarea
-        className="source-code-textarea"
-        spellCheck={false}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        aria-label="HTML 源码"
-      />
+      <div className="source-code-editor">
+        <pre ref={gutterRef} className="source-code-gutter" aria-hidden="true">{lineNumbers}</pre>
+        <textarea
+          className="source-code-textarea"
+          spellCheck={false}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onScroll={(event) => {
+            if (gutterRef.current) gutterRef.current.scrollTop = event.currentTarget.scrollTop;
+          }}
+          aria-label="HTML 源码"
+        />
+      </div>
 
       {searchQuery && !hasSearchResults ? (
         <div className="source-search-empty">未找到匹配内容</div>

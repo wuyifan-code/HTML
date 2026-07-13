@@ -59,7 +59,7 @@ interface EditorContextProps {
 const EditorContext = createContext<EditorContextProps | undefined>(undefined);
 
 export function EditorProvider({ children }: { children: ReactNode }) {
-  const [sourceWidth, setSourceWidth] = useState(280);
+  const [sourceWidth, setSourceWidth] = useState(260);
   const [inspectorWidth, setInspectorWidth] = useState(320);
   const [isSourceCollapsed, setIsSourceCollapsed] = useState(false);
   const [isInspectorCollapsed, setIsInspectorCollapsed] = useState(false);

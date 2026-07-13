@@ -5,6 +5,7 @@ import {
   buildPptxBlob,
   exportPptxFromHtml,
   fitIntoBox,
+  addEditablePageToSlide,
   type PptxGenJsLike,
 } from "../utils/exportPptx";
 import { ExportError } from "../utils/exportErrors";
@@ -80,6 +81,94 @@ describe("fitIntoBox", () => {
 });
 
 describe("buildPptxBlob", () => {
+  it("creates editable text and shape objects from measured DOM elements", () => {
+    const target = document.createElement("section");
+    const panel = document.createElement("div");
+    panel.style.cssText = "background: rgb(10, 20, 30); border: 2px solid rgb(255, 255, 255);";
+    const heading = document.createElement("h1");
+    heading.textContent = "Editable title";
+    panel.appendChild(heading);
+    target.appendChild(panel);
+    document.body.appendChild(target);
+
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, top: 0, left: 0, right: 960, bottom: 540, width: 960, height: 540,
+      toJSON: () => ({}),
+    } as DOMRect);
+    vi.spyOn(panel, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, top: 0, left: 0, right: 480, bottom: 120, width: 480, height: 120,
+      toJSON: () => ({}),
+    } as DOMRect);
+    vi.spyOn(heading, "getBoundingClientRect").mockReturnValue({
+      x: 24, y: 20, top: 20, left: 24, right: 420, bottom: 84, width: 396, height: 64,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const slide = {
+      addImage: vi.fn(),
+      addShape: vi.fn(),
+      addText: vi.fn(),
+    };
+    const count = addEditablePageToSlide(slide, {
+      dataUrl: TINY_PNG_DATA_URL,
+      width: 960,
+      height: 540,
+      label: "Page",
+      target,
+      documentRef: document,
+      frameWindow: window,
+      index: 0,
+      total: 1,
+    });
+
+    expect(count).toBeGreaterThanOrEqual(2);
+    expect(slide.addShape).toHaveBeenCalled();
+    expect(slide.addText).toHaveBeenCalledWith("Editable title", expect.objectContaining({ fit: "shrink" }));
+    target.remove();
+  });
+
+  it("limits editable PPT objects to AI-scanned nodes when annotations are available", () => {
+    const target = document.createElement("section");
+    const panel = document.createElement("div");
+    panel.setAttribute("data-hft-id", "panel");
+    const heading = document.createElement("h1");
+    heading.setAttribute("data-hft-id", "heading");
+    heading.textContent = "Editable title";
+    panel.appendChild(heading);
+    target.appendChild(panel);
+    document.body.appendChild(target);
+
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, top: 0, left: 0, right: 960, bottom: 540, width: 960, height: 540,
+      toJSON: () => ({}),
+    } as DOMRect);
+    vi.spyOn(panel, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, top: 0, left: 0, right: 480, bottom: 120, width: 480, height: 120,
+      toJSON: () => ({}),
+    } as DOMRect);
+    vi.spyOn(heading, "getBoundingClientRect").mockReturnValue({
+      x: 24, y: 20, top: 20, left: 24, right: 420, bottom: 84, width: 396, height: 64,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const slide = { addImage: vi.fn(), addShape: vi.fn(), addText: vi.fn() };
+    const count = addEditablePageToSlide(slide, {
+      dataUrl: TINY_PNG_DATA_URL,
+      width: 960,
+      height: 540,
+      label: "Page",
+      target,
+      documentRef: document,
+      frameWindow: window,
+      index: 0,
+      total: 1,
+    }, [{ hftId: "heading" }]);
+
+    expect(count).toBe(1);
+    expect(slide.addText).toHaveBeenCalledTimes(1);
+    target.remove();
+  });
+
   it("rejects empty HTML", async () => {
     const pptx = makePptxGen();
     await expect(

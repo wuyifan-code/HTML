@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type DragEvent as ReactDragEvent, type MouseEvent as ReactMouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { ColorField } from "./components/ColorField";
 import { ExportDialog, type ExportFormat } from "./components/ExportDialog";
@@ -101,10 +101,12 @@ import {
 import {
   resolveZoomScale,
   formatRelativeTime,
+  formatPreviewStatusMessage,
   cssString,
   countSourceLines,
   buildSelectedSnapshot,
   buildPreviewSrcDoc,
+  getPreviewBuildError,
   hasBlockingExportWarnings,
   formatExportWarningSummary,
 } from "./utils/editorUtils";
@@ -113,6 +115,7 @@ import { TopBar } from "./components/workspace/shell/TopBar";
 import { StatusBar } from "./components/workspace/shell/StatusBar";
 import { EmptyWorkspace } from "./components/workspace/EmptyWorkspace";
 import { hasMeaningfulHtml, createEmptyDocument } from "./utils/documentState";
+import { loadPersistedDocument, savePersistedDocument } from "./utils/documentPersistence";
 import { scanDiagnostics, type EditorProblem } from "./utils/diagnostics";
 import { SourcePanel } from "./components/workspace/source/SourcePanel";
 import { CanvasPanel } from "./components/workspace/canvas/CanvasPanel";
@@ -124,7 +127,6 @@ const AI_LEGACY_GEMMA_KEY_STORAGE = "html-finetune.gemma-api-key";
 
 type SourceTab = "structure" | "source" | "ai";
 type ZoomMode = "fit" | "88" | "100";
-type InspectorTab = "content" | "style" | "interaction";
 type StatusTone = "ready" | "busy" | "warning" | "error";
 type PreviewContentBounds = {
   x: number;
@@ -158,13 +160,12 @@ type CopiedStyle = {
   objectFit: string;
   hoverBackgroundColor: string;
 };
-
-const BLOCKING_EXPORT_WARNING_TYPES: ExportWarning["type"][] = [
-  "internal-attribute",
-  "internal-element",
-  "empty-html",
-];
-const DEFAULT_SOURCE_WIDTH = 280;
+type PreparedExport = {
+  sourceHtml: string;
+  html: string;
+  warnings: ExportWarning[];
+};
+const DEFAULT_SOURCE_WIDTH = 260;
 const DEFAULT_INSPECTOR_WIDTH = 320;
 const MIN_SOURCE_WIDTH = 220;
 const MIN_INSPECTOR_WIDTH = 320;
@@ -222,6 +223,13 @@ interface SelectedSnapshot {
 }
 
 export default function App() {
+  const [persistedDocument] = useState(() => loadPersistedDocument());
+  const initialEditorState = useMemo(
+    () => persistedDocument
+      ? { html: persistedDocument.html, selectedId: persistedDocument.selectedId }
+      : { html: initialHtml, selectedId: null },
+    [persistedDocument]
+  );
   const {
     theme,
     setTheme,
@@ -256,7 +264,7 @@ export default function App() {
     canUndo,
     canRedo,
     flushDebouncedHistory,
-  } = useEditorHistory({ html: initialHtml, selectedId: null });
+  } = useEditorHistory(initialEditorState);
 
   const historyDisplayItems = useMemo(
     () => buildDisplayItemsFromSummaries(summaries, currentIndex, allEntries.map((e) => e.timestamp)),
@@ -274,6 +282,8 @@ export default function App() {
   const previewFrameRef = useRef<HTMLIFrameElement | null>(null);
   const workspaceRef = useRef<HTMLElement | null>(null);
   const treeScrollRef = useRef<HTMLDivElement | null>(null);
+  const preparedExportRef = useRef<PreparedExport | null>(null);
+  const cheatsheetRestoreFocusRef = useRef<HTMLElement | null>(null);
   const latestHtmlRef = useRef(state.html);
   const handleCloseHistory = useCallback(() => {
     setIsHistoryOpen(false);
@@ -289,7 +299,9 @@ export default function App() {
   const [search, setSearch] = useState("");
   const [collapsedTreeIds, setCollapsedTreeIds] = useState<Set<string>>(() => new Set());
   const [isSelectionCleared, setIsSelectionCleared] = useState(false);
-  const [isEmptyDoc, setIsEmptyDoc] = useState(true);
+  const [isGlobalDragOver, setIsGlobalDragOver] = useState(false);
+  const globalDragCounterRef = useRef(0);
+  const [isEmptyDoc, setIsEmptyDoc] = useState(() => !hasMeaningfulHtml(initialEditorState.html));
   const [sourceDraft, setSourceDraft] = useState(state.html);
   const hasHtmlUnclosedRisk = useMemo(() => {
     const openMatches = sourceDraft.match(/<(div|section|span|p|a|ul|li|ol|button)(?:\s[^>]*?)?>/g) || [];
@@ -324,19 +336,29 @@ export default function App() {
   const [draftSrc, setDraftSrc] = useState("");
   const [draftAlt, setDraftAlt] = useState("");
   const [statusMessage, setStatusMessage] = useState("实时预览 · 刚刚");
+  const [autoSaveStatus, setAutoSaveStatus] = useState<"idle" | "saving" | "saved" | "unavailable">("idle");
   const [toastMessage, setToastMessage] = useState("");
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [isCheatsheetOpen, setIsCheatsheetOpen] = useState(false);
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [exportDialogFormat, setExportDialogFormat] = useState<ExportFormat>("html");
   const [exportingFormat, setExportingFormat] = useState<"pdf" | "pptx" | null>(null);
-  // Inspector tab 合并后,保留 setInspectorTab 为 noop 避免破坏既有调用点。
-  // 后续清理可以删除所有调用并移除该函数。
-  const setInspectorTab = useCallback((_value: InspectorTab) => {
-    /* no-op: tabs are merged into a single scrollable panel */
+  const handleCloseCheatsheet = useCallback(() => {
+    setIsCheatsheetOpen(false);
+    cheatsheetRestoreFocusRef.current?.focus();
   }, []);
+  const handleToggleCheatsheet = useCallback((event?: ReactMouseEvent<HTMLElement>) => {
+    if (isCheatsheetOpen) {
+      handleCloseCheatsheet();
+      return;
+    }
+    cheatsheetRestoreFocusRef.current = event?.currentTarget ?? (
+      document.activeElement instanceof HTMLElement ? document.activeElement : null
+    );
+    setIsCheatsheetOpen(true);
+  }, [handleCloseCheatsheet, isCheatsheetOpen]);
   const stageRef = useRef<HTMLDivElement | null>(null);
-  const stageSize = useElementSize(stageRef);
+  const stageSize = useElementSize(stageRef, !isEmptyDoc);
   const [isChecking, setIsChecking] = useState(false);
   const [copiedStyle, setCopiedStyle] = useState<CopiedStyle | null>(null);
   const [isMobileShell, setIsMobileShell] = useState(false);
@@ -346,6 +368,7 @@ export default function App() {
   const [sourceSearch, setSourceSearch] = useState("");
   const [sourceSearchPosition, setSourceSearchPosition] = useState<{ matchNumber: number; lineNumber: number } | null>(null);
   const [hasImportedHtml, setHasImportedHtml] = useState(false);
+  const [documentName, setDocumentName] = useState(persistedDocument?.documentName ?? "Untitled");
   const [lastSyncedAt, setLastSyncedAt] = useState(() => Date.now());
   const [isAiCardCollapsed, setIsAiCardCollapsed] = useState(false);
   const [isPreviewReady, setIsPreviewReady] = useState(false);
@@ -367,15 +390,19 @@ export default function App() {
   const [aiError, setAiError] = useState("");
   const [aiAnnotations, setAiAnnotations] = useState<Record<string, AiTreeAnnotation>>({});
   const [aiPreflightNote, setAiPreflightNote] = useState("未运行");
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
   interface Toast { id: string; message: string; }
   const [toasts, setToasts] = useState<Toast[]>([]);
   const toastTimerRef = useRef<number | null>(null);
   const aiModelFetchRequestRef = useRef(0);
+  const aiModelRef = useRef("");
+  const restoredDocumentNoticeRef = useRef(Boolean(persistedDocument));
+  const autoSaveTimerRef = useRef<number | null>(null);
+  const latestDocumentRef = useRef(initialEditorState);
 
   const domTree = useMemo(() => buildEditableDomTree(state.html), [state.html]);
+  const selectedNodeIds = useMemo(() => new Set(domTree.map((node) => node.hftId)), [domTree]);
   const selectedId =
-    state.selectedId && domTree.some((node) => node.hftId === state.selectedId)
+    state.selectedId && selectedNodeIds.has(state.selectedId)
       ? state.selectedId
       : isSelectionCleared
         ? null
@@ -394,9 +421,17 @@ export default function App() {
     () => (search.trim() ? filteredTree : filterCollapsedTree(filteredTree, collapsedTreeIds)),
     [collapsedTreeIds, filteredTree, search]
   );
-  const previewSrcDoc = useMemo(() => buildPreviewSrcDoc(state.html, selectedId, bridgeTokenRef.current), [selectedId, state.html]);
-  const cleanHtml = useMemo(() => cleanHtmlForExport(state.html), [state.html]);
-  const exportWarnings = useMemo(() => getExportWarnings(cleanHtml), [cleanHtml]);
+  const previewSrcDoc = useMemo(
+    () => buildPreviewSrcDoc(state.html, null, bridgeTokenRef.current),
+    [state.html],
+  );
+  const previewBuildError = useMemo(() => getPreviewBuildError(previewSrcDoc), [previewSrcDoc]);
+  useEffect(() => {
+    if (previewBuildError) {
+      setIsPreviewReady(false);
+      setStatusMessage("预览解析失败，请检查源码");
+    }
+  }, [previewBuildError]);
   const diagnostics = useMemo(() => scanDiagnostics(state.html), [state.html]);
   const diagnosticsBySeverity = useMemo(() => ({
     errors: diagnostics.filter((p) => p.severity === "error" && !p.ignored).length,
@@ -404,7 +439,6 @@ export default function App() {
     infos: diagnostics.filter((p) => p.severity === "info" && !p.ignored).length,
     total: diagnostics.filter((p) => !p.ignored).length,
   }), [diagnostics]);
-  const isDocumentEmpty = useMemo(() => !hasMeaningfulHtml(state.html), [state.html]);
   const sourceLineCount = useMemo(() => countSourceLines(sourceDraft), [sourceDraft]);
   const sourceLineNumbers = useMemo(
     () => Array.from({ length: Math.max(1, sourceLineCount) }, (_, index) => String(index + 1)).join("\n"),
@@ -429,15 +463,27 @@ export default function App() {
       : sourceSyncState === "dirty"
         ? "当前修改只保存在源码草稿中，应用后会刷新画布。"
         : "源码草稿与当前画布保持一致。";
-  const blockingExportWarningCount = useMemo(
-    () => exportWarnings.filter((warning) => BLOCKING_EXPORT_WARNING_TYPES.includes(warning.type)).length,
-    [exportWarnings]
-  );
+  const prepareExport = useCallback((): PreparedExport => {
+    const cached = preparedExportRef.current;
+    if (cached?.sourceHtml === state.html) return cached;
+
+    const html = cleanHtmlForExport(state.html);
+    const prepared = {
+      sourceHtml: state.html,
+      html,
+      warnings: getExportWarnings(html),
+    };
+    preparedExportRef.current = prepared;
+    return prepared;
+  }, [state.html]);
   const currentAiProvider = AI_PROVIDER_MAP[aiProvider];
   const currentAiModels = aiModelOptions[aiProvider] ?? buildPresetAiModelOptions(currentAiProvider);
   const currentAiModel = aiModels[aiProvider] || currentAiProvider.defaultModel;
   const currentAiKey = aiApiKeys[aiProvider] ?? "";
   const currentAiRememberKey = Boolean(rememberAiKeys[aiProvider]);
+  useEffect(() => {
+    aiModelRef.current = currentAiModel;
+  }, [currentAiModel]);
   const selectedAnnotation = selected ? aiAnnotations[selected.hftId] : undefined;
   const aiRiskAnnotations = useMemo(
     () => Object.values(aiAnnotations).filter((annotation) => annotation.issues.length > 0),
@@ -478,8 +524,50 @@ export default function App() {
 
   useEffect(() => {
     latestHtmlRef.current = state.html;
+    latestDocumentRef.current = { html: state.html, selectedId: state.selectedId };
     setLastSyncedAt(Date.now());
-  }, [state.html]);
+  }, [state.html, state.selectedId]);
+
+  useEffect(() => {
+    if (!hasMeaningfulHtml(state.html)) {
+      setAutoSaveStatus("idle");
+      return;
+    }
+    if (autoSaveTimerRef.current !== null) window.clearTimeout(autoSaveTimerRef.current);
+    setAutoSaveStatus("saving");
+
+    autoSaveTimerRef.current = window.setTimeout(() => {
+      const result = savePersistedDocument(latestDocumentRef.current, documentName);
+      setAutoSaveStatus(result === "saved" ? "saved" : "unavailable");
+      autoSaveTimerRef.current = null;
+    }, 3000);
+
+    return () => {
+      if (autoSaveTimerRef.current !== null) {
+        window.clearTimeout(autoSaveTimerRef.current);
+        autoSaveTimerRef.current = null;
+      }
+    };
+  }, [documentName, state.html, state.selectedId]);
+
+  useEffect(() => {
+    const persistNow = (updateStatus = true) => {
+      if (hasMeaningfulHtml(latestDocumentRef.current.html)) {
+        const result = savePersistedDocument(latestDocumentRef.current, documentName);
+        if (updateStatus) setAutoSaveStatus(result === "saved" ? "saved" : "unavailable");
+      }
+    };
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "hidden") persistNow(true);
+    };
+    const handleBeforeUnload = () => persistNow(false);
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [documentName]);
 
   useEffect(() => {
     setIsEmptyDoc(!hasMeaningfulHtml(state.html));
@@ -623,7 +711,19 @@ export default function App() {
       window.setTimeout(measurePreviewContent, 120);
     });
     return () => window.cancelAnimationFrame(frameId);
-  }, [isPreviewReady, measurePreviewContent, previewSrcDoc, selectedId]);
+  }, [isPreviewReady, measurePreviewContent, previewSrcDoc]);
+
+  useEffect(() => {
+    if (!isPreviewReady) return;
+    previewFrameRef.current?.contentWindow?.postMessage(
+      {
+        type: "HTML_FINETUNE_OPTIMIZED_SET_SELECTION",
+        hftId: selectedId,
+        token: bridgeTokenRef.current,
+      },
+      "*",
+    );
+  }, [isPreviewReady, selectedId]);
 
   // Scroll the selected tree node into view (predictive return)
   useEffect(() => {
@@ -747,6 +847,8 @@ export default function App() {
       if (!data) return;
       // 安全守卫 1: 消息必须来自我们自己的 preview iframe
       if (event.source !== previewFrameRef.current?.contentWindow) return;
+      // srcDoc sandbox 使用 opaque origin (null)，同源部署则使用当前 origin。
+      if (event.origin !== window.location.origin && event.origin !== "null") return;
       // 安全守卫 2: 消息必须带匹配的 token,否则视为伪造
       if (typeof data.token !== "string" || data.token !== bridgeTokenRef.current) return;
       if (data.type === "HTML_FINETUNE_OPTIMIZED_CONTENT_BOUNDS") {
@@ -763,7 +865,7 @@ export default function App() {
         return;
       }
       if (data.type === "HTML_FINETUNE_OPTIMIZED_STATUS" && typeof data.message === "string") {
-        setStatusMessage(data.message.slice(0, 180));
+        setStatusMessage(formatPreviewStatusMessage(data.message));
         return;
       }
       if (data.type === "HTML_FINETUNE_OPTIMIZED_MODAL_STATE") {
@@ -795,13 +897,12 @@ export default function App() {
       ) {
         const hftId = data.hftId;
         const action = data.action;
-        if (!domTree.some((node) => node.hftId === hftId)) return;
+        if (!selectedNodeIds.has(hftId)) return;
         flushDebouncedHistory();
         setIsSelectionCleared(false);
 
         if (action === "edit-text") {
           commit({ html: latestHtmlRef.current, selectedId: hftId }, { record: false });
-          setInspectorTab("content");
           window.requestAnimationFrame(() => {
             const textarea = document.querySelector<HTMLTextAreaElement>("#contentInput");
             textarea?.focus();
@@ -888,7 +989,7 @@ export default function App() {
         }
       }
       if (data.type !== "HTML_FINETUNE_OPTIMIZED_SELECT" || typeof data.hftId !== "string") return;
-      if (!domTree.some((node) => node.hftId === data.hftId)) return;
+      if (!selectedNodeIds.has(data.hftId)) return;
       flushDebouncedHistory();
       setIsSelectionCleared(false);
       commit({ html: latestHtmlRef.current, selectedId: data.hftId }, { record: false });
@@ -897,7 +998,7 @@ export default function App() {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [commit, copiedStyle, domTree, flushDebouncedHistory]);
+  }, [commit, copiedStyle, flushDebouncedHistory, selectedNodeIds]);
 
   useEffect(() => {
     return () => {
@@ -911,6 +1012,13 @@ export default function App() {
     if (toastTimerRef.current) window.clearTimeout(toastTimerRef.current);
     toastTimerRef.current = window.setTimeout(() => setIsToastVisible(false), 1600);
   }, []);
+
+  useEffect(() => {
+    if (!restoredDocumentNoticeRef.current) return;
+    restoredDocumentNoticeRef.current = false;
+    setStatusMessage("已恢复上次未导出的修改");
+    showToast("已恢复上次未导出的修改");
+  }, [showToast]);
 
   const selectElement = useCallback(
     (hftId: string) => {
@@ -950,11 +1058,6 @@ export default function App() {
         showToast("只支持 HTML 文件");
         return;
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setStatusMessage("文件过大（上限 5MB），请减小后再试");
-        showToast("文件超过 5MB");
-        return;
-      }
 
       const reader = new FileReader();
       reader.onload = () => {
@@ -965,6 +1068,7 @@ export default function App() {
           setIsEmptyDoc(false);
           setSourceTab("structure");
           setHasImportedHtml(true);
+          setDocumentName(file.name || "Untitled");
           setStatusMessage(`已导入 ${file.name}`);
           showToast("HTML 已导入");
         } catch (error) {
@@ -992,6 +1096,54 @@ export default function App() {
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
   }, []);
+
+  useEffect(() => {
+    if (isEmptyDoc) return;
+
+    const hasHtmlFile = (event: DragEvent) => {
+      const types = Array.from(event.dataTransfer?.types ?? []);
+      return types.includes("Files");
+    };
+    const handleDragEnter = (event: DragEvent) => {
+      if (!hasHtmlFile(event)) return;
+      event.preventDefault();
+      globalDragCounterRef.current += 1;
+      setIsGlobalDragOver(true);
+    };
+    const handleDragOver = (event: DragEvent) => {
+      if (!hasHtmlFile(event)) return;
+      event.preventDefault();
+      if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
+    };
+    const handleDragLeave = (event: DragEvent) => {
+      if (!hasHtmlFile(event)) return;
+      globalDragCounterRef.current = Math.max(0, globalDragCounterRef.current - 1);
+      if (globalDragCounterRef.current === 0) setIsGlobalDragOver(false);
+    };
+    const handleDrop = (event: DragEvent) => {
+      if (!hasHtmlFile(event)) return;
+      globalDragCounterRef.current = 0;
+      setIsGlobalDragOver(false);
+      if (event.defaultPrevented) return;
+      const target = event.target;
+      if (target instanceof Element && target.closest(".empty-workspace, .source-code-view, .dom-tree-view")) return;
+      event.preventDefault();
+      handleFile(event.dataTransfer?.files?.[0]);
+    };
+
+    window.addEventListener("dragenter", handleDragEnter);
+    window.addEventListener("dragover", handleDragOver);
+    window.addEventListener("dragleave", handleDragLeave);
+    window.addEventListener("drop", handleDrop);
+    return () => {
+      window.removeEventListener("dragenter", handleDragEnter);
+      window.removeEventListener("dragover", handleDragOver);
+      window.removeEventListener("dragleave", handleDragLeave);
+      window.removeEventListener("drop", handleDrop);
+      globalDragCounterRef.current = 0;
+      setIsGlobalDragOver(false);
+    };
+  }, [handleFile, isEmptyDoc]);
 
   const handleApplyText = useCallback(() => {
     if (!selected) return;
@@ -1080,7 +1232,6 @@ export default function App() {
       commitHtml(nextHtml, selected.hftId);
       if (styles.fontWeight !== undefined) setDraftFontWeight(styles.fontWeight);
       if (styles.textAlign !== undefined) setDraftTextAlign(styles.textAlign);
-      setInspectorTab("style");
       setStatusMessage(label);
       showToast(label);
     },
@@ -1184,6 +1335,7 @@ export default function App() {
       setSourceTab("structure");
       setHasImportedHtml(true);
       setIsEmptyDoc(false);
+      setDocumentName("Pasted HTML");
       setStatusMessage("已从剪贴板粘贴 HTML");
       showToast("HTML 已粘贴");
     } catch (error) {
@@ -1195,7 +1347,8 @@ export default function App() {
 
   const handleCopy = useCallback(async () => {
     try {
-      await copyHtmlToClipboard(cleanHtml);
+      const prepared = prepareExport();
+      await copyHtmlToClipboard(prepared.html);
       setStatusMessage("已复制干净 HTML");
       showToast("已复制 HTML");
     } catch (error) {
@@ -1203,16 +1356,17 @@ export default function App() {
       setStatusMessage(message);
       showToast("复制失败");
     }
-  }, [cleanHtml, showToast]);
+  }, [prepareExport, showToast]);
 
   const handleOpenExport = useCallback((format: ExportFormat) => {
-    assertCleanExport(cleanHtml);
-    exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
+    const prepared = prepareExport();
+    assertCleanExport(prepared.html);
+    prepared.warnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
     setIsMobileActionsOpen(false);
     setExportDialogFormat(format);
     setIsExportDialogOpen(true);
-    setStatusMessage(exportWarnings.length ? `导出预览含 ${exportWarnings.length} 项警告` : "已生成导出前预览");
-  }, [cleanHtml, exportWarnings]);
+    setStatusMessage(prepared.warnings.length ? `导出预览含 ${prepared.warnings.length} 项警告` : "已生成导出前预览");
+  }, [prepareExport]);
 
   const handleCloseExportDialog = useCallback(() => {
     setIsExportDialogOpen(false);
@@ -1253,8 +1407,9 @@ export default function App() {
 
   const handleExportHtml = useCallback(() => {
     try {
-      assertCleanExport(cleanHtml);
-      exportHtml(cleanHtml);
+      const prepared = prepareExport();
+      assertCleanExport(prepared.html);
+      exportHtml(prepared.html);
       setIsExportDialogOpen(false);
       setStatusMessage("已导出 HTML");
       showToast("HTML 已导出");
@@ -1263,7 +1418,7 @@ export default function App() {
       setStatusMessage(message);
       showToast("导出失败");
     }
-  }, [cleanHtml, showToast]);
+  }, [prepareExport, showToast]);
 
   const handleAnalyzeStructure = useCallback(async () => {
     setAiStatus("running");
@@ -1324,13 +1479,16 @@ export default function App() {
       if (signal?.aborted) return;
       if (requestId !== aiModelFetchRequestRef.current) return;
       const merged = mergeAiModelOptions(remoteOptions, presetOptions);
+      if (requestId !== aiModelFetchRequestRef.current) return;
       setAiModelOptions((prev) => ({ ...prev, [aiProvider]: merged }));
-      if (!merged.some((option) => option.value === currentAiModel)) {
+      if (!merged.some((option) => option.value === aiModelRef.current)) {
+        if (requestId !== aiModelFetchRequestRef.current) return;
         setAiModels((models) => ({
           ...models,
           [aiProvider]: merged[0]?.value ?? AI_PROVIDER_MAP[aiProvider].defaultModel,
         }));
       }
+      if (requestId !== aiModelFetchRequestRef.current) return;
       setAiModelFetchStatus("ready");
       setStatusMessage(`已刷新 ${merged.length} 个模型`);
       if (mode === "manual") showToast("模型列表已刷新");
@@ -1345,7 +1503,7 @@ export default function App() {
         showToast("模型刷新失败");
       }
     }
-  }, [aiProvider, currentAiKey, currentAiModel, showToast]);
+  }, [aiProvider, currentAiKey, showToast]);
 
   useEffect(() => {
     const trimmedKey = currentAiKey.trim();
@@ -1363,6 +1521,9 @@ export default function App() {
     return () => {
       window.clearTimeout(timeoutId);
       controller.abort();
+      aiModelFetchRequestRef.current += 1;
+      setAiModelFetchStatus("idle");
+      setAiModelFetchError("");
     };
   }, [currentAiKey, handleRefreshAiModels]);
 
@@ -1461,12 +1622,13 @@ export default function App() {
 
   const handleExportPdf = useCallback(async () => {
     if (exportingFormat) return;
-    assertCleanExport(cleanHtml);
-    exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
-    if (hasBlockingExportWarnings(exportWarnings)) {
+    const prepared = prepareExport();
+    assertCleanExport(prepared.html);
+    prepared.warnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
+    if (hasBlockingExportWarnings(prepared.warnings)) {
       setExportDialogFormat("pdf");
       setIsExportDialogOpen(true);
-      setStatusMessage(`PDF 导出已暂停：${exportWarnings.length} 项导出警告`);
+      setStatusMessage(`PDF 导出已暂停：${prepared.warnings.length} 项导出警告`);
       showToast("请先检查导出预览");
       return;
     }
@@ -1476,7 +1638,9 @@ export default function App() {
       const annotations = await runAiExportPreflight();
       const riskCount = annotations.filter((annotation) => annotation.issues.length > 0).length;
       if (riskCount > 0) setStatusMessage(`AI 预检发现 ${riskCount} 个风险，继续导出 PDF`);
-      const pageCount = await exportPdfFromHtml(cleanHtml);
+      else if (annotations.length > 0) setStatusMessage(`已应用 AI 结构标注 ${annotations.length} 个，正在导出 PDF`);
+      const structuredHtml = cleanHtmlForExport(prepared.sourceHtml, { preserveHftIds: true });
+      const pageCount = await exportPdfFromHtml(structuredHtml, { aiAnnotations: annotations });
       setStatusMessage(`已导出 PDF · ${pageCount} 页`);
       showToast("PDF 已导出");
     } catch (error) {
@@ -1486,16 +1650,17 @@ export default function App() {
     } finally {
       setExportingFormat(null);
     }
-  }, [cleanHtml, exportWarnings, exportingFormat, runAiExportPreflight, showToast]);
+  }, [exportingFormat, prepareExport, runAiExportPreflight, showToast]);
 
   const handleExportPptx = useCallback(async () => {
     if (exportingFormat) return;
-    assertCleanExport(cleanHtml);
-    exportWarnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
-    if (hasBlockingExportWarnings(exportWarnings)) {
+    const prepared = prepareExport();
+    assertCleanExport(prepared.html);
+    prepared.warnings.forEach((warning) => console.warn(`[ExportWarning] ${warning.message}`));
+    if (hasBlockingExportWarnings(prepared.warnings)) {
       setExportDialogFormat("pptx");
       setIsExportDialogOpen(true);
-      setStatusMessage(`PPTX 导出已暂停：${exportWarnings.length} 项导出警告`);
+      setStatusMessage(`PPTX 导出已暂停：${prepared.warnings.length} 项导出警告`);
       showToast("请先检查导出预览");
       return;
     }
@@ -1505,7 +1670,9 @@ export default function App() {
       const annotations = await runAiExportPreflight();
       const riskCount = annotations.filter((annotation) => annotation.issues.length > 0).length;
       if (riskCount > 0) setStatusMessage(`AI 预检发现 ${riskCount} 个风险，继续导出 PPTX`);
-      const pageCount = await exportPptxFromHtml(cleanHtml);
+      else if (annotations.length > 0) setStatusMessage(`已应用 AI 结构标注 ${annotations.length} 个，正在导出 PPTX`);
+      const structuredHtml = cleanHtmlForExport(prepared.sourceHtml, { preserveHftIds: true });
+      const pageCount = await exportPptxFromHtml(structuredHtml, { aiAnnotations: annotations });
       setStatusMessage(`已导出 PPTX · ${pageCount} 页`);
       showToast("PPTX 已导出");
     } catch (error) {
@@ -1515,7 +1682,38 @@ export default function App() {
     } finally {
       setExportingFormat(null);
     }
-  }, [cleanHtml, exportWarnings, exportingFormat, runAiExportPreflight, showToast]);
+  }, [exportingFormat, prepareExport, runAiExportPreflight, showToast]);
+
+  useEffect(() => {
+    if (!isCheatsheetOpen) return;
+    const dialog = document.querySelector<HTMLElement>(".cheatsheet");
+    if (!dialog) return;
+
+    const getFocusable = () => Array.from(
+      dialog.querySelectorAll<HTMLElement>(
+        "button, [href], input, select, textarea, [tabindex]:not([tabindex='-1'])"
+      )
+    ).filter((element) => !element.hasAttribute("disabled"));
+
+    dialog.querySelector<HTMLElement>(".cheatsheet-close")?.focus();
+    const handleTab = (event: KeyboardEvent) => {
+      if (event.key !== "Tab") return;
+      const focusable = getFocusable();
+      if (!focusable.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    window.addEventListener("keydown", handleTab);
+    return () => window.removeEventListener("keydown", handleTab);
+  }, [isCheatsheetOpen]);
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1541,7 +1739,7 @@ export default function App() {
         }
         if (isCheatsheetOpen) {
           event.preventDefault();
-          setIsCheatsheetOpen(false);
+          handleCloseCheatsheet();
           return;
         }
         event.preventDefault();
@@ -1581,7 +1779,7 @@ export default function App() {
         redo();
         return;
       }
-      if (key === "s") {
+      if (key === "s" && !isTextInput) {
         event.preventDefault();
         handleExportHtml();
         return;
@@ -1614,7 +1812,6 @@ export default function App() {
       }
       if (key === "i" && !isTextInput) {
         event.preventDefault();
-        setInspectorTab("content");
         window.requestAnimationFrame(() => {
           const textarea = document.querySelector<HTMLTextAreaElement>("#contentInput");
           textarea?.focus();
@@ -1663,36 +1860,111 @@ export default function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [applyShortcutStyle, applyViewportPreset, commit, handleCopy, handleExportHtml, handleImportClick, handleOpenExport, isCheatsheetOpen, isInspectorCollapsed, isMobileActionsOpen, isMobileShell, isSourceCollapsed, redo, selected, showToast, state.html, undo]);
+  }, [applyShortcutStyle, applyViewportPreset, commit, handleCloseCheatsheet, handleCopy, handleExportHtml, handleImportClick, handleOpenExport, isCheatsheetOpen, isInspectorCollapsed, isMobileActionsOpen, isMobileShell, isSourceCollapsed, redo, selected, showToast, state.html, undo]);
 
-  // 3. 空格键抓手机械拖拽平移与物理惯性滚动引擎
-  // 注意:依赖 [stageSize.width, stageSize.height] 而不是 [stageRef.current],
-  // 因为 ref.current 的变化不触发 useEffect 重跑。
+  // 3. 空格键抓手平移：pointermove 只采样，滚动位置统一在 RAF 中提交。
+  // 这样不会让每一个原始指针事件都触发布局读取/写入，拖拽 iframe 预览时更稳定。
   useEffect(() => {
     const stage = stageRef.current;
     if (!stage) return;
 
     let isSpacePressed = false;
     let isDragging = false;
+    let pointerId: number | null = null;
     let startX = 0;
     let startY = 0;
-    let scrollLeft = 0;
-    let scrollTop = 0;
-
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+    let pendingX = 0;
+    let pendingY = 0;
+    let lastScrollLeft = 0;
+    let lastScrollTop = 0;
+    let lastSampleTime = 0;
     let velocityX = 0;
     let velocityY = 0;
-    let animationFrameId = 0;
-    let lastTime = 0;
+    let dragFrameId = 0;
+    let inertiaFrameId = 0;
+
+    const setSpaceCursor = () => {
+      stage.classList.toggle("is-space-ready", isSpacePressed && !isDragging);
+    };
+
+    const flushDrag = () => {
+      if (!isDragging) return;
+      const nextScrollLeft = startScrollLeft - (pendingX - startX);
+      const nextScrollTop = startScrollTop - (pendingY - startY);
+      const now = performance.now();
+      const elapsed = Math.max(8, now - lastSampleTime);
+
+      stage.scrollLeft = nextScrollLeft;
+      stage.scrollTop = nextScrollTop;
+      velocityX = (nextScrollLeft - lastScrollLeft) / elapsed;
+      velocityY = (nextScrollTop - lastScrollTop) / elapsed;
+      lastScrollLeft = nextScrollLeft;
+      lastScrollTop = nextScrollTop;
+      lastSampleTime = now;
+      dragFrameId = 0;
+    };
+
+    const scheduleDragFlush = () => {
+      if (dragFrameId) return;
+      dragFrameId = requestAnimationFrame(flushDrag);
+    };
+
+    const stopInertia = () => {
+      if (inertiaFrameId) cancelAnimationFrame(inertiaFrameId);
+      inertiaFrameId = 0;
+    };
+
+    const startInertia = () => {
+      stopInertia();
+      let previousTime = performance.now();
+      const step = (now: number) => {
+        const elapsed = Math.min(32, Math.max(8, now - previousTime));
+        previousTime = now;
+        stage.scrollLeft += velocityX * elapsed;
+        stage.scrollTop += velocityY * elapsed;
+
+        const friction = Math.pow(0.88, elapsed / 16.67);
+        velocityX *= friction;
+        velocityY *= friction;
+        if (Math.abs(velocityX) < 0.01 && Math.abs(velocityY) < 0.01) {
+          inertiaFrameId = 0;
+          return;
+        }
+        inertiaFrameId = requestAnimationFrame(step);
+      };
+      if (Math.abs(velocityX) >= 0.01 || Math.abs(velocityY) >= 0.01) {
+        inertiaFrameId = requestAnimationFrame(step);
+      }
+    };
+
+    const finishDrag = (withInertia: boolean) => {
+      if (!isDragging) return;
+      if (dragFrameId) {
+        cancelAnimationFrame(dragFrameId);
+        dragFrameId = 0;
+      }
+      flushDrag();
+      isDragging = false;
+      if (pointerId !== null && stage.hasPointerCapture?.(pointerId)) {
+        stage.releasePointerCapture(pointerId);
+      }
+      pointerId = null;
+      stage.classList.remove("is-panning");
+      setSpaceCursor();
+      if (withInertia) startInertia();
+    };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       const activeEl = document.activeElement?.tagName.toLowerCase();
       if (activeEl === "input" || activeEl === "textarea" || activeEl === "select") return;
 
-      if (e.key === " " || e.code === "Space") {
+      if ((e.key === " " || e.code === "Space") && !e.repeat) {
         if (!isSpacePressed) {
           e.preventDefault();
           isSpacePressed = true;
-          stage.style.cursor = "grab";
+          setSpaceCursor();
         }
       }
     };
@@ -1700,8 +1972,8 @@ export default function App() {
     const handleKeyUp = (e: KeyboardEvent) => {
       if (e.key === " " || e.code === "Space") {
         isSpacePressed = false;
-        isDragging = false;
-        stage.style.cursor = "";
+        if (isDragging) finishDrag(true);
+        setSpaceCursor();
       }
     };
 
@@ -1710,72 +1982,55 @@ export default function App() {
       const isLeft = e.button === 0;
       if (!isMiddle && !(isLeft && isSpacePressed)) return;
 
+      e.preventDefault();
+      stopInertia();
       isDragging = true;
-      stage.style.cursor = "grabbing";
-
+      pointerId = e.pointerId;
+      stage.classList.add("is-panning");
+      stage.classList.remove("is-space-ready");
+      stage.setPointerCapture?.(e.pointerId);
       startX = e.clientX;
       startY = e.clientY;
-      scrollLeft = stage.scrollLeft;
-      scrollTop = stage.scrollTop;
-
+      pendingX = e.clientX;
+      pendingY = e.clientY;
+      startScrollLeft = stage.scrollLeft;
+      startScrollTop = stage.scrollTop;
+      lastScrollLeft = startScrollLeft;
+      lastScrollTop = startScrollTop;
       velocityX = 0;
       velocityY = 0;
-      lastTime = performance.now();
-      cancelAnimationFrame(animationFrameId);
+      lastSampleTime = performance.now();
     };
 
     const handlePointerMove = (e: PointerEvent) => {
-      if (!isDragging) return;
+      if (!isDragging || (pointerId !== null && e.pointerId !== pointerId)) return;
       e.preventDefault();
-
-      const deltaX = e.clientX - startX;
-      const deltaY = e.clientY - startY;
-
-      stage.scrollLeft = scrollLeft - deltaX;
-      stage.scrollTop = scrollTop - deltaY;
-
-      const now = performance.now();
-      const elapsed = now - lastTime;
-      if (elapsed > 0) {
-        velocityX = (deltaX / elapsed) * 16;
-        velocityY = (deltaY / elapsed) * 16;
-      }
-      lastTime = now;
+      pendingX = e.clientX;
+      pendingY = e.clientY;
+      scheduleDragFlush();
     };
 
-    const handlePointerUp = () => {
-      if (!isDragging) return;
-      isDragging = false;
-      stage.style.cursor = isSpacePressed ? "grab" : "";
+    const handlePointerUp = () => finishDrag(true);
 
-      const friction = 0.94;
-      const step = () => {
-        if (Math.abs(velocityX) < 0.15 && Math.abs(velocityY) < 0.15) {
-          cancelAnimationFrame(animationFrameId);
-          return;
-        }
-        stage.scrollLeft -= velocityX;
-        stage.scrollTop -= velocityY;
-        velocityX *= friction;
-        velocityY *= friction;
-        animationFrameId = requestAnimationFrame(step);
-      };
-      animationFrameId = requestAnimationFrame(step);
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    window.addEventListener("keyup", handleKeyUp);
+    window.addEventListener("keydown", handleKeyDown, true);
+    window.addEventListener("keyup", handleKeyUp, true);
     stage.addEventListener("pointerdown", handlePointerDown);
-    window.addEventListener("pointermove", handlePointerMove);
-    window.addEventListener("pointerup", handlePointerUp);
+    stage.addEventListener("pointermove", handlePointerMove);
+    stage.addEventListener("pointerup", handlePointerUp);
+    stage.addEventListener("pointercancel", handlePointerUp);
+    stage.addEventListener("lostpointercapture", handlePointerUp);
 
     return () => {
-      window.removeEventListener("keydown", handleKeyDown);
-      window.removeEventListener("keyup", handleKeyUp);
+      window.removeEventListener("keydown", handleKeyDown, true);
+      window.removeEventListener("keyup", handleKeyUp, true);
       stage.removeEventListener("pointerdown", handlePointerDown);
-      window.removeEventListener("pointermove", handlePointerMove);
-      window.removeEventListener("pointerup", handlePointerUp);
-      cancelAnimationFrame(animationFrameId);
+      stage.removeEventListener("pointermove", handlePointerMove);
+      stage.removeEventListener("pointerup", handlePointerUp);
+      stage.removeEventListener("pointercancel", handlePointerUp);
+      stage.removeEventListener("lostpointercapture", handlePointerUp);
+      if (dragFrameId) cancelAnimationFrame(dragFrameId);
+      stopInertia();
+      stage.classList.remove("is-panning", "is-space-ready");
     };
   }, [stageSize.width, stageSize.height]);
 
@@ -1785,6 +2040,7 @@ export default function App() {
       const target = e.target as HTMLElement;
       const btn = target.closest(".ds-btn, .icon-button, .segmented-button, .history-drawer-row");
       if (!btn) return;
+      if (btn instanceof HTMLButtonElement && btn.disabled) return;
 
       const rect = btn.getBoundingClientRect();
       const ripple = document.createElement("span");
@@ -1947,7 +2203,7 @@ export default function App() {
         onExport={handleOpenExport}
         onImportClick={handleImportClick}
         onCopy={handleCopy}
-        onToggleCheatsheet={() => setIsCheatsheetOpen(v => !v)}
+        onToggleCheatsheet={handleToggleCheatsheet}
         exportingFormat={exportingFormat}
         isMobileShell={isMobileShell}
         isMobileActionsOpen={isMobileActionsOpen}
@@ -1957,6 +2213,7 @@ export default function App() {
         exportTriggerRef={exportTriggerRef}
         mobileActionsRef={mobileActionsRef}
         onFileSelected={(file) => { handleFile(file); }}
+        documentName={documentName}
         zoomMode={zoomMode}
         onZoomChange={setZoomMode}
         viewportPreset={matchingViewportPreset ?? "desktop"}
@@ -2033,6 +2290,8 @@ export default function App() {
         )}
         <SourcePanel
           ref={sourcePanelRef}
+          activeTab={sourceTab}
+          onActiveTabChange={setSourceTab}
           html={state.html}
           sourceDraft={sourceDraft}
           onSourceDraftChange={setSourceDraft}
@@ -2053,6 +2312,31 @@ export default function App() {
           lineCount={sourceLineCount}
           aiStatus={aiStatus}
           aiError={aiError}
+          aiProvider={aiProvider}
+          aiProviders={AI_PROVIDER_DEFINITIONS}
+          onAiProviderChange={(nextProvider) => {
+            setAiProvider(nextProvider);
+            setAiModels((models) => ({
+              ...models,
+              [nextProvider]: models[nextProvider] || AI_PROVIDER_MAP[nextProvider].defaultModel,
+            }));
+            setAiModelFetchError("");
+          }}
+          aiApiKey={currentAiKey}
+          aiKeyPlaceholder={currentAiProvider.keyPlaceholder}
+          onAiApiKeyChange={(value) => setAiApiKeys((keys) => ({ ...keys, [aiProvider]: value }))}
+          aiRememberKey={currentAiRememberKey}
+          onAiRememberKeyChange={(value) => setRememberAiKeys((values) => ({ ...values, [aiProvider]: value }))}
+          aiModel={currentAiModel}
+          aiModels={currentAiModels}
+          onAiModelChange={(value) => setAiModels((models) => ({ ...models, [aiProvider]: value }))}
+          aiModelFetchStatus={aiModelFetchStatus}
+          aiModelFetchError={aiModelFetchError}
+          onRefreshAiModels={() => void handleRefreshAiModels("manual")}
+          aiAnnotationCount={Object.keys(aiAnnotations).length}
+          onClearAiAnnotations={handleClearAiAnnotations}
+          isAiCardCollapsed={isAiCardCollapsed}
+          onToggleAiCard={() => setIsAiCardCollapsed((value) => !value)}
           isCollapsed={isSourceCollapsed}
           onResizeStart={handleStartPanelResize("source")}
           onCollapseToggle={handleCloseSourcePanel}
@@ -2067,6 +2351,7 @@ export default function App() {
           matchingViewportPreset={matchingViewportPreset}
           aiStatus={aiStatus}
           onViewportPresetChange={applyViewportPreset}
+          onViewportChange={setViewportSize}
           onZoomModeChange={setZoomMode}
           onFocusToggle={() => {
             setIsFocusMode(!isFocusMode);
@@ -2083,6 +2368,7 @@ export default function App() {
           previewScale={previewScale}
           isContentFitPreview={isContentFitPreview}
           previewIframeStyle={previewIframeStyle}
+          previewError={previewBuildError}
         />
 
         {isInspectorCollapsed && (
@@ -2171,11 +2457,20 @@ export default function App() {
         </>)}
       </main>
 
+      {!isEmptyDoc && isGlobalDragOver ? (
+        <div className="global-drag-overlay" role="status" aria-live="polite">
+          释放 HTML 文件以替换当前文档
+        </div>
+      ) : null}
+
       <StatusBar
         htmlLength={state.html.length}
         selectedLabel={selected?.label ?? "未选择"}
         statusMessage={statusMessage}
         statusTone={statusTone}
+        autoSaveStatus={autoSaveStatus}
+        hasSelection={Boolean(selected)}
+        viewportPreset={matchingViewportPreset}
         viewportWidth={viewportSize.width}
         viewportHeight={viewportSize.height}
         diagnosticsErrors={diagnosticsBySeverity.errors}
@@ -2185,8 +2480,8 @@ export default function App() {
 
       {isExportDialogOpen ? (
         <ExportDialog
-          html={cleanHtml}
-          warnings={exportWarnings}
+          html={preparedExportRef.current?.html ?? ""}
+          warnings={preparedExportRef.current?.warnings ?? []}
           onClose={handleCloseExportDialog}
           onCopyHtml={handleCopy}
           onDownloadHtml={handleExportHtml}
@@ -2201,67 +2496,68 @@ export default function App() {
       <div className={`toast${isToastVisible ? " is-visible" : ""}`} role="status" aria-live="polite">{toastMessage || "已更新"}</div>
 
       {isCheatsheetOpen ? (
-        <div className="cheatsheet-backdrop" onClick={() => setIsCheatsheetOpen(false)}>
+        <div className="cheatsheet-backdrop" onClick={handleCloseCheatsheet}>
           <section
             className="cheatsheet"
             role="dialog"
             aria-modal="true"
-            aria-label="快捷键"
+            aria-labelledby="shortcuts-dialog-title"
+            aria-describedby="shortcuts-dialog-description"
             onClick={(event) => event.stopPropagation()}
           >
             <header className="cheatsheet-head">
               <div>
-                <h2>快捷键</h2>
-                <p>不离开键盘完成所有操作</p>
+                <h2 id="shortcuts-dialog-title">快捷键</h2>
+                <p id="shortcuts-dialog-description">不离开键盘完成所有操作</p>
               </div>
-              <button className="icon-btn" type="button" aria-label="关闭" onClick={() => setIsCheatsheetOpen(false)}>×</button>
+              <button className="icon-btn cheatsheet-close" type="button" aria-label="关闭快捷键" onClick={handleCloseCheatsheet}>×</button>
             </header>
             <div className="cheatsheet-body">
               <section className="cheatsheet-section">
                 <h3 className="cheatsheet-section__title">编辑</h3>
-                <div className="cheatsheet-list">
+                <dl className="cheatsheet-list">
                   <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd><span>+</span><kbd>Z</kbd></dt><dd>撤销</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd><span>+</span><kbd>Y</kbd></dt><dd>重做</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>Shift</kbd><span>+</span><kbd>Ctrl/⌘</kbd><span>+</span><kbd>Z</kbd></dt><dd>重做（备选）</dd></div>
-                </div>
+                </dl>
               </section>
 
               <section className="cheatsheet-section">
                 <h3 className="cheatsheet-section__title">文件</h3>
-                <div className="cheatsheet-list">
+                <dl className="cheatsheet-list">
                   <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd><span>+</span><kbd>O</kbd></dt><dd>导入 HTML</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>Ctrl/⌘</kbd><span>+</span><kbd>S</kbd></dt><dd>导出</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>Shift</kbd><span>+</span><kbd>Ctrl/⌘</kbd><span>+</span><kbd>C</kbd></dt><dd>复制干净 HTML</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>E</kbd></dt><dd>导出预览</dd></div>
-                </div>
+                </dl>
               </section>
 
               <section className="cheatsheet-section">
                 <h3 className="cheatsheet-section__title">画布</h3>
-                <div className="cheatsheet-list">
+                <dl className="cheatsheet-list">
                   <div className="cheatsheet-row"><dt><kbd>D</kbd></dt><dd>复制当前元素</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>I</kbd></dt><dd>在右侧检查器编辑文字</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>F</kbd></dt><dd>聚焦结构树搜索</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>1</kbd><span>·</span><kbd>2</kbd><span>·</span><kbd>3</kbd><span>·</span><kbd>4</kbd></dt><dd>切换 viewport 预设</dd></div>
-                </div>
+                </dl>
               </section>
 
               <section className="cheatsheet-section">
                 <h3 className="cheatsheet-section__title">样式</h3>
-                <div className="cheatsheet-list">
+                <dl className="cheatsheet-list">
                   <div className="cheatsheet-row"><dt><kbd>B</kbd></dt><dd>粗体</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>L</kbd></dt><dd>左对齐</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>R</kbd></dt><dd>右对齐</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>J</kbd></dt><dd>两端对齐</dd></div>
-                </div>
+                </dl>
               </section>
 
               <section className="cheatsheet-section">
                 <h3 className="cheatsheet-section__title">其它</h3>
-                <div className="cheatsheet-list">
+                <dl className="cheatsheet-list">
                   <div className="cheatsheet-row"><dt><kbd>?</kbd></dt><dd>显示本面板</dd></div>
                   <div className="cheatsheet-row"><dt><kbd>Esc</kbd></dt><dd>关闭弹窗 / 取消选择</dd></div>
-                </div>
+                </dl>
               </section>
             </div>
           </section>

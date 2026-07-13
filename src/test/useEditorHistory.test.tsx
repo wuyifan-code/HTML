@@ -1,6 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { useEditorHistory } from "../hooks/useEditorHistory";
+import { MAX_HISTORY_ENTRIES, useEditorHistory } from "../hooks/useEditorHistory";
 
 const initialState = { html: "<main><p>第一版</p></main>", selectedId: null };
 const changedState = { html: "<main><p>第二版</p></main>", selectedId: null };
@@ -51,5 +51,12 @@ describe("useEditorHistory", () => {
     expect(result.current.allEntries).toHaveLength(2);
     expect(result.current.summaries[0]).toBeNull();
     expect(result.current.summaries[1]?.title).toBe("修改文本");
+  });
+  it("caps the undo timeline so long editing sessions stay bounded", () => {
+    const { result } = renderHook(() => useEditorHistory(initialState));
+    for (let index = 0; index < MAX_HISTORY_ENTRIES + 25; index += 1) {
+      act(() => result.current.commit({ html: `<main>${index}</main>`, selectedId: null }));
+    }
+    expect(result.current.allEntries.length).toBeLessThanOrEqual(MAX_HISTORY_ENTRIES + 1);
   });
 });

@@ -8,7 +8,7 @@
   background: var(--n-bg-elevated);
   box-shadow: var(--elev-floating, 0 2px 8px rgba(15,15,15,0.08));
   opacity: 0;
-  transform: translateY(-4px) scale(0.97);
+  transform: translateY(-4px);
   transition:
     opacity var(--n-duration-base) var(--n-ease),
     transform var(--n-duration-base) var(--n-ease);
@@ -17,7 +17,7 @@
 
 .menu.is-open {
   opacity: 1;
-  transform: translateY(0) scale(1);
+  transform: translateY(0);
 }
 
 .menu-item {

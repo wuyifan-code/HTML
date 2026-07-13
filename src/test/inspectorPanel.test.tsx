@@ -250,7 +250,7 @@ describe("InspectorPanel", () => {
     const textarea = screen.getByPlaceholderText("输入文本内容");
     expect(textarea).toBeInTheDocument();
     expect(textarea).toHaveValue("Hello World");
-    expect(screen.getByText("应用到 Canvas")).toBeInTheDocument();
+    expect(screen.getByText("更新文字")).toBeInTheDocument();
   });
 
   it("空状态不显示元素相关区块", () => {
@@ -261,7 +261,7 @@ describe("InspectorPanel", () => {
     expect(container.querySelector(".inspector-body")).toBeNull();
   });
 
-  it("选择元素后显示 Inspector 标题", () => {
+  it("选择元素后显示本地化的属性标题", () => {
     render(
       <InspectorPanel
         {...baseProps}
@@ -269,7 +269,49 @@ describe("InspectorPanel", () => {
       />
     );
 
-    expect(screen.getByText("Inspector")).toBeInTheDocument();
+    expect(screen.getByText("属性")).toBeInTheDocument();
+    expect(screen.queryByText("Inspector")).toBeNull();
+  });
+
+  it("keeps element commands in a stable toolbar below the selection summary", () => {
+    const { container } = render(
+      <InspectorPanel
+        {...baseProps}
+        selected={mockSelected}
+      />
+    );
+
+    const commandBar = container.querySelector(".inspector-command-bar");
+    expect(commandBar).not.toBeNull();
+    expect(commandBar?.querySelectorAll("button")).toHaveLength(7);
+    expect(screen.queryByText("属性详情")).toBeNull();
+  });
+
+  it("keeps the primary style action outside the inspector scroll region", () => {
+    const { container } = render(
+      <InspectorPanel
+        {...baseProps}
+        selected={mockSelected}
+      />
+    );
+
+    const body = container.querySelector(".inspector-body");
+    const footer = container.querySelector(".inspector-footer");
+    expect(footer).not.toBeNull();
+    expect(body?.contains(footer)).toBe(false);
+  });
+
+  it("keeps diagnostics collapsed until the user needs it", () => {
+    const { container } = render(
+      <InspectorPanel
+        {...baseProps}
+        selected={mockSelected}
+      />
+    );
+
+    const diagnosticTitle = Array.from(container.querySelectorAll(".inspector-card__head-title"))
+      .find((element) => element.textContent === "诊断");
+    expect(diagnosticTitle?.closest("button")?.getAttribute("aria-expanded")).toBe("false");
   });
 
   it("canEditSelectedText 为 false 时不显示文本编辑区", () => {

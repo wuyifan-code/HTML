@@ -141,7 +141,7 @@ function ExportDialogImpl({
       if (event.key === "Escape") {
         event.preventDefault();
         event.stopPropagation();
-        onClose();
+        if (!isExporting) onClose();
         return;
       }
       if (event.key !== "Tab") return;
@@ -166,14 +166,14 @@ function ExportDialogImpl({
         firstElement.focus();
       }
     },
-    [getFocusableElements, onClose]
+    [getFocusableElements, isExporting, onClose]
   );
 
   const handleBackdropMouseDown = useCallback((event: MouseEvent<HTMLDivElement>) => {
-    if (event.target === event.currentTarget) {
+    if (!isExporting && event.target === event.currentTarget) {
       onClose();
     }
-  }, [onClose]);
+  }, [isExporting, onClose]);
 
   const handleFormatChange = useCallback((format: ExportFormat) => {
     setActiveFormat(format);
@@ -190,8 +190,9 @@ function ExportDialogImpl({
     <div className="dialog-backdrop" role="presentation" onMouseDown={handleBackdropMouseDown}>
       <section
         ref={dialogRef}
-        className="export-dialog"
+        className={`export-dialog${isExporting ? " is-exporting" : ""}`}
         data-state={dialogState}
+        aria-busy={isExporting}
         role="dialog"
         aria-modal="true"
         aria-labelledby="export-dialog-title"
@@ -210,7 +211,7 @@ function ExportDialogImpl({
               <p id="export-dialog-description">选择格式并导出当前文档。</p>
             </div>
           </div>
-          <button ref={closeButtonRef} className="icon-button" type="button" onClick={onClose} aria-label="关闭导出">
+          <button ref={closeButtonRef} className="icon-button" type="button" onClick={onClose} aria-label="关闭导出" disabled={isExporting}>
             <X size={18} strokeWidth={1.75} />
           </button>
         </header>
@@ -223,8 +224,10 @@ function ExportDialogImpl({
               role="tab"
               className={`export-format-tab${activeFormat === format ? " is-active" : ""}`}
               aria-selected={activeFormat === format}
+              aria-disabled={isExporting}
               data-dom-id={`tab-format-${format}`}
               onClick={() => handleFormatChange(format)}
+              disabled={isExporting}
             >
               {FORMAT_LABELS[format]}
             </button>
@@ -324,7 +327,7 @@ function ExportDialogImpl({
           )}
           {activeFormat === "pptx" && (
             <div className="export-format-prompt">
-              <p>导出当前文档为 PPTX 演示文稿。</p>
+              <p>导出可编辑 PPTX：文本、形状和图片将作为独立对象写入演示文稿。</p>
             </div>
           )}
         </div>
@@ -379,6 +382,12 @@ function ExportDialogImpl({
             </button>
           )}
         </footer>
+        {isExporting ? (
+          <div className="export-dialog-busy" role="status" aria-live="polite">
+            <Loader2 size={22} className="spin-icon" aria-hidden="true" />
+            <span>{isExportingPdf ? "正在生成 PDF，请稍候…" : "正在生成可编辑 PPTX，请稍候…"}</span>
+          </div>
+        ) : null}
       </section>
     </div>
   );

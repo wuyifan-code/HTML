@@ -22,10 +22,10 @@ describe("canonical Notion design tokens", () => {
 });
 
 describe("Apple typography baseline", () => {
-  it("font-family-default begins with Inter and Apple system font stack", () => {
+  it("font-family-default uses the requested system sans stack", () => {
     const m = tokens.match(/--n-font-sans:\s*([^;]+);/);
     expect(m).toBeTruthy();
-    expect(m![1]).toMatch(/Inter.*-apple-system/);
+    expect(m![1]).toMatch(/ui-sans-serif.*-apple-system/);
   });
 
   it("body sets -webkit-font-smoothing: antialiased", () => {
@@ -113,10 +113,11 @@ describe("export dialog (Notion style)", () => {
     expect(m![1]).toMatch(/transform-origin:\s*center/);
   });
 
-  it("@keyframes export-dialog-in uses scale(0.92) at start", () => {
+  it("@keyframes export-dialog-in uses a quiet translate-only entrance", () => {
     const kf = css.match(/@keyframes\s+export-dialog-in\s*\{([\s\S]+?)\n\}/);
     expect(kf).toBeTruthy();
-    expect(kf![1]).toMatch(/scale\(0\.92\)/);
+    expect(kf![1]).toMatch(/translateY\(8px\)/);
+    expect(kf![1]).not.toMatch(/scale\(/);
   });
 
   it(".export-dialog.is-closing + @keyframes export-dialog-out declared", () => {

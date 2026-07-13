@@ -75,6 +75,11 @@ export function AiProviderPicker({
   const [isOpen, setIsOpen] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const selectedProvider = providers.find((item) => item.id === provider) ?? providers[0];
+  const providerGroups = [
+    { label: "本地 / 聚合", ids: ["openrouter", "siliconflow", "groq", "together"] },
+    { label: "国内云服务", ids: ["deepseek", "qwen", "kimi", "zhipu", "volcengine", "qianfan", "minimax"] },
+    { label: "海外云服务", ids: ["google", "openai", "anthropic", "mistral", "xai"] },
+  ] as const;
 
   useEffect(() => {
     if (!isOpen) return;
@@ -108,7 +113,15 @@ export function AiProviderPicker({
       </button>
       {isOpen ? (
         <div className="ai-provider-menu" role="listbox" aria-label="AI provider list">
-          {providers.map((item) => {
+          {providerGroups.map((group) => {
+            const groupProviders = group.ids
+              .map((id) => providers.find((item) => item.id === id))
+              .filter((item): item is AiProviderDefinition => Boolean(item));
+            if (groupProviders.length === 0) return null;
+            return (
+              <div className="ai-provider-group" key={group.label} role="group" aria-label={group.label}>
+                <div className="ai-provider-group-label">{group.label}</div>
+                {groupProviders.map((item) => {
             const isSelected = item.id === provider;
             return (
               <button
@@ -134,7 +147,25 @@ export function AiProviderPicker({
                 ) : null}
               </button>
             );
+                })}
+              </div>
+            );
           })}
+          {providers.some((item) => !providerGroups.some((group) => group.ids.includes(item.id as never))) ? (
+            <div className="ai-provider-group" role="group" aria-label="其他服务">
+              <div className="ai-provider-group-label">其他服务</div>
+              {providers.filter((item) => !providerGroups.some((group) => group.ids.includes(item.id as never))).map((item) => {
+                const isSelected = item.id === provider;
+                return (
+                  <button key={item.id} className={`ai-provider-option${isSelected ? " ai-provider-option-active" : ""}`} type="button" role="option" aria-selected={isSelected} onClick={() => { setIsOpen(false); onProviderChange(item.id); }}>
+                    <AiLogoMark logo={getProviderLogo(item.id)} />
+                    <span className="ai-provider-option-text"><span className="ai-provider-option-name">{item.shortLabel}</span><span className="ai-provider-option-detail">{item.label}</span></span>
+                    {isSelected ? <span className="ai-provider-check" aria-hidden="true">✓</span> : null}
+                  </button>
+                );
+              })}
+            </div>
+          ) : null}
         </div>
       ) : null}
     </div>

@@ -179,12 +179,88 @@
   background: var(--n-bg-canvas);
   overflow: auto;
   position: relative;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+.stage.is-space-ready { cursor: grab; }
+.stage.is-space-ready iframe { pointer-events: none; }
+.stage.is-panning {
+  cursor: grabbing;
+  user-select: none;
+  touch-action: none;
+}
+.stage.is-panning iframe { pointer-events: none; }
+
+/* CanvasPanel uses .nw-canvas for both its outer shell and its inner
+   centering layer. Keep the shell inert and make .stage the only scroller. */
+.stage-panel.nw-canvas {
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
+  padding: 0;
+}
+
+.stage-panel > .viewport-bar {
+  height: 44px;
+  min-height: 44px;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 0 12px;
+  overflow: hidden;
+}
+
+.stage-panel > .viewport-bar .segmented-viewport-control {
+  width: 92px;
+  min-width: 92px;
+  height: 30px;
+  overflow: hidden;
+  flex: 0 0 92px;
+}
+
+.stage-panel > .viewport-bar .segmented-button {
+  width: 28px;
+  min-width: 28px;
+  height: 24px;
+  padding: 0;
+  gap: 0;
+  flex: 0 0 28px;
+}
+
+.stage-panel > .viewport-bar .segmented-button > span {
+  display: none;
+}
+
+.stage-panel > .viewport-bar .viewport-bar__dim {
+  padding: 0;
+}
+
+.stage-panel > .viewport-bar .viewport-bar__group {
+  margin-left: auto;
+  min-width: 0;
+}
+
+.stage > .nw-canvas {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: visible;
+  padding: 16px;
+}
+
+/* Let zoomed previews contribute to the stage's scrollable extent instead of
+   shrinking the browser frame and clipping the iframe at the panel edge. */
+.stage > .nw-canvas .nw-preview-card {
+  align-self: flex-start;
+  flex: 0 0 max-content;
+  width: max-content;
+  min-width: 100%;
 }
 
 .nw-preview-card {
   background: var(--n-bg-elevated);
-  border-radius: var(--n-radius-lg);
-  box-shadow: var(--n-shadow-card);
+  border: 1px solid var(--n-border-default);
+  border-radius: var(--n-radius-sm);
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.04);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -233,8 +309,15 @@
 .device-frame {
   position: relative;
   overflow: hidden;
-  box-shadow: var(--n-shadow-pop);
+  box-shadow: 0 1px 2px rgba(15, 15, 15, 0.05);
   background: var(--n-bg-base);
+  transition: transform var(--n-duration-slow) var(--n-ease-expand),
+              opacity var(--n-duration-base) var(--n-ease-expand);
+}
+
+.page-preview {
+  transform-origin: center center;
+  transition: transform var(--n-duration-base) var(--n-ease-expand);
 }
 
 .device-handset {
@@ -334,5 +417,31 @@
 @keyframes canvas-scan-spin {
   to {
     transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .stage-panel > .viewport-bar {
+    height: auto;
+    min-height: 48px;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    padding: 6px 8px;
+    overflow: visible;
+  }
+
+  .stage-panel > .viewport-bar .viewport-bar__group {
+    margin-left: 0;
+  }
+
+  .stage-panel > .viewport-bar .viewport-bar__dim {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .stage > .nw-canvas {
+    padding: 12px;
   }
 }

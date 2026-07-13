@@ -1,5 +1,10 @@
 import { HFT_ID_ATTRIBUTE, isEditableElement } from "./editableElement";
 import { serializeDocument } from "./domPath";
+import {
+  attachEmbeddedAssetContext,
+  compactEmbeddedDataUrls,
+  transferEmbeddedAssetContext,
+} from "./embeddedAssets";
 
 interface InjectEditableIdsResult {
   html: string;
@@ -47,7 +52,9 @@ export function parseHtmlDocument(html: string): Document {
   const parser = new DOMParser();
   const hasHtmlShell = /<html[\s>]/i.test(html);
   const source = hasHtmlShell ? html : wrapFragment(html);
-  const documentRef = parser.parseFromString(source, "text/html");
+  const compacted = compactEmbeddedDataUrls(source);
+  const documentRef = parser.parseFromString(compacted.html, "text/html");
+  attachEmbeddedAssetContext(documentRef, compacted.context);
 
   // 检查 DOMParser 是否返回了 <parsererror>（畸形 HTML）
   const parserError = documentRef.querySelector("parsererror");
@@ -69,11 +76,15 @@ let cachedParseDoc: Document | null = null;
 export function parseHtmlReadOnly(html: string): Document {
   if (cachedParseHtml === html && cachedParseDoc) {
     // 克隆以避免外部意外修改影响缓存
-    return cachedParseDoc.cloneNode(true) as Document;
+    const clonedDocument = cachedParseDoc.cloneNode(true) as Document;
+    transferEmbeddedAssetContext(cachedParseDoc, clonedDocument);
+    return clonedDocument;
   }
   cachedParseHtml = html;
   cachedParseDoc = parseHtmlDocument(html);
-  return cachedParseDoc.cloneNode(true) as Document;
+  const clonedDocument = cachedParseDoc.cloneNode(true) as Document;
+  transferEmbeddedAssetContext(cachedParseDoc, clonedDocument);
+  return clonedDocument;
 }
 
 function createHftId(index: number): string {

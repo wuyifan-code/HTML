@@ -8,6 +8,7 @@ interface CommitOptions {
 }
 
 const TEXT_DEBOUNCE_MS = 450;
+export const MAX_HISTORY_ENTRIES = 100;
 
 export function useEditorHistory(initialState: EditorDocumentState) {
   const [present, setPresent] = useState<HistoryEntry>({ state: initialState, summary: null, timestamp: Date.now() });
@@ -61,7 +62,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     const current = presentRef.current;
     if (pendingBase.state.html !== current.state.html) {
       const summary = summarizeStateChange(pendingBase.state, current.state);
-      const nextPast = [...pastRef.current, pendingBase];
+      const nextPast = [...pastRef.current, pendingBase].slice(-MAX_HISTORY_ENTRIES);
       const currentWithSummary: HistoryEntry = { ...current, summary };
       pastRef.current = nextPast;
       futureRef.current = [];
@@ -110,7 +111,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
       const currentAfterFlush = presentRef.current;
       const summary = summarizeStateChange(currentAfterFlush.state, nextState);
       const nextEntry: HistoryEntry = { state: nextState, summary, timestamp: Date.now() };
-      const nextPast = [...pastRef.current, currentAfterFlush];
+      const nextPast = [...pastRef.current, currentAfterFlush].slice(-MAX_HISTORY_ENTRIES);
       pastRef.current = nextPast;
       futureRef.current = [];
       setPast(nextPast);
@@ -150,7 +151,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     const previous = items[items.length - 1];
     const remaining = items.slice(0, -1);
     const current = presentRef.current;
-    const nextFuture = [current, ...futureRef.current];
+    const nextFuture = [current, ...futureRef.current].slice(0, MAX_HISTORY_ENTRIES);
 
     pastRef.current = remaining;
     futureRef.current = nextFuture;
@@ -168,7 +169,7 @@ export function useEditorHistory(initialState: EditorDocumentState) {
     const next = items[0];
     const remaining = items.slice(1);
     const current = presentRef.current;
-    const nextPast = [...pastRef.current, current];
+    const nextPast = [...pastRef.current, current].slice(-MAX_HISTORY_ENTRIES);
 
     pastRef.current = nextPast;
     futureRef.current = remaining;

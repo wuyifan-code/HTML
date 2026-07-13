@@ -10,11 +10,13 @@ export interface ElementSize {
  * 用 ResizeObserver,无 DOM 时返回 {0, 0}。
  */
 export function useElementSize<T extends HTMLElement>(
-  ref: RefObject<T | null>
+  ref: RefObject<T | null>,
+  enabled = true,
 ): ElementSize {
   const [size, setSize] = useState<ElementSize>({ width: 0, height: 0 });
 
   useEffect(() => {
+    if (!enabled) return;
     const element = ref.current;
     if (!element) return;
 
@@ -28,7 +30,7 @@ export function useElementSize<T extends HTMLElement>(
     const observer = new ResizeObserver(() => update());
     observer.observe(element);
     return () => observer.disconnect();
-  }, [ref]);
+  }, [enabled, ref]);
 
   return size;
 }

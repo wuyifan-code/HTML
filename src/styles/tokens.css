@@ -14,6 +14,25 @@
   --n-bg-canvas:      #f7f6f3;
   --n-bg-inverse:     #2f3437;
 
+  /* Named aliases used by the workspace brief. Keep the --n-* tokens as the
+     canonical implementation so component CSS has one vocabulary. */
+  --notion-bg:        var(--n-bg-base);
+  --notion-sidebar:   var(--n-bg-sidebar);
+  --notion-canvas:    var(--n-bg-canvas);
+  --notion-surface:   var(--n-bg-elevated);
+  --notion-text:      var(--n-fg-default);
+  --notion-text-secondary: var(--n-fg-secondary);
+  --notion-text-tertiary:  var(--n-fg-tertiary);
+  --notion-text-disabled:  var(--n-fg-disabled);
+  --notion-border:    var(--n-border-default);
+  --notion-border-strong: var(--n-border-strong);
+  --notion-hover:     var(--n-bg-hover);
+  --notion-active:    rgba(55, 53, 47, 0.12);
+  --notion-selected:  rgba(35, 131, 226, 0.16);
+  --notion-blue:      var(--n-brand);
+  --notion-red:       var(--n-danger);
+  --notion-green:     var(--n-success);
+
   /* ----- text ----- */
   --n-fg-default:     #37352f;
   --n-fg-secondary:   #787774;
@@ -27,7 +46,7 @@
   --n-brand-hover:    #1a72cf;
   --n-brand-active:   #1761b3;
   --n-brand-disabled: rgba(35, 131, 226, 0.40);
-  --n-success:        #0f7b0f;
+  --n-success:        #0f7b6c;
   --n-warning:        #cb912f;
   --n-danger:         #e03e3e;
 
@@ -49,7 +68,7 @@
   --n-ring-focus:     0 0 0 2px var(--n-bg-base), 0 0 0 4px var(--n-border-focus);
 
   /* ----- font ----- */
-  --n-font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --n-font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
   --n-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
   /* ----- motion ----- */
@@ -132,9 +151,9 @@
   --font-weight-strong:  600;
 
   /* layout */
-  --topbar-height:    56px;
-  --statusbar-height: 28px;
-  --source-col:       280px;
+  --topbar-height:    45px;
+  --statusbar-height: 24px;
+  --source-col:       260px;
   --inspector-col:    320px;
 
   /* text sizes */
@@ -156,6 +175,24 @@
   --space-8: 32px;
   --space-12:48px;
 
+  /* Legacy spacing names still used by the editor shell.  These are
+     literal pixel steps (not aliases to --space-*), so declarations such
+     as padding/gap never become invalid while the CSS is being migrated. */
+  --spacer-2: 2px;
+  --spacer-4: 4px;
+  --spacer-6: 6px;
+  --spacer-8: 8px;
+  --spacer-10: 10px;
+  --spacer-12: 12px;
+  --spacer-14: 14px;
+  --spacer-16: 16px;
+  --spacer-18: 18px;
+  --spacer-20: 20px;
+  --spacer-24: 24px;
+  --spacer-32: 32px;
+  --spacer-40: 40px;
+  --spacer-48: 48px;
+
   /* radius compat */
   --radius-0:   0px;
   --radius-2:   2px;
@@ -165,6 +202,33 @@
   --radius-md: var(--n-radius-md);
   --radius-lg: var(--n-radius-lg);
   --radius-pill: 999px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+  --radius-full: 999px;
+
+  /* Legacy motion names. */
+  --motion-fast: 120ms;
+  --motion-base: 180ms;
+  --motion-exit: 140ms;
+  --motion-spring: 240ms;
+  --ease-standard: var(--n-ease);
+  --ease-emphasized: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-soft-end: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-exit: cubic-bezier(0.4, 0, 1, 1);
+  --ease-quint: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* Legacy semantic and geometry tokens. */
+  --status-primary-default: var(--n-brand);
+  --status-primary-surface-l1: rgba(35, 131, 226, 0.10);
+  --status-success-surface-l1: rgba(15, 123, 15, 0.10);
+  --status-warning-surface-l1: rgba(203, 145, 47, 0.12);
+  --status-error-surface-l1: rgba(224, 62, 62, 0.10);
+  --text-muted: var(--n-fg-tertiary);
+  --border-width-default: 1px;
+  --shadow-popover: var(--n-shadow-overlay);
+  --resizer-width: 6px;
+  --canvas-toolbar-height: 44px;
 
   /* leading */
   --leading-body:  1.5;
@@ -235,7 +299,7 @@
   --n-shadow-overlay: 0 12px 32px rgba(0,0,0,0.60);
   --n-ring-focus:     0 0 0 2px #191919, 0 0 0 4px rgba(77,171,247,0.45);
 
-  --n-font-sans: "Inter", "Inter Fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --n-font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
   --n-font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
 
   --n-ease:           cubic-bezier(0.165, 0.84, 0.44, 1);

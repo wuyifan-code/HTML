@@ -79,6 +79,16 @@ function getNodeText(element: Element): string {
     return normalizeText(svgTitle || ariaLabel || `svg 图表${className ? ` · ${className}` : ""}`);
   }
 
+  if (element.children.length > 0) {
+    const directText = Array.from(element.childNodes)
+      .filter((node) => node.nodeType === Node.TEXT_NODE)
+      .map((node) => node.textContent ?? "")
+      .join(" ");
+    return normalizeText(
+      directText || element.getAttribute("aria-label") || element.getAttribute("title") || "",
+    );
+  }
+
   return normalizeText(element.textContent ?? "");
 }
 

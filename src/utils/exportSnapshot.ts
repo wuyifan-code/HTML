@@ -22,6 +22,15 @@ export interface RenderedPage {
   label: string;
 }
 
+export interface RenderedPageContext extends RenderedPage {
+  /** 当前仍挂载在离屏 iframe 中的页面元素,可用于结构化导出。 */
+  target: HTMLElement;
+  documentRef: Document;
+  frameWindow: Window;
+  index: number;
+  total: number;
+}
+
 export interface HtmlToImageOptions {
   width?: number;
   height?: number;
@@ -47,6 +56,8 @@ export interface SnapshotInput {
   filename?: string;
   baseUrl?: string;
   pixelRatio?: number;
+  /** AI 结构扫描结果。用于在没有显式 slide 标记时识别语义分段。 */
+  aiAnnotations?: ReadonlyArray<{ hftId: string }>;
   /** 强制单页导出(忽略 .slide 切分) */
   singlePage?: boolean;
   /** 注入 html-to-image,便于测试 */
@@ -68,6 +79,8 @@ export interface SnapshotInput {
   findFallbackTarget?: (documentRef: Document) => HTMLElement;
   /** 用于测试的钩子:激活 slide */
   activateSlide?: (slides: HTMLElement[], activeIndex: number, frameWindow: Window) => void;
+  /** 页面截图完成后回调,在 iframe 移除前仍可读取真实 DOM 与计算样式。 */
+  onPageRendered?: (context: RenderedPageContext) => void | Promise<void>;
   /** iframe 加载超时(毫秒) */
   loadTimeoutMs?: number;
 }
@@ -109,7 +122,8 @@ export async function capturePreviewAsPng(input: SnapshotInput): Promise<Rendere
 
     const settle = input.settle ?? settleFrame;
     const measure = input.measureTarget ?? measureTargetDefault;
-    const findSlides = input.findSlides ?? findDefaultSlides;
+    const findSlides = input.findSlides ?? ((documentRef: Document) =>
+      findDefaultSlides(documentRef, input.aiAnnotations));
     const findFallback = input.findFallbackTarget ?? findDefaultFallbackTarget;
     const activate = input.activateSlide ?? activateSlideDefault;
     const waitForAssets = input.waitForAssets ?? waitForDocumentAssetsDefault;
@@ -182,11 +196,20 @@ const pages: RenderedPage[] = [];
       if (!/^data:image\/(png|jpeg|webp);/i.test(dataUrl)) {
         throw new ExportError("截图数据格式异常", "snapshot-empty");
       }
-      pages.push({
+      const renderedPage: RenderedPage = {
         dataUrl,
         width: canvasWidth,
         height: canvasHeight,
         label: slides.length > 0 ? `Slide ${index + 1}` : "Page",
+      };
+      pages.push(renderedPage);
+      await input.onPageRendered?.({
+        ...renderedPage,
+        target,
+        documentRef,
+        frameWindow,
+        index,
+        total: targets.length,
       });
     }
 
@@ -319,13 +342,54 @@ function waitForIframeLoad(
 
 // ─── 默认实现:可被测试 hook 替换 ──────────────────────────────
 
-function findDefaultSlides(documentRef: Document): HTMLElement[] {
+function findDefaultSlides(
+  documentRef: Document,
+  aiAnnotations: SnapshotInput["aiAnnotations"] = [],
+): HTMLElement[] {
   const matches = Array.from(
     documentRef.querySelectorAll<HTMLElement>(
       "section.slide, .slide, [data-slide], [data-page], [data-pdf-page], .page"
     )
   );
-  return matches.filter((el) => isSlideCandidate(el) || isPageCandidate(el, documentRef));
+  const explicit = matches.filter((el) => isSlideCandidate(el) || isPageCandidate(el, documentRef));
+  if (explicit.length > 0) return explicit;
+
+  // 真实的落地页通常用多个顶层 <section> 组成，而不是给每一节加 .slide。
+  // 以前会把整个 <main> 当成一页，PPT 重建时所有节点都挤在同一张幻灯片上。
+  // 优先使用 AI 标注命中的 section，再按文档顺序补齐未命中的 section，确保页面不丢失。
+  const sections = getTopLevelSections(documentRef);
+  if (sections.length > 0) {
+    const annotatedSections = new Set<HTMLElement>();
+    for (const annotation of aiAnnotations ?? []) {
+      if (!annotation.hftId) continue;
+      const element = findElementByHftId(documentRef, annotation.hftId);
+      const section = element?.closest?.("section") as HTMLElement | null;
+      if (section && sections.includes(section)) annotatedSections.add(section);
+    }
+    if (annotatedSections.size > 0) {
+      // 仅用 AI 命中结果确认 section 是语义页面根，不改变原始页面顺序。
+      return sections;
+    }
+    return sections;
+  }
+
+  return [];
+}
+
+function getTopLevelSections(documentRef: Document): HTMLElement[] {
+  return Array.from(documentRef.querySelectorAll<HTMLElement>("section")).filter((section) => {
+    let parent = section.parentElement;
+    while (parent) {
+      if (parent.tagName?.toLowerCase() === "section") return false;
+      parent = parent.parentElement;
+    }
+    return true;
+  });
+}
+
+function findElementByHftId(documentRef: Document, hftId: string): HTMLElement | null {
+  return Array.from(documentRef.querySelectorAll<HTMLElement>("[data-hft-id]"))
+    .find((element) => element.getAttribute("data-hft-id") === hftId) ?? null;
 }
 
 function findDefaultFallbackTarget(documentRef: Document): HTMLElement {

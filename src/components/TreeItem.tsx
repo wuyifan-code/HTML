@@ -33,6 +33,7 @@ export function TreeItemNode({
   annotation,
   childCount,
   isCollapsed,
+  animationIndex = 0,
   diagnosticsCount,
   onSelect,
   onToggleCollapse,
@@ -42,6 +43,7 @@ export function TreeItemNode({
   annotation?: AiTreeAnnotation;
   childCount: number;
   isCollapsed: boolean;
+  animationIndex?: number;
   diagnosticsCount?: number;
   onSelect: (hftId: string) => void;
   onToggleCollapse: (hftId: string) => void;
@@ -52,17 +54,23 @@ export function TreeItemNode({
     <button
       className={`tree-node${isSelected ? " is-selected" : ""}${isCollapsed ? " is-collapsed" : ""}`}
       type="button"
-      aria-pressed={isSelected}
+      role="treeitem"
+      aria-selected={isSelected}
+      aria-level={node.depth + 1}
+      aria-expanded={hasChildren ? !isCollapsed : undefined}
       onClick={() => onSelect(node.hftId)}
-      style={{ paddingLeft: `calc(var(--spacer-8) + ${node.depth * 12}px)` }}
+      style={{
+        paddingLeft: `calc(var(--spacer-8) + ${node.depth * 12}px)`,
+        animationDelay: `${Math.min(animationIndex * 14, 180)}ms`,
+      }}
+      data-depth={node.depth}
+      data-animation-index={animationIndex}
       data-dom-id={`node-${node.hftId}`}
     >
       {hasChildren ? (
         <span
           className="tree-node__chev"
-          role="button"
-          aria-label={isCollapsed ? "展开子节点" : "折叠子节点"}
-          aria-expanded={!isCollapsed}
+          aria-hidden="true"
           onClick={(event) => {
             event.stopPropagation();
             onToggleCollapse(node.hftId);
@@ -80,7 +88,9 @@ export function TreeItemNode({
           <span className="tree-node__class">.{(node.className.split(/\s+/).filter(Boolean)[0] ?? "")}</span>
         ) : null}
       </span>
-      {hasChildren ? <span className="tree-node__meta">x{childCount}</span> : null}
+      {hasChildren && isCollapsed ? (
+        <span className="tree-node__meta" title={`${childCount} 个直接子节点`}>{childCount}</span>
+      ) : null}
       {diagnosticsCount ? (
         <span className="tree-node__diag" role="status" aria-label={`${diagnosticsCount} 个诊断`}>
           {diagnosticsCount}

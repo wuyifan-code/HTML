@@ -38,6 +38,7 @@ export interface AiProviderDefinition {
   shortLabel: string;
   protocol: ProviderProtocol;
   baseUrl: string;
+  fallbackBaseUrl?: string;
   keyPlaceholder: string;
   defaultModel: string;
   models: Array<{ value: string; label: string }>;
@@ -174,7 +175,11 @@ export const AI_PROVIDER_DEFINITIONS: AiProviderDefinition[] = [
     label: "MiniMax",
     shortLabel: "MiniMax",
     protocol: "openai-chat",
-    baseUrl: "https://api.minimax.io/v1",
+    // MiniMax keys are region-scoped: China keys use minimaxi.com, global keys
+    // use minimax.io. Try the China endpoint first for this Chinese UI and
+    // fall back to the global endpoint when the service reports 2049.
+    baseUrl: "https://api.minimaxi.com/v1",
+    fallbackBaseUrl: "https://api.minimax.io/v1",
     keyPlaceholder: "MiniMax API Key",
     defaultModel: "MiniMax-M3",
     models: [
@@ -274,6 +279,7 @@ export const AI_PROVIDER_MAP = Object.fromEntries(
 ) as Record<AiProviderId, AiProviderDefinition>;
 
 const DEFAULT_MAX_NODES = 420;
+const MAX_AI_ANNOTATIONS = 80;
 const MAX_TEXT_LENGTH = 140;
 const AI_REQUEST_TIMEOUT_MS = 120000;
 
@@ -399,7 +405,7 @@ export async function analyzeStructureWithAi({
   domTree,
 }: AnalyzeStructureWithAiOptions): Promise<AiTreeAnnotation[]> {
   const provider = AI_PROVIDER_MAP[providerId];
-  const trimmedKey = apiKey.trim();
+  const trimmedKey = normalizeAiApiKey(apiKey);
   const trimmedModel = model.trim();
   if (!provider) throw new Error("请选择模型厂商");
   if (!trimmedKey) throw new Error(`请先填写 ${provider.keyPlaceholder}`);
@@ -446,7 +452,7 @@ export async function fetchAiModelOptions({
   signal?: AbortSignal;
 }): Promise<AiModelOption[]> {
   const provider = AI_PROVIDER_MAP[providerId];
-  const trimmedKey = apiKey.trim();
+  const trimmedKey = normalizeAiApiKey(apiKey);
   if (!provider) throw new Error("请选择模型厂商");
   if (!trimmedKey) throw new Error(`请先填写 ${provider.keyPlaceholder}`);
 
@@ -456,15 +462,25 @@ export async function fetchAiModelOptions({
   signal?.addEventListener("abort", handleAbort, { once: true });
 
   try {
-    const response = await fetch(getModelListUrl(provider, trimmedKey), {
-      method: "GET",
-      signal: controller.signal,
-      headers: getModelListHeaders(provider, trimmedKey),
-    });
-    const rawText = await response.text();
+    let response: Response | null = null;
+    let rawText = "";
+    for (const baseUrl of getProviderBaseUrls(provider)) {
+      response = await fetch(getModelListUrl(provider, trimmedKey, baseUrl), {
+        method: "GET",
+        signal: controller.signal,
+        headers: getModelListHeaders(provider, trimmedKey),
+      });
+      rawText = await response.text();
+      if (!shouldTryProviderFallback(provider, response.status, rawText)) break;
+    }
+    if (!response) throw new Error(`${provider.shortLabel} 模型列表请求失败`);
     if (!response.ok) {
       throw new AiRequestError(
-        extractProviderErrorMessage(rawText) || `${provider.shortLabel} 模型列表获取失败`,
+        formatProviderAuthError(
+          provider,
+          extractProviderErrorMessage(rawText) || `${provider.shortLabel} 模型列表获取失败`,
+          rawText,
+        ),
         response.status,
         response.url,
         rawText
@@ -516,6 +532,15 @@ export function buildPresetAiModelOptions(provider: AiProviderDefinition): AiMod
     label: model.label,
     source: "preset",
   }));
+}
+
+/** 接受用户粘贴的纯 Key，也容忍误带的 `Bearer ` 前缀和外层引号。 */
+export function normalizeAiApiKey(value: string): string {
+  return value
+    .trim()
+    .replace(/^Bearer\s+/i, "")
+    .replace(/^("|')(.*)\1$/s, "$2")
+    .trim();
 }
 
 export function mergeAiModelOptions(remoteOptions: AiModelOption[], presetOptions: AiModelOption[]): AiModelOption[] {
@@ -592,29 +617,57 @@ export function getAiProviderIcon(providerId: AiProviderId) {
   }
 }
 
-function getModelListUrl(provider: AiProviderDefinition, apiKey: string): string {
+function getModelListUrl(provider: AiProviderDefinition, apiKey: string, baseUrl = provider.baseUrl): string {
   if (provider.protocol === "gemini") {
     const params = new URLSearchParams({
       key: apiKey,
       pageSize: "1000",
     });
-    return `${provider.baseUrl}?${params.toString()}`;
+    return `${baseUrl}?${params.toString()}`;
   }
   if (provider.id === "openrouter") {
     const params = new URLSearchParams({
       output_modalities: "text",
       sort: "most-popular",
     });
-    return `${provider.baseUrl}/models?${params.toString()}`;
+    return `${baseUrl}/models?${params.toString()}`;
   }
   if (provider.id === "siliconflow") {
     const params = new URLSearchParams({
       type: "text",
       sub_type: "chat",
     });
-    return `${provider.baseUrl}/models?${params.toString()}`;
+    return `${baseUrl}/models?${params.toString()}`;
   }
-  return `${provider.baseUrl}/models`;
+  return `${baseUrl}/models`;
+}
+
+function getProviderBaseUrls(provider: AiProviderDefinition): string[] {
+  return [provider.baseUrl, provider.fallbackBaseUrl].filter(
+    (value, index, values): value is string => Boolean(value) && values.indexOf(value) === index,
+  );
+}
+
+function shouldTryProviderFallback(
+  provider: AiProviderDefinition,
+  status: number,
+  responseText: string,
+): boolean {
+  return provider.id === "minimax"
+    && Boolean(provider.fallbackBaseUrl)
+    && status === 401
+    && /2049|invalid\s+api\s*key/i.test(responseText);
+}
+
+function formatProviderAuthError(
+  provider: AiProviderDefinition,
+  message: string,
+  responseText: string,
+): string {
+  if (provider.id === "minimax" && /2049|invalid\s+api\s*key/i.test(`${message}\n${responseText}`)) {
+    return "MiniMax API Key 无效（2049）。请确认 Key 来自当前区域的 MiniMax 开放平台，并粘贴纯 Key，不要包含 Bearer 前缀。";
+  }
+  return message;
 }
 
 function getModelListHeaders(provider: AiProviderDefinition, apiKey: string): Record<string, string> {
@@ -791,7 +844,7 @@ async function requestGeminiText({
       ],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 6144,
       },
     }),
   });
@@ -846,7 +899,7 @@ async function requestOpenAiResponsesText({
       instructions: createSystemInstruction(),
       input: createUserPrompt(payload),
       temperature: 0.2,
-      max_output_tokens: 4096,
+      max_output_tokens: 6144,
     }),
   });
 
@@ -902,23 +955,29 @@ async function requestOpenAiChatText({
     headers["X-Title"] = "HTML FineTune";
   }
 
-  const response = await fetch(`${provider.baseUrl}/chat/completions`, {
-    method: "POST",
-    signal,
-    headers,
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: createSystemInstruction() },
-        { role: "user", content: createUserPrompt(payload) },
-      ],
-      temperature: 0.2,
-      max_tokens: 4096,
-      stream: false,
-    }),
+  const requestBody = JSON.stringify({
+    model,
+    messages: [
+      { role: "system", content: createSystemInstruction() },
+      { role: "user", content: createUserPrompt(payload) },
+    ],
+    temperature: 0.2,
+    max_tokens: 6144,
+    stream: false,
   });
-
-  const rawText = await response.text();
+  let response: Response | null = null;
+  let rawText = "";
+  for (const baseUrl of getProviderBaseUrls(provider)) {
+    response = await fetch(`${baseUrl}/chat/completions`, {
+      method: "POST",
+      signal,
+      headers,
+      body: requestBody,
+    });
+    rawText = await response.text();
+    if (!shouldTryProviderFallback(provider, response.status, rawText)) break;
+  }
+  if (!response) throw new Error(`${provider.shortLabel} 请求失败`);
   let data: ChatCompletionResponse;
   try {
     data = JSON.parse(rawText) as ChatCompletionResponse;
@@ -932,7 +991,7 @@ async function requestOpenAiChatText({
   }
   if (!response.ok) {
     throw new AiRequestError(
-      data.error?.message || `${provider.shortLabel} 请求失败`,
+      formatProviderAuthError(provider, data.error?.message || `${provider.shortLabel} 请求失败`, rawText),
       response.status,
       response.url,
       rawText
@@ -970,7 +1029,7 @@ async function requestAnthropicMessagesText({
       system: createSystemInstruction(),
       messages: [{ role: "user", content: createUserPrompt(payload) }],
       temperature: 0.2,
-      max_tokens: 4096,
+      max_tokens: 6144,
     }),
   });
 
@@ -1016,6 +1075,7 @@ function createSystemInstruction(): string {
     "10. Use only hftId values from the provided input.",
     "11. Do not omit commas between array elements or object fields.",
     "12. Do not return partial JSON; finish the complete root object before stopping.",
+    `13. Return at most ${MAX_AI_ANNOTATIONS} annotations. Prioritize headings, sections, buttons, images, charts, and nodes with visible text; omit low-value wrapper nodes.`,
     "Keep labels short and useful for designers editing imported HTML slides.",
     "Mark likely layout risks such as overlap-risk, overflow-risk, tiny-text, image-ratio, crowded-chart, or decorative.",
   ].join("\n");
@@ -1096,15 +1156,39 @@ function parseJsonObject(text: string): unknown {
   let lastCandidate = trimmed;
   for (const candidate of candidates) {
     try {
-      return JSON.parse(candidate);
+      return normalizeParsedAiRoot(JSON.parse(candidate));
     } catch (error) {
       lastError = error;
       lastCandidate = candidate;
     }
   }
 
+  // Models sometimes stop while writing a large annotations array. Keep every
+  // complete annotation object that arrived instead of discarding the whole scan.
+  const recovered = recoverPartialAnnotations(trimmed);
+  if (recovered) return recovered;
+
   logAiJsonParseFailure(lastError, lastCandidate, text.length);
   throw new Error(AI_STRUCTURE_INVALID_JSON_MESSAGE);
+}
+
+function normalizeParsedAiRoot(value: unknown): unknown {
+  if (Array.isArray(value)) return { annotations: value };
+  if (!value || typeof value !== "object") return value;
+
+  const record = value as Record<string, unknown>;
+  if (Array.isArray(record.annotations)) return value;
+
+  // A few providers wrap the requested object in `data`, `result`, or `items`.
+  for (const key of ["data", "result", "items"]) {
+    const nested = record[key];
+    if (Array.isArray(nested)) return { annotations: nested };
+    if (nested && typeof nested === "object" && Array.isArray((nested as Record<string, unknown>).annotations)) {
+      return nested;
+    }
+  }
+
+  return value;
 }
 
 function stripMarkdownFence(text: string): string {
@@ -1116,7 +1200,15 @@ function stripMarkdownFence(text: string): string {
  * 跟踪字符串状态与转义,避免被嵌套的 { } 误导。
  */
 function extractFirstBalancedJsonObject(text: string): string | null {
-  const start = text.indexOf("{");
+  return extractFirstBalancedJsonValue(text, "{", "}");
+}
+
+function extractFirstBalancedJsonArray(text: string): string | null {
+  return extractFirstBalancedJsonValue(text, "[", "]");
+}
+
+function extractFirstBalancedJsonValue(text: string, opening: string, closing: string): string | null {
+  const start = text.indexOf(opening);
   if (start < 0) return null;
   let depth = 0;
   let inString = false;
@@ -1135,9 +1227,9 @@ function extractFirstBalancedJsonObject(text: string): string | null {
     }
     if (ch === '"') {
       inString = true;
-    } else if (ch === "{") {
+    } else if (ch === opening) {
       depth += 1;
-    } else if (ch === "}") {
+    } else if (ch === closing) {
       depth -= 1;
       if (depth === 0) return text.slice(start, i + 1);
     }
@@ -1152,6 +1244,8 @@ function buildJsonParseCandidates(text: string): string[] {
 
   const balanced = extractFirstBalancedJsonObject(text);
   if (balanced) addCandidate(candidates, balanced);
+  const balancedArray = extractFirstBalancedJsonArray(text);
+  if (balancedArray) addCandidate(candidates, balancedArray);
 
   for (const candidate of [...candidates]) {
     addCandidate(candidates, repairLooseJson(candidate));
@@ -1162,6 +1256,71 @@ function buildJsonParseCandidates(text: string): string[] {
   }
 
   return candidates;
+}
+
+function recoverPartialAnnotations(text: string): { annotations: RawAiAnnotation[] } | null {
+  const marker = /["']?annotations["']?\s*:/i.exec(text);
+  const searchStart = marker ? marker.index + marker[0].length : 0;
+  const arrayStart = text.indexOf("[", searchStart);
+  if (arrayStart < 0) return null;
+
+  const objectCandidates = extractCompleteObjectsFromArray(text, arrayStart);
+  const annotations: RawAiAnnotation[] = [];
+  for (const objectText of objectCandidates) {
+    const candidates = [objectText, repairLooseJson(objectText)];
+    for (const candidate of candidates) {
+      try {
+        const parsed = JSON.parse(candidate) as unknown;
+        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+          annotations.push(parsed as RawAiAnnotation);
+          break;
+        }
+      } catch {
+        // Try the repaired candidate before moving to the next object.
+      }
+    }
+  }
+
+  return annotations.length > 0 ? { annotations } : null;
+}
+
+function extractCompleteObjectsFromArray(text: string, arrayStart: number): string[] {
+  const objects: string[] = [];
+  let objectDepth = 0;
+  let nestedArrayDepth = 0;
+  let objectStart = -1;
+  let inString = false;
+  let escape = false;
+
+  for (let i = arrayStart + 1; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (escape) escape = false;
+      else if (ch === "\\") escape = true;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') {
+      inString = true;
+    } else if (ch === "{" ) {
+      if (objectDepth === 0 && nestedArrayDepth === 0) objectStart = i;
+      objectDepth += 1;
+    } else if (ch === "}") {
+      if (objectDepth === 0) continue;
+      objectDepth -= 1;
+      if (objectDepth === 0 && objectStart >= 0) {
+        objects.push(text.slice(objectStart, i + 1));
+        objectStart = -1;
+      }
+    } else if (objectDepth === 0 && ch === "[") {
+      nestedArrayDepth += 1;
+    } else if (objectDepth === 0 && ch === "]") {
+      if (nestedArrayDepth === 0) break;
+      nestedArrayDepth -= 1;
+    }
+  }
+
+  return objects;
 }
 
 function addCandidate(candidates: string[], candidate: string): void {

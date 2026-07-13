@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const css = readFileSync(resolve(process.cwd(), "src/styles.css"), "utf8");
 const tokens = readFileSync(resolve(process.cwd(), "src/styles/tokens.css"), "utf8");
+const inspectorCss = readFileSync(resolve(process.cwd(), "src/styles/inspector.css"), "utf8");
 const marker = "Convergence layer";
 const start = css.lastIndexOf(marker);
 const convergence = start >= 0 ? css.slice(start) : "";
@@ -22,8 +23,8 @@ describe("Notion convergence layer", () => {
 
   it("uses compact blue selection and non-floating inspector surfaces", () => {
     expect(convergence).toMatch(/\.tree-node\.is-selected\s*\{[\s\S]*?background:\s*#e8f1fb/);
-    expect(convergence).toMatch(/\.inspector-card,[\s\S]*?box-shadow:\s*none/);
-    expect(convergence).toMatch(/\.property-card,[\s\S]*?box-shadow:\s*none/);
+    expect(inspectorCss).toMatch(/\.inspector-card\s*\{[\s\S]*?box-shadow:\s*none/);
+    expect(inspectorCss).toMatch(/\.property-card\s*\{[\s\S]*?box-shadow:\s*none/);
   });
 
   it("removes scale and material feedback from core controls", () => {

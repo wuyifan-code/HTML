@@ -1,17 +1,15 @@
-import { IconSearch, IconSparkles } from "../../Icons";
+import { IconSearch } from "../../Icons";
 import { TreeItemNode } from "../../TreeItem";
 import { X } from "lucide-react";
 
 interface DomTreeViewProps {
-  domTree: Array<{ id: string; tagName: string; label: string; depth: number; hasChildren: boolean; isOpen: boolean; diagnostics: number }>;
+  domTree: Array<{ id: string; tagName: string; label: string; depth: number; hasChildren: boolean; childCount: number; isOpen: boolean; diagnostics: number }>;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
-  onAiScan: () => void;
   diagnosticsCount: number;
-  triggerRef?: React.RefObject<HTMLButtonElement | null>;
 }
 
 export function DomTreeView({
@@ -21,9 +19,7 @@ export function DomTreeView({
   selectedId,
   onSelect,
   onToggle,
-  onAiScan,
   diagnosticsCount,
-  triggerRef,
 }: DomTreeViewProps) {
   const filteredNodes = searchQuery.trim()
     ? domTree.filter((node) =>
@@ -58,23 +54,13 @@ export function DomTreeView({
         </div>
       </div>
 
-      <div className="dom-tree-toolbar-row">
-        <button
-          ref={triggerRef}
-          className="dom-tree-ai-scan-btn"
-          type="button"
-          onClick={onAiScan}
-          aria-label="AI 扫描"
-        >
-          <IconSparkles />
-          <span>AI 扫描</span>
-        </button>
-        {diagnosticsCount > 0 ? (
+      {diagnosticsCount > 0 ? (
+        <div className="dom-tree-toolbar-row dom-tree-toolbar-row--status">
           <span className="dom-tree-diagnostics-badge" role="status">
             {diagnosticsCount} 个诊断
           </span>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
 
       <div className="tree-node-list" role="tree" aria-label="DOM 树节点">
         {filteredNodes.length === 0 ? (
@@ -82,10 +68,11 @@ export function DomTreeView({
             {searchQuery ? "未找到匹配节点" : "暂无节点数据"}
           </div>
         ) : (
-          filteredNodes.map((node) => (
+          filteredNodes.map((node, index) => (
             <NodeRow
               key={node.id}
               node={node}
+              animationIndex={index}
               isSelected={selectedId === node.id}
               onSelect={onSelect}
               onToggle={onToggle}
@@ -99,11 +86,13 @@ export function DomTreeView({
 
 function NodeRow({
   node,
+  animationIndex,
   isSelected,
   onSelect,
   onToggle,
 }: {
   node: DomTreeViewProps["domTree"][0];
+  animationIndex: number;
   isSelected: boolean;
   onSelect: (id: string) => void;
   onToggle: (id: string) => void;
@@ -120,7 +109,8 @@ function NodeRow({
         id: node.id,
       }}
       isSelected={isSelected}
-      childCount={node.hasChildren ? 1 : 0}
+      animationIndex={animationIndex}
+      childCount={node.childCount}
       isCollapsed={!node.isOpen}
       diagnosticsCount={node.diagnostics}
       onSelect={(hftId) => onSelect(hftId)}

@@ -16,14 +16,22 @@ import {
   IconPalette,
   IconBorder,
   IconActivity,
-  IconMove,
-  IconImport,
-  IconDownload,
   IconMaximize,
 } from "../../Icons";
 import type { SelectedSnapshot } from "../../../types/editor";
 import type { Annotation } from "./DiagnosticsSection";
-import { ArrowUpFromLine, ArrowDownFromLine, Copy, ClipboardPaste, Trash2 } from "lucide-react";
+import { ArrowUpFromLine, ArrowDownFromLine, Copy, ClipboardCopy, ClipboardPaste, Trash2 } from "lucide-react";
+
+function numericDraft(value: string): string {
+  const match = value.match(/-?(?:\d+(?:\.\d*)?|\.\d+)/);
+  return match?.[0] ?? "";
+}
+
+function pxDraft(value: string): string {
+  const numeric = value.trim();
+  if (!numeric || /^(auto|inherit|initial|unset)$/i.test(numeric)) return numeric;
+  return `${numeric}px`;
+}
 
 export interface InspectorPanelProps {
   selected: SelectedSnapshot | null;
@@ -139,7 +147,26 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
   onCollapseToggle,
 }, ref) => {
   const annotations: any[] = selectedAnnotation ? [selectedAnnotation] : [];
-  const pretextFont = `${draftFontWeight || ""} ${parseFloat(draftFontSize) || 16}px ${draftFontFamily || "Inter, sans-serif"}`;
+  const styleDraftPairs = selected ? [
+    [draftFontSize, selected.fontSize],
+    [draftFontWeight, selected.fontWeight],
+    [draftFontFamily, selected.fontFamily],
+    [draftLineHeight, selected.lineHeight],
+    [draftLetterSpacing, selected.letterSpacing],
+    [draftColor, selected.color],
+    [draftBackgroundColor, selected.backgroundColor],
+    [draftHoverBackground, selected.hoverBackgroundColor],
+    [draftMarginTop, selected.marginTop],
+    [draftMarginBottom, selected.marginBottom],
+    [draftPaddingTop, selected.paddingTop],
+    [draftPaddingBottom, selected.paddingBottom],
+    [draftPaddingLeft, selected.paddingLeft],
+    [draftPaddingRight, selected.paddingRight],
+    [draftWidth, selected.width],
+    [draftHeight, selected.height],
+  ] : [];
+  const dirtyCount = styleDraftPairs.filter(([draft, current]) => String(draft ?? "").trim() !== String(current ?? "").trim()).length;
+  const pretextFont = `${draftFontWeight || ""} ${parseFloat(draftFontSize) || 16}px ${draftFontFamily || "ui-sans-serif, sans-serif"}`;
 
   return (
     <aside
@@ -153,6 +180,10 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
       ].filter(Boolean).join(" ")}
       aria-label="属性面板"
       data-dom-id="panel-inspector"
+      onBlurCapture={(event) => {
+        const target = event.target;
+        if (target instanceof HTMLInputElement && target.id !== "contentInput") onApplyStyle();
+      }}
     >
       {!isCollapsed && (
         <button
@@ -163,7 +194,7 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
         />
       )}
       <div className="inspector-tabs-wrap">
-        <span className="nw-inspector-title">Inspector</span>
+        <span className="nw-inspector-title">属性</span>
         {!isCollapsed && (
           <button
             className="panel-collapse-btn"
@@ -187,7 +218,7 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                 <span className="inspector-selection__tag">{selected.tagName.toLowerCase()}</span>
                 {selected.label && <span className="inspector-selection__label">{selected.label}</span>}
                 <span className="inspector-selection__path" title={selected.path}>
-                  {selected.path}
+                  {selected.path.replace(/:nth-of-type\(\d+\)/g, "")}
                 </span>
                 {selected.className && <span className="inspector-selection__className">{selected.className}</span>}
               </div>
@@ -196,6 +227,30 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                 <span>{selected.fontSize || "—"} / {selected.lineHeight || "—"}</span>
                 <span>{selected.fontWeight || "—"}</span>
               </div>
+            </div>
+            <div className="inspector-command-bar" aria-label="元素快捷操作">
+              <button type="button" aria-label="上移元素" title="上移元素" onClick={onMoveUp} disabled={!selected}>
+                <ArrowUpFromLine size={14} />
+              </button>
+              <button type="button" aria-label="下移元素" title="下移元素" onClick={onMoveDown} disabled={!selected}>
+                <ArrowDownFromLine size={14} />
+              </button>
+              <button type="button" aria-label="复制元素" title="复制元素" onClick={onDuplicate} disabled={!selected}>
+                <Copy size={14} />
+              </button>
+              <button className="is-danger" type="button" aria-label="删除元素" title="删除元素" onClick={onDelete} disabled={!selected}>
+                <Trash2 size={14} />
+              </button>
+              <span className="inspector-command-bar__sep" aria-hidden="true" />
+              <button type="button" aria-label="复制样式" title="复制样式" onClick={onCopyStyle} disabled={!selected}>
+                <ClipboardCopy size={14} />
+              </button>
+              <button type="button" aria-label="粘贴样式" title="粘贴样式" onClick={onPasteStyle} disabled={!selected || !hasCopiedStyle}>
+                <ClipboardPaste size={14} />
+              </button>
+              <button type="button" aria-label="弹窗" title="打开弹窗" onClick={() => onModalCommand?.("open")} disabled={!selected}>
+                <IconMaximize />
+              </button>
             </div>
             <div className="inspector-body">
               {selectedAnnotation ? (
@@ -284,11 +339,11 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                     lineHeight={parseFloat(draftLineHeight) || 22}
                   />
                   <button
-                    className="inspector-apply-btn"
+                    className="inspector-apply-btn inspector-apply-btn--secondary"
                     type="button"
                     onClick={onApplyText}
                   >
-                    应用到 Canvas
+                    更新文字
                   </button>
                 </div>
               )}
@@ -298,19 +353,25 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   <label className="field">
                     <span>字号</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="1"
+                      max="200"
+                      step="0.5"
                       inputMode="decimal"
                       placeholder="16"
-                      value={draftFontSize}
-                      onChange={(event) => onFontSizeChange(event.target.value)}
+                      value={numericDraft(draftFontSize)}
+                      onChange={(event) => onFontSizeChange(pxDraft(event.target.value))}
                     />
                   </label>
                   <label className="field">
                     <span>字重</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="100"
+                      max="900"
+                      step="100"
                       placeholder="400"
-                      value={draftFontWeight}
+                      value={numericDraft(draftFontWeight)}
                       onChange={(event) => onFontWeightChange(event.target.value)}
                     />
                   </label>
@@ -319,7 +380,7 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   <span>字体</span>
                   <input
                     type="text"
-                    placeholder="Inter, sans-serif"
+                      placeholder="ui-sans-serif, sans-serif"
                     value={draftFontFamily}
                     onChange={(event) => onFontFamilyChange(event.target.value)}
                   />
@@ -328,20 +389,26 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   <label className="field">
                     <span>行高</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="0.5"
+                      max="4"
+                      step="0.1"
                       placeholder="1.5"
-                      value={draftLineHeight}
+                      value={numericDraft(draftLineHeight)}
                       onChange={(event) => onLineHeightChange(event.target.value)}
                     />
                   </label>
                   <label className="field">
                     <span>字距</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="-20"
+                      max="50"
+                      step="0.5"
                       inputMode="decimal"
                       placeholder="0"
-                      value={draftLetterSpacing}
-                      onChange={(event) => onLetterSpacingChange(event.target.value)}
+                      value={numericDraft(draftLetterSpacing)}
+                      onChange={(event) => onLetterSpacingChange(pxDraft(event.target.value))}
                     />
                   </label>
                 </div>
@@ -352,21 +419,27 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   <label className="field">
                     <span>上外边距</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="-999"
+                      max="999"
+                      step="1"
                       inputMode="decimal"
                       placeholder="0"
-                      value={draftMarginTop}
-                      onChange={(event) => onMarginTopChange(event.target.value)}
+                      value={numericDraft(draftMarginTop)}
+                      onChange={(event) => onMarginTopChange(pxDraft(event.target.value))}
                     />
                   </label>
                   <label className="field">
                     <span>下外边距</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="-999"
+                      max="999"
+                      step="1"
                       inputMode="decimal"
                       placeholder="0"
-                      value={draftMarginBottom}
-                      onChange={(event) => onMarginBottomChange(event.target.value)}
+                      value={numericDraft(draftMarginBottom)}
+                      onChange={(event) => onMarginBottomChange(pxDraft(event.target.value))}
                     />
                   </label>
                 </div>
@@ -374,21 +447,27 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   <label className="field">
                     <span>上内边距</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
+                      max="999"
+                      step="1"
                       inputMode="decimal"
                       placeholder="0"
-                      value={draftPaddingTop}
-                      onChange={(event) => onPaddingTopChange(event.target.value)}
+                      value={numericDraft(draftPaddingTop)}
+                      onChange={(event) => onPaddingTopChange(pxDraft(event.target.value))}
                     />
                   </label>
                   <label className="field">
                     <span>下内边距</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
+                      max="999"
+                      step="1"
                       inputMode="decimal"
                       placeholder="0"
-                      value={draftPaddingBottom}
-                      onChange={(event) => onPaddingBottomChange(event.target.value)}
+                      value={numericDraft(draftPaddingBottom)}
+                      onChange={(event) => onPaddingBottomChange(pxDraft(event.target.value))}
                     />
                   </label>
                 </div>
@@ -396,31 +475,41 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   <label className="field">
                     <span>左内边距</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
+                      max="999"
+                      step="1"
                       inputMode="decimal"
                       placeholder="0"
-                      value={draftPaddingLeft}
-                      onChange={(event) => onPaddingInlineChange(event.target.value)}
+                      value={numericDraft(draftPaddingLeft)}
+                      onChange={(event) => onPaddingInlineChange(pxDraft(event.target.value))}
                     />
                   </label>
                   <label className="field">
                     <span>右内边距</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
+                      max="999"
+                      step="1"
                       inputMode="decimal"
                       placeholder="0"
-                      value={draftPaddingRight}
-                      onChange={(event) => onPaddingInlineChange(event.target.value)}
+                      value={numericDraft(draftPaddingRight)}
+                      onChange={(event) => onPaddingInlineChange(pxDraft(event.target.value))}
                     />
                   </label>
                 </div>
                 <label className="field field-full">
                   <span>行内填充</span>
                   <input
-                    type="text"
-                    inputMode="decimal"
-                    placeholder="0"
-                    onChange={(event) => onPaddingInlineChange(event.target.value)}
+                      type="number"
+                      min="0"
+                      max="999"
+                      step="1"
+                      inputMode="decimal"
+                      placeholder="0"
+                      value={numericDraft(draftPaddingRight)}
+                      onChange={(event) => onPaddingInlineChange(pxDraft(event.target.value))}
                   />
                 </label>
               </InspectorSection>
@@ -430,18 +519,21 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   label="文字色"
                   value={draftColor}
                   onChange={onColorChange}
+                  onCommit={onApplyStyle}
                   full
                 />
                 <ColorField
                   label="背景色"
                   value={draftBackgroundColor}
                   onChange={onBackgroundColorChange}
+                  onCommit={onApplyStyle}
                   full
                 />
                 <ColorField
                   label="Hover 背景"
                   value={draftHoverBackground}
                   onChange={onHoverBackgroundChange}
+                  onCommit={onApplyStyle}
                   full
                 />
               </InspectorSection>
@@ -451,21 +543,27 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   <label className="field">
                     <span>宽度</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
+                      max="9999"
+                      step="1"
                       inputMode="decimal"
                       placeholder="auto"
-                      value={draftWidth}
-                      onChange={(event) => onWidthChange(event.target.value)}
+                      value={numericDraft(draftWidth)}
+                      onChange={(event) => onWidthChange(pxDraft(event.target.value))}
                     />
                   </label>
                   <label className="field">
                     <span>高度</span>
                     <input
-                      type="text"
+                      type="number"
+                      min="0"
+                      max="9999"
+                      step="1"
                       inputMode="decimal"
                       placeholder="auto"
-                      value={draftHeight}
-                      onChange={(event) => onHeightChange(event.target.value)}
+                      value={numericDraft(draftHeight)}
+                      onChange={(event) => onHeightChange(pxDraft(event.target.value))}
                     />
                   </label>
                 </div>
@@ -475,7 +573,7 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                 <p className="meta">边框设置将在后续版本中提供。</p>
               </InspectorSection>
 
-              <InspectorSection title="诊断" icon={<IconActivity />}>
+              <InspectorSection title="诊断" icon={<IconActivity />} defaultOpen={false}>
                 <DiagnosticsSection
                   selected={selected}
                   annotations={annotations as any}
@@ -485,19 +583,20 @@ export const InspectorPanel = forwardRef<HTMLElement, InspectorPanelProps>(({
                   }}
                 />
               </InspectorSection>
+
             </div>
-            <div className="quick-actions" aria-label="元素操作" style={{margin: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px"}}>
-              <button className="btn" type="button" aria-label="上移元素" onClick={onMoveUp} disabled={!selected}>上移</button>
-              <button className="btn" type="button" aria-label="下移元素" onClick={onMoveDown} disabled={!selected}>下移</button>
-              <button className="btn" type="button" aria-label="复制元素" onClick={onDuplicate} disabled={!selected}>复制元素</button>
-              <button className="btn" type="button" aria-label="删除元素" onClick={onDelete} disabled={!selected}>删除</button>
-              <button className="btn" type="button" aria-label="复制样式" onClick={onCopyStyle} disabled={!selected}>复制样式</button>
-              <button className="btn" type="button" aria-label="粘贴样式" onClick={onPasteStyle} disabled={!selected || !hasCopiedStyle}>粘贴样式</button>
-              <button className="btn" type="button" aria-label="弹窗" onClick={() => onModalCommand?.("open")} disabled={!selected}>打开弹窗</button>
+            <div className="inspector-footer">
+              <button
+                className="inspector-apply-btn inspector-apply-btn--full"
+                type="button"
+                onClick={onApplyStyle}
+                disabled={dirtyCount === 0}
+                data-dirty-count={dirtyCount}
+                aria-label={dirtyCount > 0 ? `应用 ${dirtyCount} 项待提交修改` : "没有待提交的属性修改"}
+              >
+                应用属性修改
+              </button>
             </div>
-            <button className="inspector-apply-btn" type="button" onClick={onApplyStyle} style={{margin: "12px", width: "calc(100% - 24px)"}}>
-              应用样式到 Canvas
-            </button>
           </>
         ) : (
           <section className="property-card inspector-empty" aria-label="选择提示">
