@@ -169,6 +169,43 @@ describe("buildPptxBlob", () => {
     target.remove();
   });
 
+  it("adds only editable text when a visual background is already present", () => {
+    const target = document.createElement("section");
+    const heading = document.createElement("h1");
+    heading.textContent = "Overlay title";
+    target.appendChild(heading);
+    document.body.appendChild(target);
+
+    vi.spyOn(target, "getBoundingClientRect").mockReturnValue({
+      x: 0, y: 0, top: 0, left: 0, right: 960, bottom: 540, width: 960, height: 540,
+      toJSON: () => ({}),
+    } as DOMRect);
+    vi.spyOn(heading, "getBoundingClientRect").mockReturnValue({
+      x: 24, y: 20, top: 20, left: 24, right: 420, bottom: 84, width: 396, height: 64,
+      toJSON: () => ({}),
+    } as DOMRect);
+
+    const slide = { addImage: vi.fn(), addShape: vi.fn(), addText: vi.fn() };
+    const count = addEditablePageToSlide(slide, {
+      dataUrl: TINY_PNG_DATA_URL,
+      visualDataUrl: TINY_PNG_DATA_URL,
+      width: 960,
+      height: 540,
+      label: "Page",
+      target,
+      documentRef: document,
+      frameWindow: window,
+      index: 0,
+      total: 1,
+    }, [], { textOnly: true });
+
+    expect(count).toBe(1);
+    expect(slide.addText).toHaveBeenCalledWith("Overlay title", expect.anything());
+    expect(slide.addImage).not.toHaveBeenCalled();
+    expect(slide.addShape).not.toHaveBeenCalled();
+    target.remove();
+  });
+
   it("rejects empty HTML", async () => {
     const pptx = makePptxGen();
     await expect(

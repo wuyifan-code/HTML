@@ -137,6 +137,31 @@ describe("capturePreviewAsPng", () => {
     expect(htmlToImage.toPng).toHaveBeenCalledTimes(3);
   });
 
+  it("captures a text-free visual layer and restores the source DOM", async () => {
+    const doc = document.implementation.createHTMLDocument("visual layer");
+    doc.body.innerHTML = `<section><div class="panel"><h1 style="color: red">Title</h1><p>Copy</p></div></section>`;
+    const target = doc.querySelector("section") as HTMLElement;
+    const heading = doc.querySelector("h1") as HTMLElement;
+    const iframe = fakeIframe({ contentDocument: doc }) as unknown as HTMLIFrameElement;
+    const htmlToImage = { toPng: vi.fn().mockResolvedValue(TINY_PNG_DATA_URL) };
+
+    const pages = await capturePreviewAsPng({
+      html: "<html><body><section>content</section></body></html>",
+      htmlToImage,
+      createIframe: () => iframe,
+      waitForAssets: async () => undefined,
+      settle: async () => undefined,
+      findSlides: () => [target],
+      measureTarget: () => ({ width: 960, height: 540 }),
+      captureBackgroundWithoutText: true,
+    });
+
+    expect(pages[0].visualDataUrl).toBe(TINY_PNG_DATA_URL);
+    expect(htmlToImage.toPng).toHaveBeenCalledTimes(2);
+    expect(heading.style.color).toBe("red");
+    expect(heading.style.getPropertyValue("-webkit-text-fill-color")).toBe("");
+  });
+
   it("freezes canvas size to the first slide's dimensions, ignoring later measure values", async () => {
     // 关键回归测试: 即使后面 slide 测量出更小的尺寸, 也必须用第一张 slide 的尺寸。
     // 防止 "每页按当前 slide 缩放 iframe" 的旧实现回归 → 修这个 bug 的目的是

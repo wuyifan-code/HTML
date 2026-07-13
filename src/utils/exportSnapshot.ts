@@ -17,6 +17,8 @@ import { ExportError } from "./exportErrors";
 
 export interface RenderedPage {
   dataUrl: string;
+  /** PPTX uses this text-free image as the visual fidelity background. */
+  visualDataUrl?: string;
   width: number;
   height: number;
   label: string;
@@ -58,6 +60,8 @@ export interface SnapshotInput {
   pixelRatio?: number;
   /** AI 结构扫描结果。用于在没有显式 slide 标记时识别语义分段。 */
   aiAnnotations?: ReadonlyArray<{ hftId: string }>;
+  /** Generate a text-free background for editable PPTX overlays. */
+  captureBackgroundWithoutText?: boolean;
   /** 强制单页导出(忽略 .slide 切分) */
   singlePage?: boolean;
   /** 注入 html-to-image,便于测试 */
@@ -175,7 +179,7 @@ const pages: RenderedPage[] = [];
       }
       resizeIframe(iframe, canvasWidth, canvasHeight);
       await settle(frameWindow);
-      const dataUrl = await htmlToImage.toPng(target, {
+      const captureOptions: HtmlToImageOptions = {
         width: canvasWidth,
         height: canvasHeight,
         pixelRatio: input.pixelRatio ?? DEFAULT_PIXEL_RATIO,
@@ -189,15 +193,20 @@ const pages: RenderedPage[] = [];
         // toPng 会抛出 [object Event] 把整次 export 中断。
         // 用 onImageErrorHandler 把失败转成 placeholder 占位, 保证多页 capture 继续。
         onImageErrorHandler: () => TRANSPARENT_PIXEL,
-      });
+      };
+      const dataUrl = await htmlToImage.toPng(target, captureOptions);
       if (!dataUrl || typeof dataUrl !== "string") {
         throw new ExportError("截图结果为空", "snapshot-empty");
       }
       if (!/^data:image\/(png|jpeg|webp);/i.test(dataUrl)) {
         throw new ExportError("截图数据格式异常", "snapshot-empty");
       }
+      const visualDataUrl = input.captureBackgroundWithoutText
+        ? await captureBackgroundWithoutText(target, documentRef, htmlToImage, captureOptions)
+        : undefined;
       const renderedPage: RenderedPage = {
         dataUrl,
+        visualDataUrl,
         width: canvasWidth,
         height: canvasHeight,
         label: slides.length > 0 ? `Slide ${index + 1}` : "Page",
@@ -223,6 +232,68 @@ const pages: RenderedPage[] = [];
 }
 
 // ─── Iframe 生命周期 ─────────────────────────────────────────────
+
+interface HiddenTextSnapshot {
+  element: HTMLElement;
+  style: string | null;
+  fill: string | null;
+  stroke: string | null;
+}
+
+/** Capture the visual layer without text so PPTX can overlay editable text boxes. */
+async function captureBackgroundWithoutText(
+  target: HTMLElement,
+  documentRef: Document,
+  htmlToImage: HtmlToImageLike,
+  options: HtmlToImageOptions,
+): Promise<string | undefined> {
+  if (typeof documentRef.createTreeWalker !== "function") return undefined;
+  const hidden: HiddenTextSnapshot[] = [];
+  const walker = documentRef.createTreeWalker(target, 1);
+  let current = walker.currentNode as HTMLElement | null;
+  while (current) {
+    const tagName = current.tagName?.toLowerCase();
+    const isSvgText = tagName === "text" || tagName === "tspan";
+    if (hasDirectTextNode(current) || isSvgText) {
+      hidden.push({
+        element: current,
+        style: current.getAttribute("style"),
+        fill: current.getAttribute("fill"),
+        stroke: current.getAttribute("stroke"),
+      });
+      current.style.setProperty("color", "transparent", "important");
+      current.style.setProperty("-webkit-text-fill-color", "transparent", "important");
+      current.style.setProperty("text-shadow", "none", "important");
+      if (isSvgText) {
+        current.setAttribute("fill", "transparent");
+        current.setAttribute("stroke", "transparent");
+      }
+    }
+    current = walker.nextNode() as HTMLElement | null;
+  }
+
+  try {
+    const dataUrl = await htmlToImage.toPng(target, options);
+    return /^data:image\/(png|jpeg|webp);/i.test(dataUrl) ? dataUrl : undefined;
+  } catch {
+    return undefined;
+  } finally {
+    hidden.forEach(({ element, style, fill, stroke }) => {
+      if (style === null) element.removeAttribute("style");
+      else element.setAttribute("style", style);
+      if (fill === null) element.removeAttribute("fill");
+      else element.setAttribute("fill", fill);
+      if (stroke === null) element.removeAttribute("stroke");
+      else element.setAttribute("stroke", stroke);
+    });
+  }
+}
+
+function hasDirectTextNode(element: HTMLElement): boolean {
+  return Array.from(element.childNodes).some(
+    (node) => node.nodeType === 3 && Boolean(node.textContent?.trim()),
+  );
+}
 
 async function createAndLoadIframe(html: string, timeoutMs: number): Promise<HTMLIFrameElement> {
   if (typeof document === "undefined") {

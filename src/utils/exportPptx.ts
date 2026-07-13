@@ -86,6 +86,11 @@ export interface PptxTextOptions {
   objectName?: string;
 }
 
+export interface EditablePptxOptions {
+  /** Add only editable text on top of a visual background image. */
+  textOnly?: boolean;
+}
+
 /** 16:9 标准幻灯片尺寸(英寸) */
 export const PPTX_SLIDE_WIDTH_IN = 13.333;
 export const PPTX_SLIDE_HEIGHT_IN = 7.5;
@@ -124,17 +129,26 @@ export async function buildPptxBlob(
     pages = await capturePreviewAsPng({
       ...options,
       html,
+      // Keep the browser-rendered page as the visual layer. Rebuilding every
+      // CSS object as a PPT shape loses pseudo-elements, gradients and layout.
+      captureBackgroundWithoutText: options.captureBackgroundWithoutText ?? true,
       onPageRendered: (context) => {
         const slide = pptx.addSlide?.();
         if (!slide) {
           throw new ExportError("pptxgenjs 无法新增 slide", "pptx-render-failed");
         }
         slide.background = { color: "FFFFFF" };
-        const editableCount = addEditablePageToSlide(slide, context, options.aiAnnotations);
-        // DOM 无法测量时保留可视化回退,避免空白 PPTX;真实浏览器导出会优先生成可编辑对象。
-        if (editableCount === 0) {
-          const rect = fitIntoBox(context.width, context.height, PPTX_SLIDE_WIDTH_IN, PPTX_SLIDE_HEIGHT_IN);
-          slide.addImage({ data: context.dataUrl, x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+        const rect = fitIntoBox(context.width, context.height, PPTX_SLIDE_WIDTH_IN, PPTX_SLIDE_HEIGHT_IN);
+        const visualData = context.visualDataUrl ?? context.dataUrl;
+        // The text-free capture is always the first layer, so the exported
+        // deck remains visually faithful even when a page has complex CSS.
+        slide.addImage({ data: visualData, x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+
+        // If the clean capture succeeded, add text as editable overlays. If it
+        // did not, keep the full screenshot only; duplicating DOM text over it
+        // would produce the giant/offset text seen in the old export.
+        if (context.visualDataUrl) {
+          addEditablePageToSlide(slide, context, options.aiAnnotations, { textOnly: true });
         }
         slides.push(slide);
       },
@@ -248,6 +262,7 @@ export function addEditablePageToSlide(
   slide: PptxSlideInstance,
   context: RenderedPageContext,
   aiAnnotations: SnapshotInput["aiAnnotations"] = [],
+  options: EditablePptxOptions = {},
 ): number {
   if (!slide.addText && !slide.addShape) return 0;
   const targetRect = context.target.getBoundingClientRect();
@@ -256,7 +271,13 @@ export function addEditablePageToSlide(
   if (canvasWidth <= 0 || canvasHeight <= 0) return 0;
 
   const focusIds = new Set((aiAnnotations ?? []).map((annotation) => annotation.hftId).filter(Boolean));
-  const elements = collectEditableElements(context.target, context.documentRef, focusIds);
+  // Text overlays should cover all visible copy because an AI scan may omit
+  // small labels. The scan still controls the legacy fully-editable mode.
+  const elements = collectEditableElements(
+    context.target,
+    context.documentRef,
+    options.textOnly ? new Set() : focusIds,
+  );
   let added = 0;
   for (const element of elements) {
     if (added >= MAX_EDITABLE_PPTX_ELEMENTS) break;
@@ -265,22 +286,24 @@ export function addEditablePageToSlide(
     const style = getComputedStyleSafe(context.frameWindow, element);
     if (style.display === "none" || style.visibility === "hidden" || style.opacity <= 0) continue;
     const objectName = `HTML ${element.tagName.toLowerCase()}${element.id ? ` #${element.id}` : ""}`;
-    const backgroundImage = getBackgroundImageData(style.backgroundImage);
-    if (backgroundImage) {
-      slide.addImage({ data: backgroundImage, x: rect.x, y: rect.y, w: rect.w, h: rect.h });
-      added += 1;
-    }
-
-    if (isImageElement(element)) {
-      const imageData = getImageData(element, context.frameWindow);
-      if (imageData) {
-        slide.addImage({ data: imageData, x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+    const backgroundImage = options.textOnly ? null : getBackgroundImageData(style.backgroundImage);
+    if (!options.textOnly) {
+      if (backgroundImage) {
+        slide.addImage({ data: backgroundImage, x: rect.x, y: rect.y, w: rect.w, h: rect.h });
         added += 1;
-        continue;
+      }
+
+      if (isImageElement(element)) {
+        const imageData = getImageData(element, context.frameWindow);
+        if (imageData) {
+          slide.addImage({ data: imageData, x: rect.x, y: rect.y, w: rect.w, h: rect.h });
+          added += 1;
+          continue;
+        }
       }
     }
 
-    if (hasVisibleBoxStyle(style) && (!backgroundImage || style.borderWidth > 0) && slide.addShape) {
+    if (!options.textOnly && hasVisibleBoxStyle(style) && (!backgroundImage || style.borderWidth > 0) && slide.addShape) {
       slide.addShape(style.borderRadius > 0 ? "roundRect" : "rect", {
         ...rect,
         fill: style.backgroundColor
